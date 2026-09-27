@@ -1,46 +1,450 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-<style>
-  body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #222; color: white; font-family: sans-serif; }
-  canvas { border: 2px solid white; background-color: black; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Воздушный Ас</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #87CEEB; /* Небесно-голубой цвет */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none; /* Отключаем жесты браузера (свайпы) на телефоне */
+        }
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            pointer-events: none;
+            z-index: 5;
+        }
+        #gameOverScreen, #startScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            z-index: 10;
+        }
+        #gameOverScreen {
+            display: none;
+        }
+        h1 {
+            font-size: 40px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #FFD700;
+        }
+        button {
+            padding: 15px 40px;
+            font-size: 22px;
+            background-color: #FFD700;
+            color: #333;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+        /* Панель управления для смартфонов */
+        #mobileControls {
+            position: absolute;
+            bottom: 40px;
+            left: 0;
+            width: 100%;
+            display: none; /* Скрыто на ПК */
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            z-index: 5;
+        }
+        .control-btn {
+            width: 65px;
+            height: 65px;
+            background-color: rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 30px;
+            user-select: none;
+            border: 3px solid white;
+            color: white;
+        }
+        .control-btn:active {
+            background-color: rgba(255, 255, 255, 0.8);
+        }
+        .controls-col {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        /* Показываем кнопки только на экранах телефонов и планшетов */
+        @media (max-width: 768px) {
+            #mobileControls {
+                display: flex;
+            }
+        }
+    </style>
 </head>
 <body>
-<canvas id="gameCanvas" width="400" height="400"></canvas>
-<script>
-  const canvas = document.getElementById("gameCanvas");
-  const ctx = canvas.getContext("2d");
-  const grid = 20;
-  let snake = [{x: 160, y: 160}];
-  let dx = grid, dy = 0;
-  let food = {x: 320, y: 320};
-  let score = 0;
 
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "ArrowLeft" && dx === 0) { dx = -grid; dy = 0; }
-    if (e.key === "ArrowUp" && dy === 0) { dx = 0; dy = -grid; }
-    if (e.key === "ArrowRight" && dx === 0) { dx = grid; dy = 0; }
-    if (e.key === "ArrowDown" && dy === 0) { dx = 0; dy = grid; }
-  });
+    <canvas id="gameCanvas"></canvas>
 
-  function gameLoop() {
-    snake.unshift({x: snake[0].x + dx, y: snake[0].y + dy});
-    if (snake[0].x === food.x && snake[0].y === food.y) {
-      score += 10;
-      food = {x: Math.floor(Math.random() * (canvas.width / grid)) * grid, y: Math.floor(Math.random() * (canvas.height / grid)) * grid};
-    } else { snake.pop(); }
+    <div id="ui">
+        Очки: <span id="score">0</span><br>
+        Уровень: <span id="level">1</span>
+    </div>
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "red"; ctx.fillRect(food.x, food.y, grid - 2, grid - 2);
-    ctx.fillStyle = "lime"; snake.forEach(part => ctx.fillRect(part.x, part.y, grid - 2, grid - 2));
+    <div id="startScreen">
+        <h1>Воздушный Ас</h1>
+        <p style="margin-bottom: 30px; text-align: center; max-width: 80%; font-size: 18px; line-height: 1.5;">
+            Управляй самолетом, уклоняйся от красных скал и собирай золотые звезды для бонусов!<br>Каждые 50 очков скорость растёт.<br><br>
+            <b>На ПК:</b> Стрелочки клавиатуры<br>
+            <b>На телефоне:</b> Кнопки на экране
+        </p>
+        <button id="startBtn">Полетели!</button>
+    </div>
 
-    if (snake[0].x < 0 || snake[0].x >= canvas.width || snake[0].y < 0 || snake[0].y >= canvas.height || snake.slice(1).some(part => part.x === snake[0].x && part.y === snake[0].y)) {
-      alert("Game Over! Score: " + score);
-      snake = [{x: 160, y: 160}]; dx = grid; dy = 0; score = 0;
-    }
-  }
-  setInterval(gameLoop, 100);
-</script>
+    <div id="gameOverScreen">
+        <h1>Авария!</h1>
+        <p style="font-size: 24px; margin-bottom: 20px;">Итоговый счёт: <span id="finalScore">0</span></p>
+        <button id="restartBtn">Попробовать снова</button>
+    </div>
+
+    <div id="mobileControls">
+        <div class="control-btn" id="btnLeft">◀</div>
+        <div class="controls-col">
+            <div class="control-btn" id="btnUp">▲</div>
+            <div class="control-btn" id="btnDown">▼</div>
+        </div>
+        <div class="control-btn" id="btnRight">▶</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Интерфейс
+        const scoreEl = document.getElementById('score');
+        const levelEl = document.getElementById('level');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const finalScoreEl = document.getElementById('finalScore');
+        
+        // Подгоняем размер под экран
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Переменные игры
+        let isPlaying = false;
+        let score = 0;
+        let level = 1;
+        let baseSpeed = 5;
+        let frameCount = 0;
+        let animationId;
+
+        // Игровые объекты
+        let obstacles = [];
+        let stars = [];
+        let clouds = [];
+
+        // Управление клавиатурой
+        const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
+        window.addEventListener('keydown', e => { if(keys.hasOwnProperty(e.code)) keys[e.code] = true; });
+        window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.code)) keys[e.code] = false; });
+
+        // Управление сенсорными кнопками для телефона
+        function setupMobileButton(btnId, keyName) {
+            const btn = document.getElementById(btnId);
+            const press = (e) => { e.preventDefault(); keys[keyName] = true; };
+            const release = (e) => { e.preventDefault(); keys[keyName] = false; };
+            
+            btn.addEventListener('touchstart', press, {passive: false});
+            btn.addEventListener('touchend', release, {passive: false});
+            btn.addEventListener('mousedown', press);
+            btn.addEventListener('mouseup', release);
+            btn.addEventListener('mouseleave', release);
+        }
+        setupMobileButton('btnUp', 'ArrowUp');
+        setupMobileButton('btnDown', 'ArrowDown');
+        setupMobileButton('btnLeft', 'ArrowLeft');
+        setupMobileButton('btnRight', 'ArrowRight');
+
+        // Класс игрока (Самолет)
+        class Plane {
+            constructor() {
+                this.width = 60;
+                this.height = 30;
+                this.x = 50;
+                this.y = canvas.height / 2;
+                this.speed = 6;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                
+                // Корпус самолета
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.moveTo(this.width, this.height/2); // Нос
+                ctx.lineTo(0, this.height); // Низ хвоста
+                ctx.lineTo(0, 0); // Верх хвоста
+                ctx.closePath();
+                ctx.fill();
+
+                // Крыло
+                ctx.fillStyle = '#CCCCCC';
+                ctx.beginPath();
+                ctx.moveTo(15, this.height/2);
+                ctx.lineTo(25, -10);
+                ctx.lineTo(35, this.height/2);
+                ctx.fill();
+
+                // Кабина (стекло)
+                ctx.fillStyle = '#4287f5';
+                ctx.beginPath();
+                ctx.arc(this.width - 15, this.height/2, 5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+
+            update() {
+                // Движение
+                if (keys.ArrowUp && this.y > 0) this.y -= this.speed;
+                if (keys.ArrowDown && this.y < canvas.height - this.height) this.y += this.speed;
+                if (keys.ArrowLeft && this.x > 0) this.x -= this.speed;
+                if (keys.ArrowRight && this.x < canvas.width - this.width) this.x += this.speed;
+                this.draw();
+            }
+        }
+
+        // Класс препятствий (Скалы)
+        class Obstacle {
+            constructor() {
+                this.width = Math.random() * 40 + 30;
+                this.height = Math.random() * (canvas.height / 2.5) + 50;
+                this.x = canvas.width;
+                // Появляется либо сверху, либо снизу
+                this.y = Math.random() > 0.5 ? 0 : canvas.height - this.height;
+                this.passed = false;
+            }
+            draw() {
+                ctx.fillStyle = '#e63946'; // Красный цвет опасности
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+            update() {
+                this.x -= baseSpeed;
+                this.draw();
+            }
+        }
+
+        // Класс бонусов (Звезды)
+        class Star {
+            constructor() {
+                this.radius = 12;
+                this.x = canvas.width;
+                this.y = Math.random() * (canvas.height - 100) + 50;
+            }
+            draw() {
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            update() {
+                this.x -= baseSpeed;
+                this.draw();
+            }
+        }
+
+        // Класс фона (Облака для эффекта полета)
+        class Cloud {
+            constructor() {
+                this.x = canvas.width + Math.random() * 200;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 30 + 20;
+                this.speed = Math.random() * 2 + 1;
+            }
+            draw() {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.arc(this.x + this.size, this.y - this.size/2, this.size*0.8, 0, Math.PI * 2);
+                ctx.arc(this.x + this.size*1.5, this.y, this.size*0.9, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            update() {
+                this.x -= this.speed;
+                this.draw();
+            }
+        }
+
+        let player;
+
+        function initGame() {
+            player = new Plane();
+            obstacles = [];
+            stars = [];
+            clouds = [];
+            score = 0;
+            level = 1;
+            baseSpeed = 5;
+            frameCount = 0;
+            
+            scoreEl.innerText = score;
+            levelEl.innerText = level;
+            
+            // Создаем начальные облака
+            for(let i=0; i<6; i++) {
+                let c = new Cloud();
+                c.x = Math.random() * canvas.width;
+                clouds.push(c);
+            }
+        }
+
+        // Проверка столкновений (упрощенная)
+        function checkCollision(rect1, rect2, isCircle = false) {
+            if (isCircle) {
+                let distX = Math.abs(rect2.x - rect1.x - rect1.width/2);
+                let distY = Math.abs(rect2.y - rect1.y - rect1.height/2);
+                if (distX > (rect1.width/2 + rect2.radius)) return false;
+                if (distY > (rect1.height/2 + rect2.radius)) return false;
+                if (distX <= (rect1.width/2)) return true; 
+                if (distY <= (rect1.height/2)) return true;
+                let dx = distX - rect1.width/2;
+                let dy = distY - rect1.height/2;
+                return (dx*dx + dy*dy <= (rect2.radius*rect2.radius));
+            } else {
+                return (
+                    rect1.x < rect2.x + rect2.width &&
+                    rect1.x + rect1.width > rect2.x &&
+                    rect1.y < rect2.y + rect2.height &&
+                    rect1.y + rect1.height > rect2.y
+                );
+            }
+        }
+
+        function checkLevelUp() {
+            let newLevel = Math.floor(score / 50) + 1;
+            if (newLevel > level) {
+                level = newLevel;
+                levelEl.innerText = level;
+                baseSpeed += 1; // Увеличиваем скорость игры
+            }
+        }
+
+        function gameOver() {
+            isPlaying = false;
+            cancelAnimationFrame(animationId);
+            finalScoreEl.innerText = score;
+            gameOverScreen.style.display = 'flex';
+        }
+
+        function gameLoop() {
+            if (!isPlaying) return;
+            animationId = requestAnimationFrame(gameLoop);
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            frameCount++;
+
+            // Генерация объектов
+            if (frameCount % 40 === 0) clouds.push(new Cloud());
+            
+            // Чем выше уровень, тем чаще появляются скалы (но не быстрее чем раз в 30 кадров)
+            let spawnRate = Math.max(30, 90 - (level * 5));
+            if (frameCount % spawnRate === 0) obstacles.push(new Obstacle());
+            
+            if (frameCount % 150 === 0) stars.push(new Star());
+
+            // Отрисовка облаков
+            for (let i = clouds.length - 1; i >= 0; i--) {
+                clouds[i].update();
+                if (clouds[i].x + 100 < 0) clouds.splice(i, 1);
+            }
+
+            // Обновление игрока
+            player.update();
+
+            // Отрисовка и логика Звезд
+            for (let i = stars.length - 1; i >= 0; i--) {
+                stars[i].update();
+                if (checkCollision(player, stars[i], true)) {
+                    score += 10;
+                    scoreEl.innerText = score;
+                    stars.splice(i, 1);
+                    checkLevelUp();
+                } else if (stars[i].x + 50 < 0) {
+                    stars.splice(i, 1);
+                }
+            }
+
+            // Отрисовка и логика Препятствий
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                obstacles[i].update();
+                
+                // Столкновение = Конец игры
+                if (checkCollision(player, obstacles[i])) {
+                    gameOver();
+                }
+
+                // Успешный пролет
+                if (obstacles[i].x + obstacles[i].width < player.x && !obstacles[i].passed) {
+                    score += 5;
+                    scoreEl.innerText = score;
+                    obstacles[i].passed = true;
+                    checkLevelUp();
+                }
+
+                // Удаление ушедших за экран
+                if (obstacles[i].x + obstacles[i].width < 0) {
+                    obstacles.splice(i, 1);
+                }
+            }
+        }
+
+        document.getElementById('startBtn').addEventListener('click', () => {
+            startScreen.style.display = 'none';
+            initGame();
+            isPlaying = true;
+            gameLoop();
+        });
+
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            gameOverScreen.style.display = 'none';
+            initGame();
+            isPlaying = true;
+            gameLoop();
+        });
+    </script>
 </body>
 </html>
