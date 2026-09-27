@@ -3,448 +3,573 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Воздушный Ас</title>
+    <title>Битва Легенд: Пенальти</title>
     <style>
+        :root {
+            --primary: #1a5c38;
+            --secondary: #f1c40f;
+            --bg: #2ecc71;
+            --text: #fff;
+        }
         body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #87CEEB; /* Небесно-голубой цвет */
+            margin: 0; padding: 0; width: 100%; height: 100%;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            touch-action: none; /* Отключаем жесты браузера (свайпы) на телефоне */
+            background: radial-gradient(circle, #27ae60, #1a5c38);
+            color: var(--text);
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
         }
-        #gameCanvas {
-            display: block;
-            width: 100%;
-            height: 100%;
+        .screen {
+            display: none; width: 100%; height: 100%;
+            flex-direction: column; align-items: center; justify-content: center;
+            position: absolute; top: 0; left: 0;
         }
-        #ui {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: white;
-            font-size: 24px;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-            pointer-events: none;
-            z-index: 5;
-        }
-        #gameOverScreen, #startScreen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background-color: rgba(0,0,0,0.7);
-            color: white;
-            z-index: 10;
-        }
-        #gameOverScreen {
-            display: none;
-        }
-        h1 {
-            font-size: 40px;
-            margin-bottom: 20px;
-            text-align: center;
-            color: #FFD700;
-        }
+        .active { display: flex; }
+        
+        h1 { font-size: 36px; text-align: center; color: var(--secondary); text-shadow: 2px 2px 4px #000; margin-bottom: 10px; }
+        h2 { font-size: 24px; text-shadow: 1px 1px 3px #000; text-align: center; }
+        
         button {
-            padding: 15px 40px;
-            font-size: 22px;
-            background-color: #FFD700;
-            color: #333;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: bold;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            padding: 15px 30px; margin: 10px; font-size: 20px; font-weight: bold;
+            background: var(--secondary); color: #333; border: none; border-radius: 10px;
+            cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.4);
             transition: transform 0.1s;
         }
-        button:active {
-            transform: scale(0.95);
+        button:active { transform: scale(0.95); }
+        button:disabled { background: #7f8c8d; color: #bdc3c7; box-shadow: none; }
+
+        /* Списки игроков */
+        .roster-container {
+            display: flex; gap: 20px; width: 90%; max-width: 800px; height: 50vh; overflow-y: auto;
+            background: rgba(0,0,0,0.5); padding: 15px; border-radius: 15px;
         }
-        /* Панель управления для смартфонов */
-        #mobileControls {
-            position: absolute;
-            bottom: 40px;
-            left: 0;
-            width: 100%;
-            display: none; /* Скрыто на ПК */
-            justify-content: center;
-            align-items: center;
-            gap: 20px;
-            z-index: 5;
+        .roster-col { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+        .player-card {
+            background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; border: 2px solid transparent;
+            cursor: pointer; transition: 0.2s;
         }
-        .control-btn {
-            width: 65px;
-            height: 65px;
-            background-color: rgba(255, 255, 255, 0.4);
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 30px;
-            user-select: none;
-            border: 3px solid white;
-            color: white;
+        .player-card.selected { border-color: var(--secondary); background: rgba(241, 196, 15, 0.3); }
+        .stats { font-size: 12px; color: #ccc; }
+
+        /* Поле и анимация */
+        #stadium {
+            width: 100%; max-width: 600px; height: 60%; position: relative;
+            border-bottom: 50px solid #144026; background: rgba(0,0,0,0.2);
+            display: flex; flex-direction: column; justify-content: flex-end;
         }
-        .control-btn:active {
-            background-color: rgba(255, 255, 255, 0.8);
+        #goal-net {
+            width: 80%; height: 60%; margin: 0 auto; border: 5px solid white; border-bottom: none;
+            background: 
+                linear-gradient(45deg, transparent 49%, rgba(255,255,255,0.3) 50%, transparent 51%),
+                linear-gradient(-45deg, transparent 49%, rgba(255,255,255,0.3) 50%, transparent 51%);
+            background-size: 20px 20px; position: relative;
         }
-        .controls-col {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+        #keeper {
+            font-size: 60px; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+            transition: all 0.5s ease-out; z-index: 2;
         }
-        /* Показываем кнопки только на экранах телефонов и планшетов */
-        @media (max-width: 768px) {
-            #mobileControls {
-                display: flex;
-            }
+        #ball {
+            width: 30px; height: 30px; background: radial-gradient(circle, #fff, #aaa);
+            border-radius: 50%; position: absolute; bottom: -30px; left: 50%;
+            transform: translateX(-50%); box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+            transition: all 0.5s cubic-bezier(0.1, 0.8, 0.2, 1); z-index: 3;
         }
+
+        /* Зоны удара */
+        #target-grid {
+            display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr;
+            width: 80%; height: 60%; position: absolute; top: 0; left: 10%; z-index: 10;
+        }
+        .target-zone {
+            border: 1px dashed rgba(255,255,255,0.3); display: flex; justify-content: center; align-items: center;
+            font-size: 30px; opacity: 0.7; cursor: pointer;
+        }
+        .target-zone:active { background: rgba(241, 196, 15, 0.5); }
+
+        /* Табло */
+        .scoreboard {
+            width: 100%; display: flex; justify-content: space-around; padding: 10px 0;
+            background: rgba(0,0,0,0.8); font-size: 18px; font-weight: bold;
+        }
+        .score-dots { display: flex; gap: 5px; margin-top: 5px; }
+        .dot { width: 15px; height: 15px; border-radius: 50%; background: #555; border: 2px solid #333; }
+        .dot.goal { background: #2ecc71; }
+        .dot.miss { background: #e74c3c; }
+
+        .pass-device { font-size: 20px; text-align: center; padding: 20px; background: #c0392b; border-radius: 10px; margin: 20px; }
     </style>
 </head>
 <body>
 
-    <canvas id="gameCanvas"></canvas>
-
-    <div id="ui">
-        Очки: <span id="score">0</span><br>
-        Уровень: <span id="level">1</span>
+    <!-- Главное меню -->
+    <div id="screen-menu" class="screen active">
+        <h1>БИТВА ЛЕГЕНД<br>ПЕНАЛЬТИ</h1>
+        <button onclick="startGame(1)">1 ИГРОК (Карьера)</button>
+        <button onclick="startGame(2)">2 ИГРОКА (С другом)</button>
     </div>
 
-    <div id="startScreen">
-        <h1>Воздушный Ас</h1>
-        <p style="margin-bottom: 30px; text-align: center; max-width: 80%; font-size: 18px; line-height: 1.5;">
-            Управляй самолетом, уклоняйся от красных скал и собирай золотые звезды для бонусов!<br>Каждые 50 очков скорость растёт.<br><br>
-            <b>На ПК:</b> Стрелочки клавиатуры<br>
-            <b>На телефоне:</b> Кнопки на экране
-        </p>
-        <button id="startBtn">Полетели!</button>
+    <!-- Выбор сложности (только для 1 игрока) -->
+    <div id="screen-difficulty" class="screen">
+        <h2>Выбери уровень</h2>
+        <div id="difficulty-btns" style="display:flex; flex-direction:column;"></div>
+        <button onclick="showScreen('screen-menu')">Назад</button>
     </div>
 
-    <div id="gameOverScreen">
-        <h1>Авария!</h1>
-        <p style="font-size: 24px; margin-bottom: 20px;">Итоговый счёт: <span id="finalScore">0</span></p>
-        <button id="restartBtn">Попробовать снова</button>
-    </div>
-
-    <div id="mobileControls">
-        <div class="control-btn" id="btnLeft">◀</div>
-        <div class="controls-col">
-            <div class="control-btn" id="btnUp">▲</div>
-            <div class="control-btn" id="btnDown">▼</div>
+    <!-- Выбор команд -->
+    <div id="screen-team" class="screen">
+        <h2 id="team-select-title">Игрок 1: Выберите состав</h2>
+        <div class="roster-container">
+            <div class="roster-col">
+                <h3 style="text-align:center; margin:5px 0;">Нападающие</h3>
+                <div id="strikers-list"></div>
+            </div>
+            <div class="roster-col">
+                <h3 style="text-align:center; margin:5px 0;">Вратари</h3>
+                <div id="keepers-list"></div>
+            </div>
         </div>
-        <div class="control-btn" id="btnRight">▶</div>
+        <button onclick="confirmTeam()">Подтвердить</button>
+    </div>
+
+    <!-- Заглушка "Передай телефон" -->
+    <div id="screen-pass" class="screen">
+        <h2>ВНИМАНИЕ!</h2>
+        <div class="pass-device" id="pass-text"></div>
+        <button onclick="startActionPhase()">Я готов, открыть экран</button>
+    </div>
+
+    <!-- Игровой экран -->
+    <div id="screen-match" class="screen">
+        <div class="scoreboard">
+            <div style="text-align:center;">
+                <div id="p1-name">Команда 1</div>
+                <div class="score-dots" id="p1-dots"></div>
+            </div>
+            <div style="font-size:28px;">СЧЁТ<br><span id="match-score">0 - 0</span></div>
+            <div style="text-align:center;">
+                <div id="p2-name">Команда 2</div>
+                <div class="score-dots" id="p2-dots"></div>
+            </div>
+        </div>
+        
+        <h2 id="match-status" style="margin: 10px 0;">Выберите куда бить!</h2>
+
+        <div id="stadium">
+            <div id="goal-net">
+                <div id="target-grid">
+                    <div class="target-zone" onclick="selectZone(0)">🎯</div>
+                    <div class="target-zone" onclick="selectZone(1)">🎯</div>
+                    <div class="target-zone" onclick="selectZone(2)">🎯</div>
+                    <div class="target-zone" onclick="selectZone(3)">🎯</div>
+                    <div class="target-zone" onclick="selectZone(4)">🎯</div>
+                    <div class="target-zone" onclick="selectZone(5)">🎯</div>
+                </div>
+            </div>
+            <div id="keeper">🧤</div>
+            <div id="ball"></div>
+        </div>
+    </div>
+
+    <!-- Экран завершения -->
+    <div id="screen-gameover" class="screen">
+        <h1 id="winner-text">ПОБЕДА!</h1>
+        <p id="reward-text" style="font-size: 20px;"></p>
+        <button onclick="showScreen('screen-menu')">В главное меню</button>
     </div>
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        
-        // Интерфейс
-        const scoreEl = document.getElementById('score');
-        const levelEl = document.getElementById('level');
-        const startScreen = document.getElementById('startScreen');
-        const gameOverScreen = document.getElementById('gameOverScreen');
-        const finalScoreEl = document.getElementById('finalScore');
-        
-        // Подгоняем размер под экран
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+        // База данных игроков
+        const strikers = [
+            { id: 1, name: "Л. Месси", pow: 85, acc: 98, trick: 95 },
+            { id: 2, name: "К. Роналду", pow: 98, acc: 92, trick: 85 },
+            { id: 3, name: "Неймар", pow: 80, acc: 90, trick: 99 },
+            { id: 4, name: "К. Мбаппе", pow: 92, acc: 92, trick: 88 },
+            { id: 5, name: "Х. Кейн", pow: 94, acc: 95, trick: 75 },
+            { id: 6, name: "Винисиус", pow: 82, acc: 88, trick: 94 },
+            { id: 7, name: "Э. Холанд", pow: 99, acc: 90, trick: 70 },
+            { id: 8, name: "Левандовски", pow: 92, acc: 96, trick: 80 },
+            { id: 9, name: "Де Брюйне", pow: 88, acc: 95, trick: 85 },
+            { id: 10, name: "М. Салах", pow: 86, acc: 92, trick: 90 }
+        ];
 
-        // Переменные игры
-        let isPlaying = false;
-        let score = 0;
-        let level = 1;
-        let baseSpeed = 5;
-        let frameCount = 0;
-        let animationId;
+        const keepers = [
+            { id: 1, name: "М. Нойер", ref: 92, reach: 90, int: 95 },
+            { id: 2, name: "Дж. Буффон", ref: 85, reach: 90, int: 98 },
+            { id: 3, name: "И. Касильяс", ref: 98, reach: 82, int: 92 },
+            { id: 4, name: "Тер Штеген", ref: 90, reach: 88, int: 90 },
+            { id: 5, name: "Т. Куртуа", ref: 88, reach: 99, int: 85 },
+            { id: 6, name: "Алиссон", ref: 90, reach: 90, int: 92 },
+            { id: 7, name: "Эдерсон", ref: 88, reach: 88, int: 94 },
+            { id: 8, name: "Я. Облак", ref: 95, reach: 90, int: 88 },
+            { id: 9, name: "Э. Мартинес", ref: 88, reach: 92, int: 95 }, // Мастер психологии
+            { id: 10, name: "П. Чех", ref: 85, reach: 95, int: 92 }
+        ];
 
-        // Игровые объекты
-        let obstacles = [];
-        let stars = [];
-        let clouds = [];
+        const difficulties = ["Новичок", "Любитель", "Профессионал", "Мировой класс", "Легенда"];
+        let unlockedLevel = parseInt(localStorage.getItem('penaltyUnlocked')) || 0;
 
-        // Управление клавиатурой
-        const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
-        window.addEventListener('keydown', e => { if(keys.hasOwnProperty(e.code)) keys[e.code] = true; });
-        window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.code)) keys[e.code] = false; });
+        // Состояние игры
+        let gameMode = 1; // 1 = 1P, 2 = 2P
+        let currentDiff = 0;
+        let teams = [
+            { str: null, gk: null, score: 0, history: [] }, // Игрок 1
+            { str: null, gk: null, score: 0, history: [] }  // Игрок 2 / ИИ
+        ];
+        let teamSelectPhase = 0; // 0 = P1 выбирает, 1 = P2 выбирает
 
-        // Управление сенсорными кнопками для телефона
-        function setupMobileButton(btnId, keyName) {
-            const btn = document.getElementById(btnId);
-            const press = (e) => { e.preventDefault(); keys[keyName] = true; };
-            const release = (e) => { e.preventDefault(); keys[keyName] = false; };
-            
-            btn.addEventListener('touchstart', press, {passive: false});
-            btn.addEventListener('touchend', release, {passive: false});
-            btn.addEventListener('mousedown', press);
-            btn.addEventListener('mouseup', release);
-            btn.addEventListener('mouseleave', release);
-        }
-        setupMobileButton('btnUp', 'ArrowUp');
-        setupMobileButton('btnDown', 'ArrowDown');
-        setupMobileButton('btnLeft', 'ArrowLeft');
-        setupMobileButton('btnRight', 'ArrowRight');
+        let currentRound = 1; // До 5
+        let isP1Turn = true; // True = P1 бьет, P2 на воротах
+        let actionState = 0; // 0 = Выбор удара, 1 = Выбор прыжка
+        let chosenShot = -1;
+        let chosenDive = -1;
 
-        // Класс игрока (Самолет)
-        class Plane {
-            constructor() {
-                this.width = 60;
-                this.height = 30;
-                this.x = 50;
-                this.y = canvas.height / 2;
-                this.speed = 6;
-            }
+        // Координаты зон (0: лево-верх, 1: центр-верх, 2: право-верх, 3: лево-низ, 4: центр-низ, 5: право-низ)
+        const zones = [
+            { bx: '10%', by: '20%', kx: '-30%', ky: '20px', name: 'В девятку (влево)' },
+            { bx: '50%', by: '20%', kx: '-50%', ky: '20px', name: 'По центру верхом' },
+            { bx: '90%', by: '20%', kx: '-70%', ky: '20px', name: 'В девятку (вправо)' },
+            { bx: '10%', by: '80%', kx: '-30%', ky: '80px', name: 'В угол низом (влево)' },
+            { bx: '50%', by: '80%', kx: '-50%', ky: '80px', name: 'По центру низом' },
+            { bx: '90%', by: '80%', kx: '-70%', ky: '80px', name: 'В угол низом (вправо)' }
+        ];
 
-            draw() {
-                ctx.save();
-                ctx.translate(this.x, this.y);
-                
-                // Корпус самолета
-                ctx.fillStyle = '#FFFFFF';
-                ctx.beginPath();
-                ctx.moveTo(this.width, this.height/2); // Нос
-                ctx.lineTo(0, this.height); // Низ хвоста
-                ctx.lineTo(0, 0); // Верх хвоста
-                ctx.closePath();
-                ctx.fill();
-
-                // Крыло
-                ctx.fillStyle = '#CCCCCC';
-                ctx.beginPath();
-                ctx.moveTo(15, this.height/2);
-                ctx.lineTo(25, -10);
-                ctx.lineTo(35, this.height/2);
-                ctx.fill();
-
-                // Кабина (стекло)
-                ctx.fillStyle = '#4287f5';
-                ctx.beginPath();
-                ctx.arc(this.width - 15, this.height/2, 5, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.restore();
-            }
-
-            update() {
-                // Движение
-                if (keys.ArrowUp && this.y > 0) this.y -= this.speed;
-                if (keys.ArrowDown && this.y < canvas.height - this.height) this.y += this.speed;
-                if (keys.ArrowLeft && this.x > 0) this.x -= this.speed;
-                if (keys.ArrowRight && this.x < canvas.width - this.width) this.x += this.speed;
-                this.draw();
-            }
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
         }
 
-        // Класс препятствий (Скалы)
-        class Obstacle {
-            constructor() {
-                this.width = Math.random() * 40 + 30;
-                this.height = Math.random() * (canvas.height / 2.5) + 50;
-                this.x = canvas.width;
-                // Появляется либо сверху, либо снизу
-                this.y = Math.random() > 0.5 ? 0 : canvas.height - this.height;
-                this.passed = false;
-            }
-            draw() {
-                ctx.fillStyle = '#e63946'; // Красный цвет опасности
-                ctx.fillRect(this.x, this.y, this.width, this.height);
-            }
-            update() {
-                this.x -= baseSpeed;
-                this.draw();
-            }
-        }
-
-        // Класс бонусов (Звезды)
-        class Star {
-            constructor() {
-                this.radius = 12;
-                this.x = canvas.width;
-                this.y = Math.random() * (canvas.height - 100) + 50;
-            }
-            draw() {
-                ctx.fillStyle = '#FFD700';
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            update() {
-                this.x -= baseSpeed;
-                this.draw();
-            }
-        }
-
-        // Класс фона (Облака для эффекта полета)
-        class Cloud {
-            constructor() {
-                this.x = canvas.width + Math.random() * 200;
-                this.y = Math.random() * canvas.height;
-                this.size = Math.random() * 30 + 20;
-                this.speed = Math.random() * 2 + 1;
-            }
-            draw() {
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.arc(this.x + this.size, this.y - this.size/2, this.size*0.8, 0, Math.PI * 2);
-                ctx.arc(this.x + this.size*1.5, this.y, this.size*0.9, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            update() {
-                this.x -= this.speed;
-                this.draw();
-            }
-        }
-
-        let player;
-
-        function initGame() {
-            player = new Plane();
-            obstacles = [];
-            stars = [];
-            clouds = [];
-            score = 0;
-            level = 1;
-            baseSpeed = 5;
-            frameCount = 0;
-            
-            scoreEl.innerText = score;
-            levelEl.innerText = level;
-            
-            // Создаем начальные облака
-            for(let i=0; i<6; i++) {
-                let c = new Cloud();
-                c.x = Math.random() * canvas.width;
-                clouds.push(c);
-            }
-        }
-
-        // Проверка столкновений (упрощенная)
-        function checkCollision(rect1, rect2, isCircle = false) {
-            if (isCircle) {
-                let distX = Math.abs(rect2.x - rect1.x - rect1.width/2);
-                let distY = Math.abs(rect2.y - rect1.y - rect1.height/2);
-                if (distX > (rect1.width/2 + rect2.radius)) return false;
-                if (distY > (rect1.height/2 + rect2.radius)) return false;
-                if (distX <= (rect1.width/2)) return true; 
-                if (distY <= (rect1.height/2)) return true;
-                let dx = distX - rect1.width/2;
-                let dy = distY - rect1.height/2;
-                return (dx*dx + dy*dy <= (rect2.radius*rect2.radius));
+        function startGame(mode) {
+            gameMode = mode;
+            teams = [{ str: null, gk: null, score: 0, history: [] }, { str: null, gk: null, score: 0, history: [] }];
+            if (mode === 1) {
+                renderDifficulties();
+                showScreen('screen-difficulty');
             } else {
-                return (
-                    rect1.x < rect2.x + rect2.width &&
-                    rect1.x + rect1.width > rect2.x &&
-                    rect1.y < rect2.y + rect2.height &&
-                    rect1.y + rect1.height > rect2.y
-                );
+                startTeamSelection();
             }
         }
 
-        function checkLevelUp() {
-            let newLevel = Math.floor(score / 50) + 1;
-            if (newLevel > level) {
-                level = newLevel;
-                levelEl.innerText = level;
-                baseSpeed += 1; // Увеличиваем скорость игры
-            }
+        function renderDifficulties() {
+            const div = document.getElementById('difficulty-btns');
+            div.innerHTML = '';
+            difficulties.forEach((d, i) => {
+                let btn = document.createElement('button');
+                btn.innerText = d + (i > unlockedLevel ? ' 🔒' : '');
+                btn.disabled = i > unlockedLevel;
+                btn.onclick = () => { currentDiff = i; startTeamSelection(); };
+                div.appendChild(btn);
+            });
         }
 
-        function gameOver() {
-            isPlaying = false;
-            cancelAnimationFrame(animationId);
-            finalScoreEl.innerText = score;
-            gameOverScreen.style.display = 'flex';
+        function startTeamSelection() {
+            teamSelectPhase = 0;
+            renderRoster();
+            showScreen('screen-team');
         }
 
-        function gameLoop() {
-            if (!isPlaying) return;
-            animationId = requestAnimationFrame(gameLoop);
+        function renderRoster() {
+            document.getElementById('team-select-title').innerText = teamSelectPhase === 0 ? "Игрок 1: Выберите состав" : "Игрок 2: Выберите состав";
             
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            frameCount++;
+            const sList = document.getElementById('strikers-list');
+            sList.innerHTML = '';
+            strikers.forEach((p, i) => {
+                let d = document.createElement('div');
+                d.className = 'player-card' + (teams[teamSelectPhase].str === i ? ' selected' : '');
+                d.innerHTML = `<b>🏃‍♂️ ${p.name}</b><br><span class="stats">Сила: ${p.pow} | Точн: ${p.acc} | Хитр: ${p.trick}</span>`;
+                d.onclick = () => { teams[teamSelectPhase].str = i; renderRoster(); };
+                sList.appendChild(d);
+            });
 
-            // Генерация объектов
-            if (frameCount % 40 === 0) clouds.push(new Cloud());
-            
-            // Чем выше уровень, тем чаще появляются скалы (но не быстрее чем раз в 30 кадров)
-            let spawnRate = Math.max(30, 90 - (level * 5));
-            if (frameCount % spawnRate === 0) obstacles.push(new Obstacle());
-            
-            if (frameCount % 150 === 0) stars.push(new Star());
+            const kList = document.getElementById('keepers-list');
+            kList.innerHTML = '';
+            keepers.forEach((p, i) => {
+                let d = document.createElement('div');
+                d.className = 'player-card' + (teams[teamSelectPhase].gk === i ? ' selected' : '');
+                d.innerHTML = `<b>🧤 ${p.name}</b><br><span class="stats">Рефл: ${p.ref} | Прыж: ${p.reach} | Инт: ${p.int}</span>`;
+                d.onclick = () => { teams[teamSelectPhase].gk = i; renderRoster(); };
+                kList.appendChild(d);
+            });
+        }
 
-            // Отрисовка облаков
-            for (let i = clouds.length - 1; i >= 0; i--) {
-                clouds[i].update();
-                if (clouds[i].x + 100 < 0) clouds.splice(i, 1);
+        function confirmTeam() {
+            if (teams[teamSelectPhase].str === null || teams[teamSelectPhase].gk === null) {
+                alert("Выберите нападающего и вратаря!");
+                return;
             }
-
-            // Обновление игрока
-            player.update();
-
-            // Отрисовка и логика Звезд
-            for (let i = stars.length - 1; i >= 0; i--) {
-                stars[i].update();
-                if (checkCollision(player, stars[i], true)) {
-                    score += 10;
-                    scoreEl.innerText = score;
-                    stars.splice(i, 1);
-                    checkLevelUp();
-                } else if (stars[i].x + 50 < 0) {
-                    stars.splice(i, 1);
+            if (teamSelectPhase === 0) {
+                if (gameMode === 1) {
+                    // ИИ выбирает команду случайно (чем сложнее, тем лучше игроки - упрощенно просто рандом)
+                    teams[1].str = Math.floor(Math.random() * strikers.length);
+                    teams[1].gk = Math.floor(Math.random() * keepers.length);
+                    startMatch();
+                } else {
+                    teamSelectPhase = 1;
+                    renderRoster();
                 }
+            } else {
+                startMatch();
             }
+        }
 
-            // Отрисовка и логика Препятствий
-            for (let i = obstacles.length - 1; i >= 0; i--) {
-                obstacles[i].update();
+        function startMatch() {
+            currentRound = 1;
+            isP1Turn = true;
+            teams[0].score = 0; teams[1].score = 0;
+            teams[0].history = []; teams[1].history = [];
+            
+            document.getElementById('p1-name').innerText = "Игрок 1\n(" + strikers[teams[0].str].name + ")";
+            document.getElementById('p2-name').innerText = (gameMode === 1 ? "Компьютер" : "Игрок 2") + "\n(" + strikers[teams[1].str].name + ")";
+            
+            updateScoreboard();
+            prepareTurn();
+        }
+
+        function updateScoreboard() {
+            document.getElementById('match-score').innerText = `${teams[0].score} - ${teams[1].score}`;
+            const drawDots = (history, elId) => {
+                let html = '';
+                for(let i=0; i<Math.max(5, history.length); i++) {
+                    let c = history[i] === 1 ? 'goal' : (history[i] === 0 ? 'miss' : '');
+                    html += `<div class="dot ${c}"></div>`;
+                }
+                document.getElementById(elId).innerHTML = html;
+            };
+            drawDots(teams[0].history, 'p1-dots');
+            drawDots(teams[1].history, 'p2-dots');
+        }
+
+        function prepareTurn() {
+            actionState = 0;
+            document.getElementById('target-grid').style.display = 'none'; // Скрываем сетку до готовности
+            resetAnimation();
+            
+            let shooterName = isP1Turn ? "Игрок 1" : (gameMode === 1 ? "Компьютер" : "Игрок 2");
+            let saverName = isP1Turn ? (gameMode === 1 ? "Компьютер" : "Игрок 2") : "Игрок 1";
+
+            if (gameMode === 1 && !isP1Turn) {
+                // Ход ИИ бить (игрок защищает)
+                chosenShot = calculateAIShot();
+                actionState = 1; 
+                document.getElementById('pass-text').innerText = `Компьютер готовится к удару!\n\nИгрок 1, выбери, куда прыгнет ${keepers[teams[0].gk].name}.`;
+                showScreen('screen-pass');
+            } else {
+                // Ход человека (Игрок 1 или Игрок 2)
+                document.getElementById('pass-text').innerText = 
+                    `${shooterName}, твоя очередь бить пенальти!\n\n${saverName}, отвернись и не смотри на экран!`;
+                showScreen('screen-pass');
+            }
+        }
+
+        function startActionPhase() {
+            showScreen('screen-match');
+            document.getElementById('target-grid').style.display = 'grid';
+            
+            if (actionState === 0) {
+                let sName = isP1Turn ? strikers[teams[0].str].name : strikers[teams[1].str].name;
+                document.getElementById('match-status').innerText = `Выбор удара: ${sName}\nКуда бьем?`;
+            } else {
+                let kName = isP1Turn ? keepers[teams[1].gk].name : keepers[teams[0].gk].name;
+                document.getElementById('match-status').innerText = `Защита: ${kName}\nКуда прыгаем?`;
+            }
+        }
+
+        function selectZone(z) {
+            if (actionState === 0) {
+                chosenShot = z;
+                if (gameMode === 1) {
+                    // Игра против ПК, ИИ тут же решает, куда прыгнуть
+                    chosenDive = calculateAIDive();
+                    executeAction();
+                } else {
+                    // Игра с другом, передаем ход вратарю
+                    actionState = 1;
+                    document.getElementById('target-grid').style.display = 'none';
+                    let saverName = isP1Turn ? "Игрок 2" : "Игрок 1";
+                    let shooterName = isP1Turn ? "Игрок 1" : "Игрок 2";
+                    document.getElementById('pass-text').innerText = 
+                        `${saverName}, твоя очередь защищать ворота!\n\n${shooterName}, отвернись!`;
+                    showScreen('screen-pass');
+                }
+            } else {
+                chosenDive = z;
+                executeAction();
+            }
+        }
+
+        // Логика ИИ
+        function calculateAIDive() {
+            // Чем выше сложность, тем чаще ИИ угадывает
+            let chance = [10, 25, 40, 60, 80][currentDiff]; 
+            // Интуиция вратаря тоже влияет
+            let k = keepers[teams[1].gk];
+            chance += (k.int - 80);
+            
+            if (Math.random() * 100 < chance) {
+                return chosenShot; // Угадал!
+            } else {
+                return Math.floor(Math.random() * 6); // Рандом
+            }
+        }
+
+        function calculateAIShot() {
+            // ИИ бьет. На высоких сложностях бьет чаще по углам (0, 2, 3, 5)
+            if (currentDiff > 2 && Math.random() > 0.3) {
+                return [0, 2, 3, 5][Math.floor(Math.random() * 4)];
+            }
+            return Math.floor(Math.random() * 6);
+        }
+
+        function executeAction() {
+            document.getElementById('target-grid').style.display = 'none';
+            document.getElementById('match-status').innerText = "УДАР!";
+
+            let shooterTeam = isP1Turn ? 0 : 1;
+            let saverTeam = isP1Turn ? 1 : 0;
+            
+            let sStats = strikers[teams[shooterTeam].str];
+            let kStats = keepers[teams[saverTeam].gk];
+
+            // Расчет шансов
+            let isGoal = true;
+            let missChance = 100 - sStats.acc; // Шанс вообще промазать мимо ворот
+            
+            if (Math.random() * 100 < missChance / 2) {
+                // Ужасный промах
+                isGoal = false;
+                animateAction(-1, chosenDive, "ПРОМАХ!");
+            } else {
+                // Попал в створ. Угадал ли вратарь?
+                let shotCol = chosenShot % 3;
+                let diveCol = chosenDive % 3;
                 
-                // Столкновение = Конец игры
-                if (checkCollision(player, obstacles[i])) {
-                    gameOver();
-                }
+                if (shotCol === diveCol) {
+                    // Вратарь угадал направление!
+                    // Расчет математики спасения
+                    let savePower = kStats.ref + kStats.reach;
+                    let shotPower = sStats.pow + (sStats.trick / 2); // Хитрость немного мешает
+                    
+                    // Если точное совпадение зоны (и высота, и сторона)
+                    if (chosenShot === chosenDive) {
+                        savePower += 20; 
+                    }
 
-                // Успешный пролет
-                if (obstacles[i].x + obstacles[i].width < player.x && !obstacles[i].passed) {
-                    score += 5;
-                    scoreEl.innerText = score;
-                    obstacles[i].passed = true;
-                    checkLevelUp();
+                    if (savePower + (Math.random()*40) > shotPower + (Math.random()*30)) {
+                        isGoal = false;
+                    }
+                } else if (sStats.trick < kStats.int && Math.random() > 0.7) {
+                    // Вратарь раскусил хитрый удар и случайно достал ногой (эпичный сейв)
+                    if (Math.abs(shotCol - diveCol) === 1) { // Если прыгнул рядом
+                        isGoal = false;
+                    }
                 }
-
-                // Удаление ушедших за экран
-                if (obstacles[i].x + obstacles[i].width < 0) {
-                    obstacles.splice(i, 1);
-                }
+                animateAction(chosenShot, chosenDive, isGoal ? "ГОООЛ!" : "СЕЙВ!");
             }
+
+            // Запись результата
+            setTimeout(() => {
+                teams[shooterTeam].history.push(isGoal ? 1 : 0);
+                if (isGoal) teams[shooterTeam].score++;
+                updateScoreboard();
+
+                checkWinCondition();
+            }, 2000);
         }
 
-        document.getElementById('startBtn').addEventListener('click', () => {
-            startScreen.style.display = 'none';
-            initGame();
-            isPlaying = true;
-            gameLoop();
-        });
+        function animateAction(shot, dive, resultText) {
+            const ball = document.getElementById('ball');
+            const keeper = document.getElementById('keeper');
 
-        document.getElementById('restartBtn').addEventListener('click', () => {
-            gameOverScreen.style.display = 'none';
-            initGame();
-            isPlaying = true;
-            gameLoop();
-        });
+            // Анимация вратаря
+            keeper.style.left = `calc(50% + ${zones[dive].kx})`;
+            keeper.style.bottom = zones[dive].ky;
+            keeper.style.transform = `translateX(-50%) rotate(${dive%3===0 ? '-45deg' : (dive%3===2 ? '45deg' : '0')})`;
+
+            // Анимация мяча
+            if (shot === -1) {
+                // Промах (улетает за пределы)
+                ball.style.top = '-50px';
+                ball.style.left = (Math.random() > 0.5 ? '10%' : '90%');
+            } else {
+                ball.style.top = zones[shot].by;
+                ball.style.left = zones[shot].bx;
+            }
+            ball.style.transform = 'translateX(-50%) scale(0.5)'; // Уменьшается, отдаляясь
+
+            setTimeout(() => {
+                document.getElementById('match-status').innerText = resultText;
+            }, 500);
+        }
+
+        function resetAnimation() {
+            const ball = document.getElementById('ball');
+            const keeper = document.getElementById('keeper');
+            ball.style.transition = 'none';
+            keeper.style.transition = 'none';
+            
+            ball.style.top = '';
+            ball.style.bottom = '-30px';
+            ball.style.left = '50%';
+            ball.style.transform = 'translateX(-50%) scale(1)';
+            
+            keeper.style.left = '50%';
+            keeper.style.bottom = '0';
+            keeper.style.transform = 'translateX(-50%) rotate(0)';
+
+            // Принудительный reflow для сброса CSS-анимаций
+            void ball.offsetWidth; 
+            
+            ball.style.transition = 'all 0.5s cubic-bezier(0.1, 0.8, 0.2, 1)';
+            keeper.style.transition = 'all 0.5s ease-out';
+        }
+
+        function checkWinCondition() {
+            let p1Shots = teams[0].history.length;
+            let p2Shots = teams[1].history.length;
+            
+            // Математика победы
+            let p1Left = 5 - p1Shots;
+            let p2Left = 5 - p2Shots;
+            
+            // Серия пенальти (основные 5 ударов)
+            if (p1Shots <= 5 && p2Shots <= 5) {
+                if (teams[0].score > teams[1].score + p2Left) return endGame(0);
+                if (teams[1].score > teams[0].score + p1Left) return endGame(1);
+            } else if (p1Shots === p2Shots) {
+                // До золотого гола
+                if (teams[0].score > teams[1].score) return endGame(0);
+                if (teams[1].score > teams[0].score) return endGame(1);
+            }
+
+            // Смена очереди
+            if (isP1Turn) {
+                isP1Turn = false;
+            } else {
+                isP1Turn = true;
+                currentRound++;
+            }
+            prepareTurn();
+        }
+
+        function endGame(winnerIndex) {
+            let wText = winnerIndex === 0 ? "ИГРОК 1 ПОБЕДИЛ!" : (gameMode === 1 ? "КОМПЬЮТЕР ПОБЕДИЛ!" : "ИГРОК 2 ПОБЕДИЛ!");
+            document.getElementById('winner-text').innerText = wText;
+            
+            let rText = "";
+            if (gameMode === 1 && winnerIndex === 0) {
+                if (currentDiff === unlockedLevel && unlockedLevel < 4) {
+                    unlockedLevel++;
+                    localStorage.setItem('penaltyUnlocked', unlockedLevel);
+                    rText = `Открыт новый уровень: ${difficulties[unlockedLevel]}!`;
+                } else if (currentDiff === 4) {
+                    rText = "ТЫ АБСОЛЮТНАЯ ЛЕГЕНДА!";
+                }
+            }
+            document.getElementById('reward-text').innerText = rText;
+            
+            showScreen('screen-gameover');
+        }
+
     </script>
 </body>
 </html>
