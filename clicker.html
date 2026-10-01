@@ -3,80 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cyber Clicker</title>
+    <title>Cyber Clicker PRO</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { 
-            margin: 0; padding: 0; 
-            background: radial-gradient(circle, #1a1a2e, #0f0f1b); 
-            color: white; font-family: 'Courier New', Courier, monospace; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            height: 100vh; overflow: hidden; user-select: none; touch-action: manipulation;
-        }
-        #balance { font-size: 60px; font-weight: bold; text-shadow: 0 0 20px #00ffcc; color: #00ffcc; margin-bottom: 10px; }
-        #title { font-size: 20px; color: #ff00ff; text-shadow: 0 0 10px #ff00ff; margin-bottom: 50px; }
+        body { margin: 0; background: radial-gradient(circle, #1a1a2e, #0f0f1b); color: white; font-family: 'Courier New', monospace; display: flex; flex-direction: column; align-items: center; height: 100vh; overflow: hidden; user-select: none; }
+        #balance { font-size: 70px; font-weight: bold; text-shadow: 0 0 20px #00ffcc; color: #00ffcc; margin-top: 50px; }
         
-        /* Крутая неоновая монета */
+        /* Базовый дизайн скина */
         #coin {
-            width: 200px; height: 200px;
+            width: 220px; height: 220px; margin-top: 50px;
             background: linear-gradient(45deg, #ff00ff, #00ffcc);
-            border-radius: 50%;
-            box-shadow: 0 0 50px #ff00ff, inset 0 0 20px #000;
+            border-radius: 50%; box-shadow: 0 0 50px #ff00ff, inset 0 0 20px #000;
             display: flex; align-items: center; justify-content: center;
-            font-size: 40px; font-weight: bold; color: white;
-            transition: transform 0.05s, box-shadow 0.05s;
-            cursor: pointer;
+            font-size: 60px; font-weight: bold; color: white;
+            transition: transform 0.05s; cursor: pointer; position: relative;
         }
-        #coin:active {
-            transform: scale(0.9);
-            box-shadow: 0 0 20px #00ffcc, inset 0 0 40px #000;
-        }
+        #coin:active { transform: scale(0.9); }
         
-        #save-btn {
-            margin-top: 50px; padding: 15px 40px; font-size: 20px; font-weight: bold;
-            background-color: #00ffcc; color: #000; border: none; border-radius: 10px;
-            box-shadow: 0 0 15px #00ffcc; cursor: pointer;
-        }
+        #save-btn { margin-top: auto; margin-bottom: 50px; padding: 15px 40px; font-size: 20px; font-weight: bold; background-color: #00ffcc; color: #000; border: none; border-radius: 10px; box-shadow: 0 0 15px #00ffcc; cursor: pointer; }
+        
+        /* Анимация вылетающих цифр */
+        .floating-text { position: absolute; font-size: 30px; font-weight: bold; color: #fff; pointer-events: none; animation: floatUp 1s ease-out forwards; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-100px) scale(1.5); } }
     </style>
 </head>
 <body>
-
-    <div id="title">CYBER CLICKER 💰</div>
     <div id="balance">0</div>
-    
     <div id="coin" onclick="tapCoin()">TAP</div>
-
     <button id="save-btn" onclick="saveAndExit()">Сохранить и выйти</button>
 
     <script>
         let tg = window.Telegram.WebApp;
-        tg.expand(); // Открываем на весь экран
+        tg.expand();
         
+        // Читаем скин из ссылки (например: clicker.html?skin=btc)
+        const urlParams = new URLSearchParams(window.location.search);
+        const skin = urlParams.get('skin') || 'neon';
+        
+        let coinElement = document.getElementById('coin');
+        
+        // ПРИМЕНЯЕМ СКИНЫ ЧЕРЕЗ КОД
+        if (skin === 'btc') {
+            coinElement.style.background = 'linear-gradient(45deg, #f2a900, #ffcc00)';
+            coinElement.style.boxShadow = '0 0 50px #f2a900, inset 0 0 20px #000';
+            coinElement.innerText = '₿';
+        } else if (skin === 'ton') {
+            coinElement.style.background = 'linear-gradient(45deg, #0098ea, #00c6ff)';
+            coinElement.style.boxShadow = '0 0 50px #0098ea, inset 0 0 20px #000';
+            coinElement.innerText = '💎';
+        }
+
         let coins = 0;
         let balanceDisplay = document.getElementById('balance');
 
         function tapCoin() {
-            // При каждом клике даем 1 монету (в будущем можно будет прокачать клик)
             coins += 1;
             balanceDisplay.innerText = coins;
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
             
-            // Легкая вибрация телефона при клике (если телефон поддерживает)
-            tg.HapticFeedback.impactOccurred('light');
+            // Создаем эффект +1
+            let plus = document.createElement('div');
+            plus.className = 'floating-text';
+            plus.innerText = '+1';
+            plus.style.left = (Math.random() * 60 + 20) + '%';
+            plus.style.top = '40%';
+            coinElement.appendChild(plus);
+            
+            setTimeout(() => { plus.remove(); }, 1000);
         }
 
         function saveAndExit() {
-            let btn = document.getElementById('save-btn');
-            btn.innerText = "Сохранение...";
-            
-            // Отправляем заработанные монеты в Python бота!
-            // Мы указываем game: "clicker", чтобы бот понял, откуда пришли деньги
-            setTimeout(() => {
-                let data = {
-                    game: "clicker",
-                    earned: coins
-                };
-                tg.sendData(JSON.stringify(data));
-            }, 1000);
+            document.getElementById('save-btn').innerText = "Сохранение...";
+            setTimeout(() => { tg.sendData(JSON.stringify({ game: "clicker", earned: coins, score: coins })); }, 500);
         }
     </script>
 </body>
