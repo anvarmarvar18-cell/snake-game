@@ -6,75 +6,186 @@
     <title>Cyber Clicker PRO</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { margin: 0; background: radial-gradient(circle, #1a1a2e, #0f0f1b); color: white; font-family: 'Courier New', monospace; display: flex; flex-direction: column; align-items: center; height: 100vh; overflow: hidden; user-select: none; }
-        #balance { font-size: 70px; font-weight: bold; text-shadow: 0 0 20px #00ffcc; color: #00ffcc; margin-top: 50px; }
-        
-        /* Базовый дизайн скина */
-        #coin {
-            width: 220px; height: 220px; margin-top: 50px;
-            background: linear-gradient(45deg, #ff00ff, #00ffcc);
-            border-radius: 50%; box-shadow: 0 0 50px #ff00ff, inset 0 0 20px #000;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 60px; font-weight: bold; color: white;
-            transition: transform 0.05s; cursor: pointer; position: relative;
+        body { 
+            margin: 0; background: radial-gradient(circle at 50% 30%, #1a1a3a, #050510); 
+            color: white; font-family: 'Arial', sans-serif; 
+            display: flex; flex-direction: column; align-items: center; 
+            height: 100vh; overflow: hidden; user-select: none; touch-action: none;
         }
-        #coin:active { transform: scale(0.9); }
         
-        #save-btn { margin-top: auto; margin-bottom: 50px; padding: 15px 40px; font-size: 20px; font-weight: bold; background-color: #00ffcc; color: #000; border: none; border-radius: 10px; box-shadow: 0 0 15px #00ffcc; cursor: pointer; }
+        #balance-container { margin-top: 10vh; text-align: center; }
+        #balance { font-size: 80px; font-weight: 900; text-shadow: 0 0 20px rgba(255,255,255,0.5); }
+        .currency-name { font-size: 20px; color: #888; text-transform: uppercase; letter-spacing: 2px; }
+
+        /* Игровое поле для монеты */
+        #click-zone {
+            flex: 1; display: flex; justify-content: center; align-items: center; width: 100%; position: relative;
+        }
+
+        /* Сама 3D монета */
+        #coin {
+            width: 250px; height: 250px; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 80px; font-weight: bold; color: white;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 10px 20px rgba(255,255,255,0.3);
+            transition: transform 0.05s, filter 0.1s;
+            position: relative; z-index: 10;
+        }
         
+        /* Эффект нажатия (вдавливание) */
+        .pressed { transform: scale(0.95) translateY(10px); filter: brightness(0.8); }
+
+        /* Полоска энергии */
+        #energy-container {
+            width: 80%; margin-bottom: 20px;
+        }
+        #energy-text { display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; margin-bottom: 5px; }
+        #energy-bar-bg { width: 100%; height: 15px; background: #222; border-radius: 10px; overflow: hidden; border: 1px solid #444; }
+        #energy-bar-fill { height: 100%; background: linear-gradient(90deg, #ff00ff, #00ffcc); width: 100%; transition: width 0.1s; }
+
+        #save-btn {
+            margin-bottom: 30px; padding: 15px 40px; font-size: 20px; font-weight: bold;
+            background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); 
+            border-radius: 15px; backdrop-filter: blur(10px); cursor: pointer;
+        }
+
         /* Анимация вылетающих цифр */
-        .floating-text { position: absolute; font-size: 30px; font-weight: bold; color: #fff; pointer-events: none; animation: floatUp 1s ease-out forwards; }
-        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-100px) scale(1.5); } }
+        .floating-number {
+            position: absolute; font-size: 40px; font-weight: bold; color: white;
+            pointer-events: none; z-index: 100;
+            animation: floatUp 0.8s ease-out forwards;
+            text-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-150px) scale(1.5); }
+        }
     </style>
 </head>
 <body>
-    <div id="balance">0</div>
-    <div id="coin" onclick="tapCoin()">TAP</div>
-    <button id="save-btn" onclick="saveAndExit()">Сохранить и выйти</button>
+    <div id="balance-container">
+        <div class="currency-name">Arcade Coin</div>
+        <div id="balance">0</div>
+    </div>
+
+    <div id="click-zone">
+        <div id="coin">💎</div>
+    </div>
+
+    <div id="energy-container">
+        <div id="energy-text">
+            <span>⚡ <span id="energy-current">1000</span></span>
+            <span>/ 1000</span>
+        </div>
+        <div id="energy-bar-bg">
+            <div id="energy-bar-fill"></div>
+        </div>
+    </div>
+
+    <button id="save-btn" onclick="saveAndExit()">💾 Сохранить и выйти</button>
 
     <script>
-        let tg = window.Telegram.WebApp;
+        let tg = window.Telegram.WebApp; 
         tg.expand();
-        
-        // Читаем скин из ссылки (например: clicker.html?skin=btc)
+
+        // 1. НАСТРОЙКА СКИНОВ ИЗ ССЫЛКИ
         const urlParams = new URLSearchParams(window.location.search);
         const skin = urlParams.get('skin') || 'neon';
-        
-        let coinElement = document.getElementById('coin');
-        
-        // ПРИМЕНЯЕМ СКИНЫ ЧЕРЕЗ КОД
+        const coin = document.getElementById('coin');
+        const currencyName = document.querySelector('.currency-name');
+
         if (skin === 'btc') {
-            coinElement.style.background = 'linear-gradient(45deg, #f2a900, #ffcc00)';
-            coinElement.style.boxShadow = '0 0 50px #f2a900, inset 0 0 20px #000';
-            coinElement.innerText = '₿';
+            coin.style.background = 'linear-gradient(135deg, #f2a900, #d49500)';
+            coin.style.boxShadow = '0 20px 50px rgba(242, 169, 0, 0.4), inset 0 10px 20px rgba(255,255,255,0.4)';
+            coin.innerText = '₿'; currencyName.innerText = 'Bitcoin';
         } else if (skin === 'ton') {
-            coinElement.style.background = 'linear-gradient(45deg, #0098ea, #00c6ff)';
-            coinElement.style.boxShadow = '0 0 50px #0098ea, inset 0 0 20px #000';
-            coinElement.innerText = '💎';
+            coin.style.background = 'linear-gradient(135deg, #0098ea, #007bc2)';
+            coin.style.boxShadow = '0 20px 50px rgba(0, 152, 234, 0.4), inset 0 10px 20px rgba(255,255,255,0.4)';
+            coin.innerText = '💎'; currencyName.innerText = 'TON Crystal';
+        } else if (skin === 'apple') {
+            coin.style.background = 'linear-gradient(135deg, #e2e2e2, #999999)';
+            coin.style.boxShadow = '0 20px 50px rgba(255, 255, 255, 0.2), inset 0 10px 20px rgba(255,255,255,0.5)';
+            coin.innerText = '🍏'; currencyName.innerText = 'Apple Share';
+        } else {
+            coin.style.background = 'linear-gradient(135deg, #ff00ff, #00ffcc)';
+            coin.innerText = '🚀'; currencyName.innerText = 'Neon Token';
         }
 
-        let coins = 0;
-        let balanceDisplay = document.getElementById('balance');
+        // 2. ИГРОВАЯ ЛОГИКА
+        let balance = 0;
+        let earned_now = 0;
+        let energy = 1000;
+        const maxEnergy = 1000;
 
-        function tapCoin() {
-            coins += 1;
-            balanceDisplay.innerText = coins;
-            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        const balanceDisplay = document.getElementById('balance');
+        const energyCurrentDisplay = document.getElementById('energy-current');
+        const energyBarFill = document.getElementById('energy-bar-fill');
+        const clickZone = document.getElementById('click-zone');
+
+        // Восстановление энергии каждую секунду
+        setInterval(() => {
+            if (energy < maxEnergy) {
+                energy += 3;
+                if (energy > maxEnergy) energy = maxEnergy;
+                updateEnergyUI();
+            }
+        }, 1000);
+
+        function updateEnergyUI() {
+            energyCurrentDisplay.innerText = energy;
+            energyBarFill.style.width = (energy / maxEnergy * 100) + '%';
+        }
+
+        // 3. МУЛЬТИТАЧ (ОБРАБОТКА НЕСКОЛЬКИХ ПАЛЬЦЕВ)
+        clickZone.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Отключаем стандартный скролл
             
-            // Создаем эффект +1
+            // Пробегаемся по всем пальцам, которые коснулись экрана
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (energy > 0) {
+                    processClick(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+                }
+            }
+        });
+
+        // Поддержка мышки (для тестов на компьютере)
+        clickZone.addEventListener('mousedown', (e) => {
+            if (energy > 0) processClick(e.clientX, e.clientY);
+        });
+
+        function processClick(x, y) {
+            balance += 1;
+            earned_now += 1;
+            energy -= 1;
+            
+            balanceDisplay.innerText = balance;
+            updateEnergyUI();
+
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+
+            // Анимация вдавливания монеты
+            coin.classList.add('pressed');
+            setTimeout(() => coin.classList.remove('pressed'), 50);
+
+            // Создаем вылетающую цифру +1 прямо под пальцем
             let plus = document.createElement('div');
-            plus.className = 'floating-text';
+            plus.className = 'floating-number';
             plus.innerText = '+1';
-            plus.style.left = (Math.random() * 60 + 20) + '%';
-            plus.style.top = '40%';
-            coinElement.appendChild(plus);
             
-            setTimeout(() => { plus.remove(); }, 1000);
+            // Если клик был по центру, делаем небольшой разброс
+            let rect = clickZone.getBoundingClientRect();
+            plus.style.left = (x - rect.left - 20) + 'px';
+            plus.style.top = (y - rect.top - 20) + 'px';
+            
+            clickZone.appendChild(plus);
+            setTimeout(() => plus.remove(), 800);
         }
 
         function saveAndExit() {
-            document.getElementById('save-btn').innerText = "Сохранение...";
-            setTimeout(() => { tg.sendData(JSON.stringify({ game: "clicker", earned: coins, score: coins })); }, 500);
+            document.getElementById('save-btn').innerText = "⏳ Сохранение...";
+            setTimeout(() => {
+                tg.sendData(JSON.stringify({ game: "clicker", earned: earned_now, score: balance }));
+            }, 500);
         }
     </script>
 </body>
