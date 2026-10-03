@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cyber Orbit</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { margin: 0; background-color: #050510; overflow: hidden; touch-action: none; color: white; font-family: 'Courier New', monospace; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        #scoreBoard { position: absolute; top: 10%; width: 100%; text-align: center; font-size: 60px; font-weight: bold; color: #00ffcc; text-shadow: 0 0 20px #00ffcc; pointer-events: none; }
+        #msg { position: absolute; top: 25%; width: 100%; text-align: center; font-size: 20px; color: #ff00ff; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div id="scoreBoard">0</div>
+    <div id="msg">Тапай, чтобы взлететь!</div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        let tg = window.Telegram.WebApp; tg.expand();
+        if (tg.isVersionAtLeast('7.7')) { tg.disableVerticalSwipes(); }
+        document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+
+        let gameActive = false; let gameOver = false; let score = 0;
+        let cx = canvas.width / 2;
+
+        // Игрок (Неоновый шар)
+        let player = { y: canvas.height - 150, radius: 12, velocity: 0, gravity: 0.4, jump: -7 };
+        
+        // Вращающиеся кольца
+        let rings = [];
+        function spawnRing(yPos) {
+            rings.push({
+                y: yPos, radius: 80, thickness: 15, angle: 0,
+                speed: (Math.random() > 0.5 ? 1 : -1) * (0.03 + Math.random() * 0.02), // Крутится в разные стороны
+                gap: Math.PI / 2, // Размер дырки (90 градусов)
+                passed: false
+            });
+        }
+        spawnRing(canvas.height / 2 - 100);
+        spawnRing(canvas.height / 2 - 400);
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (gameActive) {
+                player.velocity += player.gravity;
+                player.y += player.velocity;
+                if (player.y > canvas.height) endGame(); // Упал вниз
+            }
+
+            // Рисуем шар
+            ctx.fillStyle = '#00ffcc'; ctx.shadowBlur = 20; ctx.shadowColor = '#00ffcc';
+            ctx.beginPath(); ctx.arc(cx, player.y, player.radius, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+
+            // Движение и отрисовка колец
+            for (let i = 0; i < rings.length; i++) {
+                let r = rings[i];
+                if (gameActive) {
+                    // Если шар поднялся выше середины экрана, опускаем кольца вниз (эффект полета вверх)
+                    if (player.y < canvas.height / 2) {
+                        r.y += Math.abs(player.velocity);
+                    }
+                    r.angle += r.speed;
+                }
+
+                ctx.strokeStyle = '#ff00ff'; ctx.lineWidth = r.thickness;
+                ctx.shadowBlur = 15; ctx.shadowColor = '#ff00ff';
+                ctx.beginPath();
+                // Рисуем дугу с дыркой
+                ctx.arc(cx, r.y, r.radius, r.angle, r.angle + Math.PI * 2 - r.gap);
+                ctx.stroke(); ctx.shadowBlur = 0;
+
+                // Проверка столкновения
+                let dist = Math.abs(player.y - r.y);
+                // Если шар находится на линии кольца
+                if (dist < r.radius + r.thickness/2 && dist > r.radius - r.thickness/2) {
+                    // Определяем угол, где находится шар
+                    let playerAngle = (player.y > r.y) ? Math.PI / 2 : -Math.PI / 2; 
+                    
+                    // Нормализуем углы для сложной проверки
+                    let startAngle = r.angle % (Math.PI*2); if(startAngle < 0) startAngle += Math.PI*2;
+                    let endAngle = (r.angle + Math.PI*2 - r.gap) % (Math.PI*2); if(endAngle < 0) endAngle += Math.PI*2;
+                    let pAngle = playerAngle % (Math.PI*2); if(pAngle < 0) pAngle += Math.PI*2;
+
+                    // Если шар не попал в дырку — проигрыш
+                    let hit = false;
+                    if (startAngle < endAngle) {
+                        if (pAngle >= startAngle && pAngle <= endAngle) hit = true;
+                    } else {
+                        if (pAngle >= startAngle || pAngle <= endAngle) hit = true;
+                    }
+                    if (hit) endGame();
+                }
+
+                // Очки
+                if (r.y > player.y && !r.passed) {
+                    score++; document.getElementById('scoreBoard').innerText = score; r.passed = true;
+                }
+
+                // Удаляем старые кольца и создаем новые сверху
+                if (r.y > canvas.height + 100) {
+                    rings.splice(i, 1); i--;
+                    spawnRing(rings[rings.length - 1].y - 300 - Math.random() * 100);
+                }
+            }
+
+            // Шар не может улететь выше центра (камера едет за ним)
+            if (player.y < canvas.height / 2) player.y = canvas.height / 2;
+
+            if (!gameOver) requestAnimationFrame(draw);
+        }
+
+        function endGame() {
+            gameActive = false; gameOver = true;
+            document.getElementById('msg').innerText = 'РАЗБИЛСЯ! Сохраняем...';
+            setTimeout(() => { tg.sendData(JSON.stringify({ game: "orbit", earned: score * 10, score: score })); }, 1500); // 10 монет за кольцо!
+        }
+
+        window.addEventListener('touchstart', () => {
+            if (!gameActive && !gameOver) { gameActive = true; document.getElementById('msg').innerText = ''; }
+            if (gameActive) player.velocity = player.jump;
+        });
+
+        draw();
+    </script>
+</body>
+</html>
