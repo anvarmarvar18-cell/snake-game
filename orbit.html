@@ -3,128 +3,190 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cyber Orbit</title>
+    <title>Cyber Orbit PRO</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { margin: 0; background-color: #050510; overflow: hidden; touch-action: none; color: white; font-family: 'Courier New', monospace; }
+        body { margin: 0; background: radial-gradient(circle, #1a0b2e, #050510); overflow: hidden; touch-action: none; color: white; font-family: 'Courier New', monospace; }
         canvas { display: block; width: 100vw; height: 100vh; }
-        #scoreBoard { position: absolute; top: 10%; width: 100%; text-align: center; font-size: 60px; font-weight: bold; color: #00ffcc; text-shadow: 0 0 20px #00ffcc; pointer-events: none; }
-        #msg { position: absolute; top: 25%; width: 100%; text-align: center; font-size: 20px; color: #ff00ff; pointer-events: none; }
+        #scoreBoard { position: absolute; top: 10%; width: 100%; text-align: center; font-size: 70px; font-weight: 900; color: #00ffcc; text-shadow: 0 0 30px #00ffcc; pointer-events: none; z-index: 10; }
+        #msg { position: absolute; top: 25%; width: 100%; text-align: center; font-size: 22px; color: #ff00ff; font-weight: bold; pointer-events: none; text-shadow: 0 0 10px #ff00ff; }
     </style>
 </head>
 <body>
     <div id="scoreBoard">0</div>
-    <div id="msg">Тапай, чтобы взлететь!</div>
+    <div id="msg">Тапай, чтобы выжить!</div>
     <canvas id="gameCanvas"></canvas>
 
     <script>
         let tg = window.Telegram.WebApp; tg.expand();
-        if (tg.isVersionAtLeast('7.7')) { tg.disableVerticalSwipes(); }
-        document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+        if (tg.isVersionAtLeast('7.7')) tg.disableVerticalSwipes();
+        document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth; canvas.height = window.innerHeight;
 
+        // Читаем скин из ссылки
+        const urlParams = new URLSearchParams(window.location.search);
+        const skin = urlParams.get('skin') || 'neon';
+        let playerColor = '#00ffcc';
+        if(skin === 'plasma') playerColor = '#ff00ff';
+        if(skin === 'sun') playerColor = '#ffcc00';
+
         let gameActive = false; let gameOver = false; let score = 0;
         let cx = canvas.width / 2;
 
-        // Игрок (Неоновый шар)
-        let player = { y: canvas.height - 150, radius: 12, velocity: 0, gravity: 0.4, jump: -7 };
-        
-        // Вращающиеся кольца
-        let rings = [];
-        function spawnRing(yPos) {
-            rings.push({
-                y: yPos, radius: 80, thickness: 15, angle: 0,
-                speed: (Math.random() > 0.5 ? 1 : -1) * (0.03 + Math.random() * 0.02), // Крутится в разные стороны
-                gap: Math.PI / 2, // Размер дырки (90 градусов)
-                passed: false
+        let player = { y: canvas.height - 150, radius: 12, velocity: 0, gravity: 0.5, jump: -8 };
+        let particles = [];
+
+        // Сложные препятствия (Уровни)
+        let obstacles = [];
+        const types = ['single', 'double', 'cross']; // Типы препятствий
+
+        function spawnObstacle(yPos) {
+            let type = types[Math.floor(Math.random() * types.length)]; // Случайный тип
+            
+            obstacles.push({
+                y: yPos, type: type, radius: 85, thickness: 15, angle: 0,
+                speed: (Math.random() > 0.5 ? 1 : -1) * (0.02 + Math.random() * 0.03),
+                gap: Math.PI / 2, passed: false
             });
         }
-        spawnRing(canvas.height / 2 - 100);
-        spawnRing(canvas.height / 2 - 400);
+        
+        // Спавним первые два
+        spawnObstacle(canvas.height / 2 - 100);
+        spawnObstacle(canvas.height / 2 - 450);
+
+        function addParticle(x, y) {
+            particles.push({ x: x, y: y, size: Math.random() * 4 + 2, speedX: (Math.random() - 0.5) * 4, speedY: Math.random() * 4, life: 1 });
+        }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             if (gameActive) {
-                player.velocity += player.gravity;
-                player.y += player.velocity;
-                if (player.y > canvas.height) endGame(); // Упал вниз
+                player.velocity += player.gravity; player.y += player.velocity;
+                if (player.y > canvas.height) endGame();
             }
 
-            // Рисуем шар
-            ctx.fillStyle = '#00ffcc'; ctx.shadowBlur = 20; ctx.shadowColor = '#00ffcc';
+            // Отрисовка частиц (хвост кометы)
+            for (let i = 0; i < particles.length; i++) {
+                let p = particles[i];
+                ctx.fillStyle = `rgba(0, 255, 204, ${p.life})`;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+                p.x += p.speedX; p.y += p.speedY; p.life -= 0.05;
+                if (p.life <= 0) { particles.splice(i, 1); i--; }
+            }
+
+            // Игрок
+            ctx.fillStyle = playerColor; ctx.shadowBlur = 20; ctx.shadowColor = playerColor;
             ctx.beginPath(); ctx.arc(cx, player.y, player.radius, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
 
-            // Движение и отрисовка колец
-            for (let i = 0; i < rings.length; i++) {
-                let r = rings[i];
+            // Отрисовка и логика препятствий
+            for (let i = 0; i < obstacles.length; i++) {
+                let obs = obstacles[i];
                 if (gameActive) {
-                    // Если шар поднялся выше середины экрана, опускаем кольца вниз (эффект полета вверх)
-                    if (player.y < canvas.height / 2) {
-                        r.y += Math.abs(player.velocity);
-                    }
-                    r.angle += r.speed;
+                    if (player.y < canvas.height / 2) obs.y += Math.abs(player.velocity); // Камера едет вверх
+                    obs.angle += obs.speed;
                 }
 
-                ctx.strokeStyle = '#ff00ff'; ctx.lineWidth = r.thickness;
-                ctx.shadowBlur = 15; ctx.shadowColor = '#ff00ff';
-                ctx.beginPath();
-                // Рисуем дугу с дыркой
-                ctx.arc(cx, r.y, r.radius, r.angle, r.angle + Math.PI * 2 - r.gap);
-                ctx.stroke(); ctx.shadowBlur = 0;
+                ctx.shadowBlur = 15; ctx.shadowColor = '#ff00ff'; ctx.lineWidth = obs.thickness;
 
-                // Проверка столкновения
-                let dist = Math.abs(player.y - r.y);
-                // Если шар находится на линии кольца
-                if (dist < r.radius + r.thickness/2 && dist > r.radius - r.thickness/2) {
-                    // Определяем угол, где находится шар
-                    let playerAngle = (player.y > r.y) ? Math.PI / 2 : -Math.PI / 2; 
+                // 1. ОДИНАРНОЕ КОЛЬЦО
+                if (obs.type === 'single') {
+                    ctx.strokeStyle = '#ff00ff'; ctx.beginPath();
+                    ctx.arc(cx, obs.y, obs.radius, obs.angle, obs.angle + Math.PI * 2 - obs.gap);
+                    ctx.stroke();
+                    checkCircleCollision(obs, obs.radius, obs.angle, obs.gap);
+                } 
+                // 2. ДВОЙНОЕ КОЛЬЦО (Внутреннее крутится в другую сторону)
+                else if (obs.type === 'double') {
+                    // Внешнее
+                    ctx.strokeStyle = '#ff00ff'; ctx.beginPath();
+                    ctx.arc(cx, obs.y, obs.radius, obs.angle, obs.angle + Math.PI * 2 - obs.gap);
+                    ctx.stroke();
+                    checkCircleCollision(obs, obs.radius, obs.angle, obs.gap);
                     
-                    // Нормализуем углы для сложной проверки
-                    let startAngle = r.angle % (Math.PI*2); if(startAngle < 0) startAngle += Math.PI*2;
-                    let endAngle = (r.angle + Math.PI*2 - r.gap) % (Math.PI*2); if(endAngle < 0) endAngle += Math.PI*2;
-                    let pAngle = playerAngle % (Math.PI*2); if(pAngle < 0) pAngle += Math.PI*2;
-
-                    // Если шар не попал в дырку — проигрыш
-                    let hit = false;
-                    if (startAngle < endAngle) {
-                        if (pAngle >= startAngle && pAngle <= endAngle) hit = true;
-                    } else {
-                        if (pAngle >= startAngle || pAngle <= endAngle) hit = true;
+                    // Внутреннее
+                    let innerRadius = obs.radius - 30;
+                    let innerAngle = -obs.angle * 1.5; // Крутится быстрее и в обратную сторону
+                    ctx.strokeStyle = '#00ffff'; ctx.beginPath();
+                    ctx.arc(cx, obs.y, innerRadius, innerAngle, innerAngle + Math.PI * 2 - obs.gap);
+                    ctx.stroke();
+                    checkCircleCollision(obs, innerRadius, innerAngle, obs.gap);
+                }
+                // 3. ВРАЩАЮЩИЙСЯ КРЕСТ (ПЛЮС)
+                else if (obs.type === 'cross') {
+                    ctx.strokeStyle = '#ff3300'; ctx.shadowColor = '#ff3300';
+                    ctx.save(); ctx.translate(cx, obs.y); ctx.rotate(obs.angle);
+                    ctx.beginPath();
+                    ctx.moveTo(-obs.radius, 0); ctx.lineTo(obs.radius, 0); // Горизонталь
+                    ctx.moveTo(0, -obs.radius); ctx.lineTo(0, obs.radius); // Вертикаль
+                    ctx.stroke(); ctx.restore();
+                    
+                    // Простая проверка столкновения с крестом
+                    let distY = Math.abs(player.y - obs.y);
+                    if (distY < obs.radius && distY > -obs.radius) {
+                        // Если игрок внутри радиуса креста, проверяем, не задел ли он лопасти
+                        let relativeY = player.y - obs.y;
+                        let rotatedY = relativeY * Math.cos(obs.angle);
+                        let rotatedX = relativeY * Math.sin(obs.angle);
+                        if (Math.abs(rotatedY) < obs.thickness/2 || Math.abs(rotatedX) < obs.thickness/2) {
+                            endGame();
+                        }
                     }
-                    if (hit) endGame();
+                }
+                ctx.shadowBlur = 0;
+
+                // Начисление очков
+                if (obs.y > player.y && !obs.passed) {
+                    score++; document.getElementById('scoreBoard').innerText = score; obs.passed = true;
+                    // Каждые 5 очков игра ускоряется
+                    if (score % 5 === 0) player.gravity += 0.05; 
                 }
 
-                // Очки
-                if (r.y > player.y && !r.passed) {
-                    score++; document.getElementById('scoreBoard').innerText = score; r.passed = true;
-                }
-
-                // Удаляем старые кольца и создаем новые сверху
-                if (r.y > canvas.height + 100) {
-                    rings.splice(i, 1); i--;
-                    spawnRing(rings[rings.length - 1].y - 300 - Math.random() * 100);
+                // Удаляем пройденные и создаем новые
+                if (obs.y > canvas.height + 150) {
+                    obstacles.splice(i, 1); i--;
+                    spawnObstacle(obstacles[obstacles.length - 1].y - 350 - Math.random() * 100);
                 }
             }
 
-            // Шар не может улететь выше центра (камера едет за ним)
-            if (player.y < canvas.height / 2) player.y = canvas.height / 2;
-
+            if (player.y < canvas.height / 2) player.y = canvas.height / 2; // Фиксация игрока по центру
             if (!gameOver) requestAnimationFrame(draw);
+        }
+
+        // Сложная математика прохождения через разрыв кольца
+        function checkCircleCollision(obs, radius, angle, gap) {
+            let dist = Math.abs(player.y - obs.y);
+            if (dist < radius + obs.thickness/2 && dist > radius - obs.thickness/2) {
+                let playerAngle = (player.y > obs.y) ? Math.PI / 2 : -Math.PI / 2; 
+                let startAngle = angle % (Math.PI*2); if(startAngle < 0) startAngle += Math.PI*2;
+                let endAngle = (angle + Math.PI*2 - gap) % (Math.PI*2); if(endAngle < 0) endAngle += Math.PI*2;
+                let pAngle = playerAngle % (Math.PI*2); if(pAngle < 0) pAngle += Math.PI*2;
+
+                let hit = false;
+                if (startAngle < endAngle) { if (pAngle >= startAngle && pAngle <= endAngle) hit = true; } 
+                else { if (pAngle >= startAngle || pAngle <= endAngle) hit = true; }
+                if (hit) endGame();
+            }
         }
 
         function endGame() {
             gameActive = false; gameOver = true;
             document.getElementById('msg').innerText = 'РАЗБИЛСЯ! Сохраняем...';
-            setTimeout(() => { tg.sendData(JSON.stringify({ game: "orbit", earned: score * 10, score: score })); }, 1500); // 10 монет за кольцо!
+            setTimeout(() => { tg.sendData(JSON.stringify({ game: "orbit", earned: score * 15, score: score })); }, 1500); // 15 монет за фигуру!
         }
 
         window.addEventListener('touchstart', () => {
             if (!gameActive && !gameOver) { gameActive = true; document.getElementById('msg').innerText = ''; }
-            if (gameActive) player.velocity = player.jump;
+            if (gameActive) { player.velocity = player.jump; for(let i=0; i<5; i++) addParticle(cx, player.y + 10); }
+        });
+        
+        // Для тестов на ПК
+        window.addEventListener('mousedown', () => {
+            if (!gameActive && !gameOver) { gameActive = true; document.getElementById('msg').innerText = ''; }
+            if (gameActive) { player.velocity = player.jump; for(let i=0; i<5; i++) addParticle(cx, player.y + 10); }
         });
 
         draw();
