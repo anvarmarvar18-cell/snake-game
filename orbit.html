@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cyber Orbit PRO 4.0</title>
+    <title>Cyber Orbit 5.0 ULTRA</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { margin: 0; padding: 0; background: linear-gradient(to bottom, #070719, #1a1a3a); overflow: hidden; touch-action: none; color: white; font-family: 'Courier New', monospace; }
+        body { margin: 0; padding: 0; background: linear-gradient(to bottom, #050510, #1a0b2e, #000000); overflow: hidden; touch-action: none; color: white; font-family: 'Courier New', monospace; }
         canvas { display: block; width: 100vw; height: 100vh; }
-        #scoreBoard { position: absolute; top: 8%; width: 100%; text-align: center; font-size: 80px; font-weight: 900; color: #fff; text-shadow: 0 0 20px #00ffcc, 0 0 40px #00ffcc; pointer-events: none; z-index: 10; }
-        #msg { position: absolute; top: 22%; width: 100%; text-align: center; font-size: 24px; color: #ffcc00; font-weight: bold; pointer-events: none; text-shadow: 0 0 10px #ff0000; }
+        #scoreBoard { position: absolute; top: 8%; width: 100%; text-align: center; font-size: 90px; font-weight: 900; color: #fff; text-shadow: 0 0 20px #00ffcc, 0 0 50px #00ffcc; pointer-events: none; z-index: 10; }
+        #msg { position: absolute; top: 22%; width: 100%; text-align: center; font-size: 26px; color: #ffcc00; font-weight: bold; pointer-events: none; text-shadow: 0 0 15px #ff0000; letter-spacing: 2px; }
     </style>
 </head>
 <body>
     <div id="scoreBoard">0</div>
-    <div id="msg">ТАПАЙ ДЛЯ ВЗЛЕТА!</div>
+    <div id="msg">ЖМИ, ЧТОБЫ ВЗЛЕТЕТЬ!</div>
     <canvas id="gameCanvas"></canvas>
 
     <script>
@@ -26,95 +26,77 @@
         const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth; canvas.height = window.innerHeight;
 
-        // ЧИТАЕМ СКИН ИЗ ССЫЛКИ БОТА
+        // Читаем скин из базы данных Бота
         const urlParams = new URLSearchParams(window.location.search);
         const currentSkin = urlParams.get('skin') || 'neon';
 
         let gameActive = false; let gameOver = false; let score = 0;
         let cx = canvas.width / 2;
-        let cameraY = 0; // Для движения фона
 
-        // Физ. модель игрока
-        let player = { y: canvas.height - 200, radius: 14, velocity: 0, gravity: 0.45, jump: -8 };
+        let player = { y: canvas.height - 200, radius: 14, velocity: 0, gravity: 0.45, jump: -7.5 };
         let particles = [];
         let stars = [];
 
-        // Генерируем звездное небо
-        for(let i=0; i<50; i++) {
-            stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: Math.random()*2+1, speed: Math.random()*0.5+0.1 });
+        // Звездное небо для фона
+        for(let i=0; i<60; i++) {
+            stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: Math.random()*2.5+0.5, speed: Math.random()*0.6+0.2 });
         }
 
         // ==========================================
-        // ГЕНЕРАТОР ПРЕПЯТСТВИЙ (5 ВИДОВ)
+        // ГЕНЕРАТОР ПРЕПЯТСТВИЙ (СИНХРОНИЗИРОВАННЫЙ)
         // ==========================================
         let obstacles = [];
-        const obsTypes = ['ring1', 'ring2', 'ring3', 'windmill', 'slider'];
+        const obsTypes = ['ring1', 'ring2', 'ring3', 'laser', 'windmill', 'slider'];
 
         function spawnObstacle(yPos) {
             let type = obsTypes[Math.floor(Math.random() * obsTypes.length)];
             obstacles.push({
-                y: yPos, type: type, radius: 90, thickness: 16, angle: Math.random() * Math.PI,
-                speed: (Math.random() > 0.5 ? 1 : -1) * (0.025 + Math.random() * 0.02),
-                gap: Math.PI / 1.8, passed: false, // gap - размер дырки
+                y: yPos, type: type, radius: 95, thickness: 16, angle: 0,
+                speed: 0.035, // Фиксированная скорость для идеальной синхронизации
+                gap: Math.PI / 1.7, passed: false,
                 sliderDir: 1, sliderX: 0
             });
         }
         
-        spawnObstacle(canvas.height / 2 - 100);
-        spawnObstacle(canvas.height / 2 - 500);
+        spawnObstacle(canvas.height / 2 - 150);
+        spawnObstacle(canvas.height / 2 - 550);
 
         // ==========================================
-        // ОТРИСОВКА СКИНОВ ИГРОКА (ВЕКТОР)
+        // ОТРИСОВКА СКИНОВ ИГРОКА
         // ==========================================
         function drawPlayer() {
             ctx.save();
             ctx.translate(cx, player.y);
             
-            if (currentSkin === 'neon') {
-                ctx.fillStyle = '#00ffcc'; ctx.shadowBlur = 20; ctx.shadowColor = '#00ffcc';
-                ctx.beginPath(); ctx.arc(0, 0, player.radius, 0, Math.PI * 2); ctx.fill();
-            } 
-            else if (currentSkin === 'star') {
+            if (currentSkin === 'star') {
                 ctx.fillStyle = '#ffcc00'; ctx.shadowBlur = 20; ctx.shadowColor = '#ffcc00';
                 ctx.beginPath();
                 for (let i = 0; i < 5; i++) {
-                    ctx.lineTo(Math.cos((18 + i * 72) / 180 * Math.PI) * player.radius * 1.5, -Math.sin((18 + i * 72) / 180 * Math.PI) * player.radius * 1.5);
-                    ctx.lineTo(Math.cos((54 + i * 72) / 180 * Math.PI) * player.radius * 0.6, -Math.sin((54 + i * 72) / 180 * Math.PI) * player.radius * 0.6);
+                    ctx.lineTo(Math.cos((18+i*72)/180*Math.PI)*player.radius*1.5, -Math.sin((18+i*72)/180*Math.PI)*player.radius*1.5);
+                    ctx.lineTo(Math.cos((54+i*72)/180*Math.PI)*player.radius*0.6, -Math.sin((54+i*72)/180*Math.PI)*player.radius*0.6);
                 }
                 ctx.closePath(); ctx.fill();
             }
-            else if (currentSkin === 'ball') {
-                ctx.fillStyle = '#ff6600'; ctx.beginPath(); ctx.arc(0, 0, player.radius, 0, Math.PI * 2); ctx.fill();
-                ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.arc(0, 0, player.radius, 0, Math.PI * 2); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(-player.radius, 0); ctx.lineTo(player.radius, 0); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(0, -player.radius); ctx.lineTo(0, player.radius); ctx.stroke();
+            else if (currentSkin === 'plasma') {
+                ctx.fillStyle = '#ff00ff'; ctx.shadowBlur = 30; ctx.shadowColor = '#ff00ff';
+                ctx.beginPath(); ctx.arc(0, 0, player.radius, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, player.radius/2, 0, Math.PI * 2); ctx.fill();
             }
-            else if (currentSkin === 'bird') {
-                ctx.fillStyle = '#ffff00'; ctx.beginPath(); ctx.arc(0, 0, player.radius, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(player.radius/2, -player.radius/3, player.radius/3, 0, Math.PI*2); ctx.fill(); // Глаз
-                ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(player.radius/2 + 2, -player.radius/3, player.radius/6, 0, Math.PI*2); ctx.fill(); // Зрачок
-                ctx.fillStyle = '#ff3300'; ctx.beginPath(); ctx.moveTo(player.radius*0.8, 0); ctx.lineTo(player.radius*1.8, 5); ctx.lineTo(player.radius*0.8, 10); ctx.fill(); // Клюв
-            }
-            else if (currentSkin === 'ship') {
-                ctx.fillStyle = '#ccc';
-                ctx.beginPath(); ctx.moveTo(0, -player.radius*1.5); ctx.lineTo(player.radius, player.radius); ctx.lineTo(-player.radius, player.radius); ctx.closePath(); ctx.fill();
-                ctx.fillStyle = '#00ffff'; ctx.beginPath(); ctx.arc(0, 0, player.radius/2, 0, Math.PI*2); ctx.fill(); // Кабина
-            }
-            else { // Дефолт
-                ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, player.radius, 0, Math.PI * 2); ctx.fill();
+            else { // Неоновый шар (стандарт)
+                ctx.fillStyle = '#00ffcc'; ctx.shadowBlur = 20; ctx.shadowColor = '#00ffcc';
+                ctx.beginPath(); ctx.arc(0, 0, player.radius, 0, Math.PI * 2); ctx.fill();
             }
             ctx.restore();
         }
 
         // ==========================================
-        // ИГРОВОЙ ЦИКЛ И ФИЗИКА
+        // ИГРОВОЙ ЦИКЛ И ИДЕАЛЬНАЯ МАТЕМАТИКА
         // ==========================================
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Отрисовка параллакс-фона
-            ctx.fillStyle = '#fff';
+            // Движение фона
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
             for(let i=0; i<stars.length; i++) {
                 let s = stars[i];
                 if (gameActive && player.y < canvas.height / 2) s.y += Math.abs(player.velocity) * s.speed;
@@ -127,10 +109,10 @@
                 if (player.y > canvas.height) endGame();
             }
 
-            // Эффект частиц
+            // Хвост кометы
             for (let i = 0; i < particles.length; i++) {
                 let p = particles[i];
-                ctx.fillStyle = `rgba(255, 255, 255, ${p.life})`;
+                ctx.fillStyle = `rgba(0, 255, 204, ${p.life})`;
                 ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
                 p.x += p.speedX; p.y += p.speedY; p.life -= 0.05;
                 if (p.life <= 0) { particles.splice(i, 1); i--; }
@@ -139,13 +121,13 @@
             drawPlayer();
 
             // ==========================================
-            // ЛОГИКА ПРЕПЯТСТВИЙ И СТОЛКНОВЕНИЙ
+            // ЛОГИКА ПРЕПЯТСТВИЙ (БЕЗ БАГОВ)
             // ==========================================
             for (let i = 0; i < obstacles.length; i++) {
                 let obs = obstacles[i];
                 if (gameActive) {
                     if (player.y < canvas.height / 2) obs.y += Math.abs(player.velocity);
-                    obs.angle += obs.speed;
+                    obs.angle += obs.speed; // Единое время вращения
                 }
 
                 ctx.lineWidth = obs.thickness;
@@ -156,126 +138,137 @@
                     ctx.beginPath(); ctx.arc(cx, obs.y, obs.radius, obs.angle, obs.angle + Math.PI*2 - obs.gap); ctx.stroke();
                     checkRingHit(obs, obs.radius, obs.angle, obs.gap);
                 } 
-                // 2. ДВОЙНОЕ КОЛЬЦО
+                // 2. ДВОЙНОЕ КОЛЬЦО (Синхронное)
                 else if (obs.type === 'ring2') {
-                    ctx.strokeStyle = '#00ffcc'; ctx.beginPath(); ctx.arc(cx, obs.y, obs.radius, obs.angle, obs.angle + Math.PI*2 - obs.gap); ctx.stroke();
-                    checkRingHit(obs, obs.radius, obs.angle, obs.gap);
+                    let a1 = obs.angle;
+                    let a2 = -obs.angle; // Идеальная противоположность
                     
-                    let r2 = obs.radius - 25; let a2 = -obs.angle * 1.2;
-                    ctx.strokeStyle = '#ff00ff'; ctx.beginPath(); ctx.arc(cx, obs.y, r2, a2, a2 + Math.PI*2 - obs.gap); ctx.stroke();
-                    checkRingHit(obs, r2, a2, obs.gap);
+                    ctx.strokeStyle = '#00ffcc'; ctx.shadowBlur = 15; ctx.shadowColor = '#00ffcc';
+                    ctx.beginPath(); ctx.arc(cx, obs.y, obs.radius, a1, a1 + Math.PI*2 - obs.gap); ctx.stroke();
+                    checkRingHit(obs, obs.radius, a1, obs.gap);
+                    
+                    ctx.strokeStyle = '#ff00ff'; ctx.shadowColor = '#ff00ff';
+                    ctx.beginPath(); ctx.arc(cx, obs.y, obs.radius - 25, a2, a2 + Math.PI*2 - obs.gap); ctx.stroke();
+                    checkRingHit(obs, obs.radius - 25, a2, obs.gap);
                 }
-                // 3. ТРОЙНОЕ КОЛЬЦО
+                // 3. ТРОЙНОЕ КОЛЬЦО (Идеальный тоннель)
                 else if (obs.type === 'ring3') {
-                    ctx.strokeStyle = '#ff3300'; ctx.beginPath(); ctx.arc(cx, obs.y, obs.radius, obs.angle, obs.angle + Math.PI*2 - obs.gap); ctx.stroke();
-                    checkRingHit(obs, obs.radius, obs.angle, obs.gap);
+                    let a1 = obs.angle;
+                    let a2 = -obs.angle; // Встречное
+                    let a3 = obs.angle;  // Синхронное с первым
                     
-                    let r2 = obs.radius - 25; let a2 = -obs.angle * 1.5;
-                    ctx.strokeStyle = '#ffcc00'; ctx.beginPath(); ctx.arc(cx, obs.y, r2, a2, a2 + Math.PI*2 - obs.gap); ctx.stroke();
-                    checkRingHit(obs, r2, a2, obs.gap);
+                    ctx.strokeStyle = '#ff3300'; ctx.shadowBlur = 15; ctx.shadowColor = '#ff3300';
+                    ctx.beginPath(); ctx.arc(cx, obs.y, obs.radius, a1, a1 + Math.PI*2 - obs.gap); ctx.stroke();
+                    checkRingHit(obs, obs.radius, a1, obs.gap);
                     
-                    let r3 = r2 - 25; let a3 = obs.angle * 2;
-                    ctx.strokeStyle = '#00ffff'; ctx.beginPath(); ctx.arc(cx, obs.y, r3, a3, a3 + Math.PI*2 - obs.gap); ctx.stroke();
-                    checkRingHit(obs, r3, a3, obs.gap);
+                    ctx.strokeStyle = '#ffcc00'; ctx.shadowColor = '#ffcc00';
+                    ctx.beginPath(); ctx.arc(cx, obs.y, obs.radius - 25, a2, a2 + Math.PI*2 - obs.gap); ctx.stroke();
+                    checkRingHit(obs, obs.radius - 25, a2, obs.gap);
+                    
+                    ctx.strokeStyle = '#00ffff'; ctx.shadowColor = '#00ffff';
+                    ctx.beginPath(); ctx.arc(cx, obs.y, obs.radius - 50, a3, a3 + Math.PI*2 - obs.gap); ctx.stroke();
+                    checkRingHit(obs, obs.radius - 50, a3, obs.gap);
                 }
-                // 4. МЕЛЬНИЦА (ИСПРАВЛЕННЫЙ КРЕСТ С ПРОХОДОМ)
+                // 4. МИГАЮЩИЙ ЛАЗЕР (НОВОЕ!)
+                else if (obs.type === 'laser') {
+                    ctx.fillStyle = '#444'; ctx.shadowBlur = 0;
+                    ctx.fillRect(cx - 120, obs.y - 15, 40, 30); // Левая пушка
+                    ctx.fillRect(cx + 80, obs.y - 15, 40, 30);  // Правая пушка
+                    
+                    // Лазер мигает раз в 2 секунды
+                    let laserOn = Math.sin(obs.angle * 2) > 0;
+                    if (laserOn) {
+                        ctx.fillStyle = '#ff0000'; ctx.shadowBlur = 20; ctx.shadowColor = '#ff0000';
+                        ctx.fillRect(cx - 80, obs.y - 5, 160, 10);
+                        if (Math.abs(player.y - obs.y) < player.radius + 5) endGame();
+                    }
+                }
+                // 5. ИДЕАЛЬНАЯ МЕЛЬНИЦА
                 else if (obs.type === 'windmill') {
                     ctx.strokeStyle = '#ff9900'; ctx.shadowBlur = 15; ctx.shadowColor = '#ff9900';
                     ctx.save(); ctx.translate(cx, obs.y); ctx.rotate(obs.angle);
-                    
-                    // Рисуем 4 лопасти. Они не соединяются в центре, оставляя дырку!
                     for(let b=0; b<4; b++) {
                         ctx.rotate(Math.PI/2);
-                        ctx.beginPath(); ctx.moveTo(25, 0); ctx.lineTo(obs.radius + 10, 0); ctx.stroke();
+                        ctx.beginPath(); ctx.moveTo(35, 0); ctx.lineTo(obs.radius + 15, 0); ctx.stroke(); // Дырка в центре стала больше!
                     }
                     ctx.restore();
 
-                    // Проверка столкновения: Если игрок по высоте внутри мельницы
                     let distY = player.y - obs.y;
-                    if (Math.abs(distY) < obs.radius + 10) {
-                        // Вычисляем угол игрока относительно центра мельницы
-                        let pAngle = Math.atan2(distY, 0); // Игрок всегда по центру X
-                        // Сравниваем с углом лопастей
+                    if (Math.abs(distY) < obs.radius + 15) {
+                        let pAngle = Math.atan2(distY, 0); 
                         let relAngle = (pAngle - obs.angle) % (Math.PI/2);
                         if (relAngle < 0) relAngle += Math.PI/2;
-                        
-                        // Если угол совпадает с лопастью и игрок не в безопасной зоне центра
-                        if ((relAngle < 0.15 || relAngle > (Math.PI/2 - 0.15)) && Math.abs(distY) > 20) {
-                            endGame();
-                        }
+                        if ((relAngle < 0.2 || relAngle > (Math.PI/2 - 0.2)) && Math.abs(distY) > 35) endGame();
                     }
                 }
-                // 5. СЛАЙДЕРЫ (Движущиеся двери)
+                // 6. СЛАЙДЕРЫ
                 else if (obs.type === 'slider') {
                     if (gameActive) {
-                        obs.sliderX += 3 * obs.sliderDir;
-                        if (obs.sliderX > 80 || obs.sliderX < -80) obs.sliderDir *= -1;
+                        obs.sliderX += 2.5 * obs.sliderDir;
+                        if (obs.sliderX > 75 || obs.sliderX < -75) obs.sliderDir *= -1;
                     }
-                    ctx.fillStyle = '#ff0055'; ctx.shadowColor = '#ff0055';
-                    // Левый блок
-                    ctx.fillRect(0, obs.y - 10, cx - 60 + obs.sliderX, 20);
-                    // Правый блок
-                    ctx.fillRect(cx + 60 + obs.sliderX, obs.y - 10, cx, 20);
+                    ctx.fillStyle = '#ff0055'; ctx.shadowBlur = 15; ctx.shadowColor = '#ff0055';
+                    ctx.fillRect(0, obs.y - 10, cx - 65 + obs.sliderX, 20); // Левый блок
+                    ctx.fillRect(cx + 65 + obs.sliderX, obs.y - 10, cx, 20); // Правый блок
 
-                    // Столкновение
                     if (Math.abs(player.y - obs.y) < player.radius + 10) {
-                        // Ширина прохода 120px. Центр прохода смещается на sliderX
                         let gapCenter = cx + obs.sliderX;
-                        if (Math.abs(cx - gapCenter) > 60 - player.radius) endGame();
+                        if (Math.abs(cx - gapCenter) > 65 - player.radius) endGame();
                     }
                 }
                 ctx.shadowBlur = 0;
 
-                // Очки
+                // Начисление очков и УСКОРЕНИЕ
                 if (obs.y > player.y && !obs.passed) {
                     score++; document.getElementById('scoreBoard').innerText = score; obs.passed = true;
+                    if (score % 5 === 0) player.gravity += 0.03; // Игра становится сложнее!
                 }
 
-                // Спавн новых
                 if (obs.y > canvas.height + 150) {
                     obstacles.splice(i, 1); i--;
-                    spawnObstacle(obstacles[obstacles.length - 1].y - 350 - Math.random() * 150);
+                    spawnObstacle(obstacles[obstacles.length - 1].y - 380 - Math.random() * 100); // Спавн новых
                 }
             }
 
-            if (player.y < canvas.height / 2) player.y = canvas.height / 2; // Камера
+            if (player.y < canvas.height / 2) player.y = canvas.height / 2; // Фиксация камеры
             if (!gameOver) requestAnimationFrame(draw);
         }
 
-        // Точная физика колец
+        // БЕЗОШИБОЧНАЯ МАТЕМАТИКА СТОЛКНОВЕНИЙ
         function checkRingHit(obs, radius, angle, gap) {
             let dist = Math.abs(player.y - obs.y);
             if (dist < radius + obs.thickness/2 && dist > radius - obs.thickness/2) {
                 let playerAngle = (player.y > obs.y) ? Math.PI / 2 : -Math.PI / 2; 
-                let startAngle = angle % (Math.PI*2); if(startAngle < 0) startAngle += Math.PI*2;
-                let endAngle = (angle + Math.PI*2 - gap) % (Math.PI*2); if(endAngle < 0) endAngle += Math.PI*2;
-                let pAngle = playerAngle % (Math.PI*2); if(pAngle < 0) pAngle += Math.PI*2;
+                
+                let normalize = (a) => { let res = a % (Math.PI*2); if (res < 0) res += Math.PI*2; return res; };
+                let startAngle = normalize(angle);
+                let endAngle = normalize(angle + Math.PI*2 - gap);
+                let pAngle = normalize(playerAngle);
 
                 let hit = false;
                 if (startAngle < endAngle) { if (pAngle >= startAngle && pAngle <= endAngle) hit = true; } 
                 else { if (pAngle >= startAngle || pAngle <= endAngle) hit = true; }
+                
                 if (hit) endGame();
             }
         }
 
         function endGame() {
             gameActive = false; gameOver = true;
-            document.getElementById('msg').innerText = 'РАЗБИТ! Сохранение...';
-            setTimeout(() => { tg.sendData(JSON.stringify({ game: "orbit", earned: score * 15, score: score })); }, 1500);
+            document.getElementById('msg').innerText = 'РАЗБИТ! Сохраняем...';
+            setTimeout(() => { tg.sendData(JSON.stringify({ game: "orbit", earned: score * 20, score: score })); }, 1500); // ПЛАТИМ 20 МОНЕТ ЗА ЭТУ СЛОЖНОСТЬ!
         }
 
-        function addParticle() {
-            particles.push({ x: cx, y: player.y + 10, size: Math.random()*3+2, speedX: (Math.random()-0.5)*3, speedY: Math.random()*3, life: 1 });
+        function flap() {
+            if (!gameActive && !gameOver) { gameActive = true; document.getElementById('msg').innerText = ''; }
+            if (gameActive) {
+                player.velocity = player.jump;
+                for(let i=0; i<5; i++) particles.push({ x: cx, y: player.y + 10, size: Math.random()*3+2, speedX: (Math.random()-0.5)*4, speedY: Math.random()*4, life: 1 });
+            }
         }
 
-        window.addEventListener('touchstart', () => {
-            if (!gameActive && !gameOver) { gameActive = true; document.getElementById('msg').innerText = ''; }
-            if (gameActive) { player.velocity = player.jump; for(let i=0; i<4; i++) addParticle(); }
-        });
-        window.addEventListener('mousedown', () => {
-            if (!gameActive && !gameOver) { gameActive = true; document.getElementById('msg').innerText = ''; }
-            if (gameActive) { player.velocity = player.jump; for(let i=0; i<4; i++) addParticle(); }
-        });
+        window.addEventListener('touchstart', flap);
+        window.addEventListener('mousedown', flap);
 
         draw();
     </script>
