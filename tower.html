@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tower Stacker PRO</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { margin: 0; background: linear-gradient(to bottom, #111, #222); overflow: hidden; color: white; font-family: 'Arial', sans-serif; touch-action: none; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        #ui { position: absolute; top: 10%; width: 100%; text-align: center; font-size: 60px; font-weight: bold; color: #00ffcc; text-shadow: 0 0 20px #00ffcc; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div id="ui">0</div>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        let tg = window.Telegram.WebApp; tg.expand();
+        if(tg.isVersionAtLeast('7.7')) tg.disableVerticalSwipes();
+        document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+
+        let score = 0; let gameActive = true; let gameOver = false;
+        let blocks = [];
+        let blockHeight = 40;
+        let startWidth = 200;
+        let currentBlock = { x: 0, y: canvas.height - blockHeight * 2, width: startWidth, dir: 1, speed: 4 };
+
+        // Базовый блок
+        blocks.push({ x: canvas.width/2 - startWidth/2, y: canvas.height - blockHeight, width: startWidth });
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Движение текущего блока
+            if (gameActive) {
+                currentBlock.x += currentBlock.speed * currentBlock.dir;
+                if (currentBlock.x <= 0 || currentBlock.x + currentBlock.width >= canvas.width) {
+                    currentBlock.dir *= -1;
+                }
+            }
+
+            // Отрисовка башни
+            for (let i = 0; i < blocks.length; i++) {
+                ctx.fillStyle = `hsl(${(i * 10) % 360}, 100%, 50%)`;
+                ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle;
+                ctx.fillRect(blocks[i].x, blocks[i].y, blocks[i].width, blockHeight);
+            }
+
+            // Отрисовка летящего блока
+            if (gameActive || gameOver) {
+                ctx.fillStyle = `hsl(${(score * 10) % 360}, 100%, 50%)`;
+                ctx.shadowBlur = 15; ctx.shadowColor = ctx.fillStyle;
+                ctx.fillRect(currentBlock.x, currentBlock.y, currentBlock.width, blockHeight);
+            }
+            ctx.shadowBlur = 0;
+
+            if (!gameOver) requestAnimationFrame(draw);
+        }
+
+        function placeBlock() {
+            if (!gameActive || gameOver) return;
+            let lastBlock = blocks[blocks.length - 1];
+            
+            // Проверка обрезания
+            let diff = currentBlock.x - lastBlock.x;
+            let overlap = currentBlock.width - Math.abs(diff);
+
+            if (overlap > 0) {
+                // Успех, отрезаем лишнее
+                score++; document.getElementById('ui').innerText = score;
+                let newWidth = overlap;
+                let newX = diff > 0 ? currentBlock.x : lastBlock.x;
+                
+                blocks.push({ x: newX, y: currentBlock.y, width: newWidth });
+                
+                // Камера едет вниз (башня опускается), если слишком высоко
+                if (blocks.length > 10) {
+                    blocks.forEach(b => b.y += blockHeight);
+                    currentBlock.y += blockHeight;
+                }
+
+                // Усложнение: скорость растет
+                currentBlock = { x: 0, y: currentBlock.y - blockHeight, width: newWidth, dir: 1, speed: 4 + (score * 0.2) };
+            } else {
+                // Промах
+                gameActive = false; gameOver = true;
+                document.getElementById('ui').innerHTML = `УПАЛО!<br>Очки: ${score}`;
+                setTimeout(() => { tg.sendData(JSON.stringify({ game: "tower", earned: score * 5, score: score })); }, 1500);
+            }
+        }
+
+        window.addEventListener('touchstart', placeBlock);
+        window.addEventListener('mousedown', placeBlock);
+        draw();
+    </script>
+</body>
+</html>
