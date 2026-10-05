@@ -38,11 +38,19 @@
         let gameSpeed = 5; // Базовая скорость
 
         // Игрок
+        const imgFriend = new Image();
+        imgFriend.src = 'friend.png'; // Твоя PNG картинка с гитхаба!
+
         const player = {
-            x: 50, y: canvas.height/2, size: 40, velocity: 0, gravity: 0.6, jump: -9,
+            x: 50, y: canvas.height/2, size: 50, velocity: 0, gravity: 0.6, jump: -9,
             draw() {
-                ctx.font = "50px Arial";
-                ctx.fillText(mySkin, this.x, this.y);
+                if (mySkin === 'friend') {
+                    // Рисуем картинку друга!
+                    ctx.drawImage(imgFriend, this.x, this.y, 60, 60); 
+                } else {
+                    ctx.font = "50px Arial";
+                    ctx.fillText(mySkin, this.x, this.y);
+                }
             },
             update() {
                 this.velocity += this.gravity;
@@ -50,6 +58,7 @@
                 if(this.y > canvas.height || this.y < -50) endGame();
             },
             flap() { this.velocity = this.jump; createParticles(); }
+        };
         };
 
         // Спецэффекты (Огонь из турбины)
