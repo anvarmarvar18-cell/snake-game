@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cyber Runner PRO</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { margin: 0; background: linear-gradient(to top, #000000, #0a0a2a); overflow: hidden; color: white; font-family: 'Courier New', monospace; touch-action: none; }
+        canvas { display: block; }
+        #ui { position: absolute; top: 10%; width: 100%; text-align: center; font-size: 60px; font-weight: bold; color: #00ffcc; text-shadow: 0 0 20px #00ffcc; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div id="ui">0</div>
+    <canvas id="gameCanvas"></canvas>
+    
+    <script>
+        let tg = window.Telegram.WebApp; tg.expand();
+        if(tg.isVersionAtLeast('7.7')) tg.disableVerticalSwipes();
+        document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+
+        let score = 0; let gameActive = false; let gameOver = false;
+        let groundY = canvas.height - 150;
+
+        let player = {
+            x: 60, y: groundY - 50, width: 50, height: 50,
+            dy: 0, gravity: 0.9, jumpForce: -16, isGrounded: true
+        };
+
+        let obstacles = []; let frames = 0; let gameSpeed = 7;
+
+        function drawPlayer() {
+            ctx.fillStyle = '#ff00ff'; ctx.shadowBlur = 20; ctx.shadowColor = '#ff00ff';
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            ctx.shadowBlur = 0;
+        }
+
+        function handleObstacles() {
+            // Спавн препятствий (ускоряется со временем)
+            if (frames % Math.max(50, 110 - score) === 0) {
+                let type = Math.random() > 0.5 ? 'box' : 'bird';
+                if (type === 'box') obstacles.push({ x: canvas.width, y: groundY - 50, width: 40, height: 50, type: 'box' });
+                else obstacles.push({ x: canvas.width, y: groundY - 110, width: 40, height: 30, type: 'bird' });
+            }
+
+            for (let i = 0; i < obstacles.length; i++) {
+                let obs = obstacles[i];
+                obs.x -= gameSpeed;
+
+                ctx.fillStyle = obs.type === 'box' ? '#ff3300' : '#00ffcc';
+                ctx.shadowBlur = 15; ctx.shadowColor = ctx.fillStyle;
+                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                ctx.shadowBlur = 0;
+
+                // Столкновение
+                if (player.x < obs.x + obs.width && player.x + player.width > obs.x &&
+                    player.y < obs.y + obs.height && player.y + player.height > obs.y) { endGame(); }
+
+                // Очки
+                if (obs.x + obs.width < 0) {
+                    obstacles.splice(i, 1); i--; score++;
+                    document.getElementById('ui').innerText = score;
+                    if (score % 5 === 0) gameSpeed += 0.4; // Игра ускоряется!
+                }
+            }
+        }
+
+        function endGame() {
+            gameActive = false; gameOver = true;
+            document.getElementById('ui').innerHTML = `ПОПАЛСЯ!<br>${score}`;
+            setTimeout(() => { tg.sendData(JSON.stringify({ game: "runner", earned: score * 5, score: score })); }, 1500);
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Отрисовка земли
+            ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(0, groundY); ctx.lineTo(canvas.width, groundY); ctx.stroke();
+
+            // Рисуем сетку на фоне для стиля
+            ctx.strokeStyle = 'rgba(0, 255, 204, 0.1)'; ctx.lineWidth = 1;
+            for(let i=0; i<canvas.width; i+=50) { ctx.beginPath(); ctx.moveTo(i, groundY); ctx.lineTo(i - 100, canvas.height); ctx.stroke(); }
+
+            if (gameActive) {
+                player.dy += player.gravity; player.y += player.dy;
+
+                // Ограничение пола
+                if (player.y >= groundY - player.height) {
+                    player.y = groundY - player.height;
+                    player.dy = 0; player.isGrounded = true;
+                }
+
+                drawPlayer(); handleObstacles(); frames++;
+                requestAnimationFrame(animate);
+            } else if (!gameOver) {
+                drawPlayer(); requestAnimationFrame(animate); // Ждем старта
+            }
+        }
+
+        function jump() {
+            if (!gameActive && !gameOver) { gameActive = true; document.getElementById('ui').innerText = '0'; }
+            if (gameActive && player.isGrounded) {
+                player.dy = player.jumpForce; player.isGrounded = false;
+            }
+        }
+
+        window.addEventListener('touchstart', jump);
+        window.addEventListener('mousedown', jump);
+        
+        document.getElementById('ui').innerHTML = "ТАПАЙ<br>ДЛЯ БЕГА";
+        animate();
+    </script>
+</body>
+</html>
