@@ -43,7 +43,7 @@
         let imgLoaded = false;
         imgFriend.onload = () => { imgLoaded = true; };
 
-        const player = {
+       const player = {
             x: 50, y: canvas.height/2, size: 50, velocity: 0, gravity: 0.6, jump: -9,
             draw() {
                 if (mySkin === 'friend') {
@@ -54,9 +54,16 @@
                     ctx.fillText(mySkin, this.x, this.y);
                 }
             },
-            // ... остальной код player
+            update() {
+                this.velocity += this.gravity;
+                this.y += this.velocity;
+                if(this.y > canvas.height || this.y < -50) endGame();
+            },
+            flap() { 
+                this.velocity = this.jump; 
+                createParticles(); 
+            }
         };
-
         // Спецэффекты (Огонь из турбины)
         let particles = [];
         function createParticles() {
