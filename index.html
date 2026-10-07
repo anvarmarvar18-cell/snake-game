@@ -6,146 +6,119 @@
     <title>Aero City PRO</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { margin: 0; padding: 0; background: linear-gradient(to bottom, #020111, #20124d, #000022); overflow: hidden; color: white; font-family: sans-serif; touch-action: none; }
+        body { margin: 0; background: linear-gradient(to bottom, #0a0a2a, #1a0b2e); overflow: hidden; touch-action: none; color: white; font-family: 'Courier New', monospace;}
         canvas { display: block; width: 100vw; height: 100vh; }
-        #ui { position: absolute; top: 10%; left: 0; width: 100%; text-align: center; pointer-events: none; }
-        h1 { font-size: 50px; margin: 0; text-shadow: 0 0 15px #00ffff; color: #ffffff; font-weight: bold; }
-        p { font-size: 20px; color: #ff00ff; text-shadow: 0 0 10px #ff00ff; }
+        #ui { position: absolute; top: 10%; width: 100%; text-align: center; font-size: 60px; font-weight: 900; color: #00ffcc; text-shadow: 0 0 20px #00ffcc; pointer-events: none; z-index: 10;}
     </style>
 </head>
 <body>
-    <div id="ui">
-        <h1 id="scoreBoard">0</h1>
-        <p id="msg">Тапай, чтобы завести двигатели!</p>
-    </div>
+    <div id="ui">ТАПАЙ!</div>
     <canvas id="gameCanvas"></canvas>
-
     <script>
+        let tg = window.Telegram.WebApp; tg.expand();
+        if (tg.isVersionAtLeast('7.7')) tg.disableVerticalSwipes();
+        document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
 
-        let tg = window.Telegram.WebApp; tg.expand();
-
-        // Система скинов (Читаем из ссылки от бота)
+        // Читаем ГЛОБАЛЬНЫЙ СКИН из бота
         const urlParams = new URLSearchParams(window.location.search);
-        const skinName = urlParams.get('skin') || 'default';
-        const skins = { 'default': '🛩', 'boeing': '✈️', 'b2': '🦇', 'rocket': '🚀', 'ufo': '🛸' };
-        const mySkin = skins[skinName] || skins['default'];
+        const currentSkin = urlParams.get('skin') || 'neon';
 
-        let frames = 0; let score = 0; let gameActive = false; let gameOver = false;
-        let gameSpeed = 5; // Базовая скорость
-
-        // Игрок
+        // Загрузка фото друга
         const imgFriend = new Image();
-        imgFriend.src = 'friend.png'; // ПРОВЕРЬ РЕГИСТР НА GITHUB!
+        imgFriend.src = 'friend.png'; // ТВОЙ PNG ФАЙЛ НА GITHUB
         let imgLoaded = false;
         imgFriend.onload = () => { imgLoaded = true; };
 
-       const player = {
-            x: 50, y: canvas.height/2, size: 50, velocity: 0, gravity: 0.6, jump: -9,
+        let gameActive = false, gameOver = false, score = 0, frames = 0;
+        let gameSpeed = 5;
+
+        const player = {
+            x: 50, y: canvas.height/2, size: 36, velocity: 0, gravity: 0.5, jump: -8,
             draw() {
-                if (mySkin === 'friend') {
-                    if (imgLoaded) { ctx.drawImage(imgFriend, this.x, this.y, 60, 60); }
-                    else { ctx.fillStyle = '#fff'; ctx.fillRect(this.x, this.y, 50, 50); } // Защита от зависания
+                // Отрисовка скинов (размер физического хитбокса - 36px, картинки рисуются крупнее)
+                if (currentSkin === 'friend') {
+                    if (imgLoaded) ctx.drawImage(imgFriend, this.x-10, this.y-10, 56, 56);
+                    else { ctx.fillStyle = '#fff'; ctx.fillRect(this.x, this.y, this.size, this.size); }
+                } else if (currentSkin === 'rocket') {
+                    ctx.font = "45px Arial"; ctx.fillText("🚀", this.x-5, this.y + 35);
+                } else if (currentSkin === 'btc') {
+                    ctx.font = "45px Arial"; ctx.fillText("₿", this.x, this.y + 35);
+                } else if (currentSkin === 'ball') {
+                    ctx.font = "45px Arial"; ctx.fillText("🏀", this.x-5, this.y + 35);
+                } else if (currentSkin === 'bird') {
+                    ctx.font = "45px Arial"; ctx.fillText("🦅", this.x-5, this.y + 35);
+                } else if (currentSkin === 'star') {
+                    ctx.font = "45px Arial"; ctx.fillText("⭐", this.x-5, this.y + 35);
                 } else {
-                    ctx.font = "50px Arial";
-                    ctx.fillText(mySkin, this.x, this.y);
+                    ctx.fillStyle = '#00ffcc'; ctx.shadowBlur = 20; ctx.shadowColor = '#00ffcc';
+                    ctx.beginPath(); ctx.arc(this.x+this.size/2, this.y+this.size/2, this.size/2, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
                 }
-            },
-            update() {
-                this.velocity += this.gravity;
-                this.y += this.velocity;
-                if(this.y > canvas.height || this.y < -50) endGame();
-            },
-            flap() { 
-                this.velocity = this.jump; 
-                createParticles(); 
             }
         };
-        // Спецэффекты (Огонь из турбины)
-        let particles = [];
-        function createParticles() {
-            for(let i=0; i<5; i++) {
-                particles.push({ x: player.x, y: player.y, size: Math.random()*5+2, speedX: Math.random()*-3-1, speedY: (Math.random()-0.5)*2, life: 1 });
-            }
-        }
-        function handleParticles() {
-            for(let i=0; i<particles.length; i++) {
-                let p = particles[i];
-                ctx.fillStyle = `rgba(255, 100, 0, ${p.life})`;
-                ctx.beginPath(); ctx.arc(p.x, p.y + 20, p.size, 0, Math.PI*2); ctx.fill();
-                p.x += p.speedX; p.y += p.speedY; p.life -= 0.05;
-                if(p.life <= 0) { particles.splice(i, 1); i--; }
-            }
+
+        let obstacles = [];
+        function spawnObstacle() {
+            let gap = 220 - (score * 2.5); if (gap < 120) gap = 120; // Проход сужается!
+            let topH = Math.random() * (canvas.height - gap - 100) + 50;
+            obstacles.push({ x: canvas.width, w: 70, top: topH, bottom: canvas.height - (topH + gap), passed: false });
         }
 
-        // Небоскребы
-        const obstacles = [];
-        function handleObstacles() {
-            // Спавн башен зависит от скорости
-            if (frames % Math.max(40, 100 - score) === 0) {
-                let gap = 200 - (score * 2); // Проход сужается!
-                if (gap < 120) gap = 120;
-                let topHeight = Math.random() * (canvas.height - gap - 100) + 50;
-                obstacles.push({ x: canvas.width, top: topHeight, bottom: topHeight + gap, width: 60, passed: false });
-            }
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            for (let i = 0; i < obstacles.length; i++) {
-                let obs = obstacles[i];
-                obs.x -= gameSpeed;
+            // Звездный фон
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            for(let i=0; i<30; i++) ctx.fillRect((frames*0.5 + i*50)%canvas.width, (i*47)%canvas.height, 2, 2);
 
-                // Рисуем здания
-                ctx.fillStyle = '#111'; ctx.fillRect(obs.x, 0, obs.width, obs.top); ctx.fillRect(obs.x, obs.bottom, obs.width, canvas.height - obs.bottom);
-                ctx.strokeStyle = '#333'; ctx.lineWidth = 2; ctx.strokeRect(obs.x, 0, obs.width, obs.top); ctx.strokeRect(obs.x, obs.bottom, obs.width, canvas.height - obs.bottom);
+            if (gameActive) {
+                player.velocity += player.gravity; player.y += player.velocity;
+                if (player.y > canvas.height || player.y < -50) endGame();
                 
-                // Рисуем светящиеся окна
-                ctx.fillStyle = '#ffcc00';
-                for(let wy = 10; wy < obs.top - 20; wy += 30) {
-                    if(Math.random() > 0.3) { ctx.fillRect(obs.x + 10, wy, 15, 15); ctx.fillRect(obs.x + 35, wy, 15, 15); }
+                if (frames % 90 === 0) spawnObstacle();
+                
+                for (let i = 0; i < obstacles.length; i++) {
+                    let obs = obstacles[i];
+                    obs.x -= gameSpeed;
+                    
+                    // Неоновые башни
+                    ctx.fillStyle = '#ff00ff'; ctx.shadowBlur = 15; ctx.shadowColor = '#ff00ff';
+                    ctx.fillRect(obs.x, 0, obs.w, obs.top);
+                    ctx.fillRect(obs.x, canvas.height - obs.bottom, obs.w, obs.bottom);
+                    ctx.shadowBlur = 0;
+                    
+                    // Жесткий Хитбокс
+                    if (player.x < obs.x + obs.w && player.x + player.size > obs.x &&
+                        (player.y < obs.top || player.y + player.size > canvas.height - obs.bottom)) {
+                        endGame();
+                    }
+                    
+                    if (obs.x + obs.w < player.x && !obs.passed) {
+                        score++; document.getElementById('ui').innerText = score; obs.passed = true;
+                        if(score % 5 === 0) gameSpeed += 0.5; // Ускорение!
+                    }
                 }
-                for(let wy = obs.bottom + 10; wy < canvas.height; wy += 30) {
-                    if(Math.random() > 0.3) { ctx.fillRect(obs.x + 10, wy, 15, 15); ctx.fillRect(obs.x + 35, wy, 15, 15); }
-                }
-
-                // Столкновение (хитбокс чуть меньше смайлика)
-                if (player.x + 10 < obs.x + obs.width && player.x + player.size - 10 > obs.x &&
-                    (player.y - 30 < obs.top || player.y + 10 > obs.bottom)) { endGame(); }
-
-                // Очки и УСКОРЕНИЕ
-                if (obs.x + obs.width < player.x && !obs.passed) {
-                    score++; document.getElementById('scoreBoard').innerText = score; obs.passed = true;
-                    // Увеличиваем скорость каждые 5 очков!
-                    if(score % 5 === 0) gameSpeed += 0.5;
-                }
+                obstacles = obstacles.filter(o => o.x + o.w > 0);
+                frames++;
             }
-            if (obstacles.length > 0 && obstacles[0].x < -100) obstacles.shift();
+            player.draw();
+            if (!gameOver) requestAnimationFrame(draw);
         }
 
         function endGame() {
-            gameActive = false; gameOver = true;
-            document.getElementById('msg').innerText = 'Крушение! Сохраняем...';
-            setTimeout(() => { tg.sendData(JSON.stringify({ game: "drive", earned: score * 5, score: score })); }, 1500); // Платим по 5 монет за каждую башню!
+            gameActive = false; gameOver = true; document.getElementById('ui').innerText = "РАЗБИТ!";
+            setTimeout(() => tg.sendData(JSON.stringify({ game: "drive", earned: score * 10, score: score })), 1500);
         }
-
-        function animate() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            // Рисуем звезды
-            ctx.fillStyle = 'white'; ctx.fillRect(100, 100, 2, 2); ctx.fillRect(300, 250, 2, 2); ctx.fillRect(200, 500, 2, 2);
-            
-            if (gameActive) {
-                player.update(); handleParticles(); player.draw(); handleObstacles();
-                frames++; requestAnimationFrame(animate);
-            } else if (!gameOver) {
-                player.draw(); requestAnimationFrame(animate);
-            }
+        
+        function flap() {
+            if (!gameActive && !gameOver) { gameActive = true; document.getElementById('ui').innerText = "0"; }
+            if (gameActive) player.velocity = player.jump;
         }
-
-        window.addEventListener('touchstart', () => { if (!gameActive && !gameOver) { gameActive = true; document.getElementById('msg').innerText = ''; } if (gameActive) player.flap(); });
-        window.addEventListener('mousedown', () => { if (!gameActive && !gameOver) { gameActive = true; document.getElementById('msg').innerText = ''; } if (gameActive) player.flap(); });
-
-        animate();
+        window.addEventListener('touchstart', flap); window.addEventListener('mousedown', flap);
+        draw();
     </script>
 </body>
 </html>
