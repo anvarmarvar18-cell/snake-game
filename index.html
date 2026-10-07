@@ -39,26 +39,22 @@
 
         // Игрок
         const imgFriend = new Image();
-        imgFriend.src = 'friend.png'; // Твоя PNG картинка с гитхаба!
+        imgFriend.src = 'friend.png'; // ПРОВЕРЬ РЕГИСТР НА GITHUB!
+        let imgLoaded = false;
+        imgFriend.onload = () => { imgLoaded = true; };
 
         const player = {
             x: 50, y: canvas.height/2, size: 50, velocity: 0, gravity: 0.6, jump: -9,
             draw() {
                 if (mySkin === 'friend') {
-                    // Рисуем картинку друга!
-                    ctx.drawImage(imgFriend, this.x, this.y, 60, 60); 
+                    if (imgLoaded) { ctx.drawImage(imgFriend, this.x, this.y, 60, 60); }
+                    else { ctx.fillStyle = '#fff'; ctx.fillRect(this.x, this.y, 50, 50); } // Защита от зависания
                 } else {
                     ctx.font = "50px Arial";
                     ctx.fillText(mySkin, this.x, this.y);
                 }
             },
-            update() {
-                this.velocity += this.gravity;
-                this.y += this.velocity;
-                if(this.y > canvas.height || this.y < -50) endGame();
-            },
-            flap() { this.velocity = this.jump; createParticles(); }
-        };
+            // ... остальной код player
         };
 
         // Спецэффекты (Огонь из турбины)
