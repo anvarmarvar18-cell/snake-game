@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cyber Orbit 5.0 ULTRA</title>
+    <title>Cyber Orbit 6.0</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { margin: 0; padding: 0; background: linear-gradient(to bottom, #050510, #1a0b2e, #000000); overflow: hidden; touch-action: none; color: white; font-family: 'Courier New', monospace; }
+        body { margin: 0; padding: 0; overflow: hidden; touch-action: none; font-family: 'Courier New', monospace; background: #000; }
         canvas { display: block; width: 100vw; height: 100vh; }
-        #scoreBoard { position: absolute; top: 8%; width: 100%; text-align: center; font-size: 90px; font-weight: 900; color: #fff; text-shadow: 0 0 20px #00ffcc, 0 0 50px #00ffcc; pointer-events: none; z-index: 10; }
-        #msg { position: absolute; top: 22%; width: 100%; text-align: center; font-size: 26px; color: #ffcc00; font-weight: bold; pointer-events: none; text-shadow: 0 0 15px #ff0000; letter-spacing: 2px; }
+        #scoreBoard { position: absolute; top: 8%; width: 100%; text-align: center; font-size: 80px; font-weight: 900; color: #fff; text-shadow: 0 0 15px #000; pointer-events: none; z-index: 10; }
+        #msg { position: absolute; top: 22%; width: 100%; text-align: center; font-size: 24px; color: #fff; font-weight: bold; pointer-events: none; text-shadow: 0 0 10px #000; }
     </style>
 </head>
 <body>
     <div id="scoreBoard">0</div>
-    <div id="msg">ЖМИ, ЧТОБЫ ВЗЛЕТЕТЬ!</div>
+    <div id="msg">ЖМИ ДЛЯ ВЗЛЕТА!</div>
     <canvas id="gameCanvas"></canvas>
 
     <script>
@@ -26,220 +26,193 @@
         const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth; canvas.height = window.innerHeight;
 
-        // Читаем скин из базы данных Бота
         const urlParams = new URLSearchParams(window.location.search);
         const currentSkin = urlParams.get('skin') || 'neon';
 
         let gameActive = false; let gameOver = false; let score = 0;
         let cx = canvas.width / 2;
 
+        // Игрок: радиус 14 - это ФИЗИКА (Хитбокс). Картинка будет рисоваться больше!
         let player = { y: canvas.height - 200, radius: 14, velocity: 0, gravity: 0.45, jump: -7.5 };
-        let particles = [];
-        let stars = [];
+        
+        // Генерация декораций для фонов
+        let clouds = []; let stars = [];
+        for(let i=0; i<10; i++) clouds.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: Math.random()*30+20 });
+        for(let i=0; i<50; i++) stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: Math.random()*2+1 });
 
-        // Звездное небо для фона
-        for(let i=0; i<60; i++) {
-            stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: Math.random()*2.5+0.5, speed: Math.random()*0.6+0.2 });
-        }
-
-        // ==========================================
-        // ГЕНЕРАТОР ПРЕПЯТСТВИЙ (СИНХРОНИЗИРОВАННЫЙ)
-        // ==========================================
+        // Новые честные препятствия
         let obstacles = [];
-        const obsTypes = ['ring1', 'ring2', 'ring3', 'laser', 'windmill', 'slider'];
+        const obsTypes = ['ring1', 'ring2', 'slider', 'windmill', 'pulse'];
 
         function spawnObstacle(yPos) {
             let type = obsTypes[Math.floor(Math.random() * obsTypes.length)];
             obstacles.push({
                 y: yPos, type: type, radius: 95, thickness: 16, angle: 0,
-                speed: 0.035, // Фиксированная скорость для идеальной синхронизации
-                gap: Math.PI / 1.7, passed: false,
-                sliderDir: 1, sliderX: 0
+                speed: 0.035, gap: Math.PI / 1.5, passed: false,
+                sliderX: 0, sliderDir: 1, pulseDir: 1
             });
         }
-        
         spawnObstacle(canvas.height / 2 - 150);
         spawnObstacle(canvas.height / 2 - 550);
 
-        // ==========================================
-        // ОТРИСОВКА СКИНОВ ИГРОКА
-        // ==========================================
+        // ОТРИСОВКА СКИНОВ (Визуал больше хитбокса)
         function drawPlayer() {
-            ctx.save();
-            ctx.translate(cx, player.y);
+            ctx.save(); ctx.translate(cx, player.y);
             
-            if (currentSkin === 'star') {
-                ctx.fillStyle = '#ffcc00'; ctx.shadowBlur = 20; ctx.shadowColor = '#ffcc00';
-                ctx.beginPath();
-                for (let i = 0; i < 5; i++) {
-                    ctx.lineTo(Math.cos((18+i*72)/180*Math.PI)*player.radius*1.5, -Math.sin((18+i*72)/180*Math.PI)*player.radius*1.5);
-                    ctx.lineTo(Math.cos((54+i*72)/180*Math.PI)*player.radius*0.6, -Math.sin((54+i*72)/180*Math.PI)*player.radius*0.6);
-                }
-                ctx.closePath(); ctx.fill();
+            // Если включить эту строку, ты увидишь реальный хитбокс (раскомментируй для дебага)
+            // ctx.fillStyle = 'rgba(255,0,0,0.5)'; ctx.beginPath(); ctx.arc(0,0,player.radius,0,Math.PI*2); ctx.fill();
+
+            if (currentSkin === 'bird') {
+                ctx.fillStyle = '#ffcc00'; ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.fill(); // Тело больше хитбокса
+                ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(8, -6, 6, 0, Math.PI*2); ctx.fill(); // Глаз
+                ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(10, -6, 3, 0, Math.PI*2); ctx.fill(); // Зрачок
+                ctx.fillStyle = '#ff3300'; ctx.beginPath(); ctx.moveTo(15, 2); ctx.lineTo(30, 8); ctx.lineTo(15, 14); ctx.fill(); // Клюв
             }
-            else if (currentSkin === 'plasma') {
-                ctx.fillStyle = '#ff00ff'; ctx.shadowBlur = 30; ctx.shadowColor = '#ff00ff';
-                ctx.beginPath(); ctx.arc(0, 0, player.radius, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, player.radius/2, 0, Math.PI * 2); ctx.fill();
+            else if (currentSkin === 'rocket') {
+                ctx.fillStyle = '#ddd'; ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.fill();
+                ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.moveTo(-15, 15); ctx.lineTo(-25, 30); ctx.lineTo(-5, 15); ctx.fill();
+                ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.moveTo(15, 15); ctx.lineTo(25, 30); ctx.lineTo(5, 15); ctx.fill();
+                ctx.fillStyle = '#00ffff'; ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI*2); ctx.fill(); // Иллюминатор
             }
-            else { // Неоновый шар (стандарт)
+            else if (currentSkin === 'ball') {
+                ctx.fillStyle = '#ff6600'; ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(-18, 0); ctx.lineTo(18, 0); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, -18); ctx.lineTo(0, 18); ctx.stroke();
+            }
+            else { // Неон (дефолт)
                 ctx.fillStyle = '#00ffcc'; ctx.shadowBlur = 20; ctx.shadowColor = '#00ffcc';
                 ctx.beginPath(); ctx.arc(0, 0, player.radius, 0, Math.PI * 2); ctx.fill();
             }
             ctx.restore();
         }
 
-        // ==========================================
-        // ИГРОВОЙ ЦИКЛ И ИДЕАЛЬНАЯ МАТЕМАТИКА
-        // ==========================================
+        // ОТРИСОВКА ДИНАМИЧЕСКОГО ФОНА
+        function drawBackground() {
+            let bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            
+            if (score < 15) { // ДНЕВНОЕ НЕБО
+                bgGradient.addColorStop(0, '#4facfe'); bgGradient.addColorStop(1, '#00f2fe');
+                ctx.fillStyle = bgGradient; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                for(let i=0; i<clouds.length; i++) {
+                    let c = clouds[i];
+                    if(gameActive) { c.y += Math.abs(player.velocity) * 0.2; if(c.y > canvas.height) c.y = -50; }
+                    ctx.beginPath(); ctx.arc(c.x, c.y, c.size, 0, Math.PI*2); ctx.arc(c.x+c.size, c.y-c.size/2, c.size*0.8, 0, Math.PI*2); ctx.fill();
+                }
+            } 
+            else if (score < 30) { // ЗАКАТ В ГОРАХ
+                bgGradient.addColorStop(0, '#ff0844'); bgGradient.addColorStop(1, '#ffb199');
+                ctx.fillStyle = bgGradient; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#220033'; // Горы
+                ctx.beginPath(); ctx.moveTo(0, canvas.height); ctx.lineTo(100, canvas.height-200); ctx.lineTo(250, canvas.height-50); ctx.lineTo(canvas.width, canvas.height-300); ctx.lineTo(canvas.width, canvas.height); ctx.fill();
+            } 
+            else { // ОТКРЫТЫЙ КОСМОС
+                bgGradient.addColorStop(0, '#020024'); bgGradient.addColorStop(1, '#090979');
+                ctx.fillStyle = bgGradient; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#fff';
+                for(let i=0; i<stars.length; i++) {
+                    let s = stars[i];
+                    if(gameActive) { s.y += Math.abs(player.velocity) * 0.5; if(s.y > canvas.height) s.y = 0; }
+                    ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill();
+                }
+            }
+        }
+
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Движение фона
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-            for(let i=0; i<stars.length; i++) {
-                let s = stars[i];
-                if (gameActive && player.y < canvas.height / 2) s.y += Math.abs(player.velocity) * s.speed;
-                if (s.y > canvas.height) s.y = 0;
-                ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill();
-            }
+            drawBackground();
 
             if (gameActive) {
                 player.velocity += player.gravity; player.y += player.velocity;
                 if (player.y > canvas.height) endGame();
             }
 
-            // Хвост кометы
-            for (let i = 0; i < particles.length; i++) {
-                let p = particles[i];
-                ctx.fillStyle = `rgba(0, 255, 204, ${p.life})`;
-                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
-                p.x += p.speedX; p.y += p.speedY; p.life -= 0.05;
-                if (p.life <= 0) { particles.splice(i, 1); i--; }
-            }
-
             drawPlayer();
 
-            // ==========================================
-            // ЛОГИКА ПРЕПЯТСТВИЙ (БЕЗ БАГОВ)
-            // ==========================================
+            // ЛОГИКА ПРЕПЯТСТВИЙ
             for (let i = 0; i < obstacles.length; i++) {
                 let obs = obstacles[i];
                 if (gameActive) {
                     if (player.y < canvas.height / 2) obs.y += Math.abs(player.velocity);
-                    obs.angle += obs.speed; // Единое время вращения
+                    obs.angle += obs.speed;
                 }
 
                 ctx.lineWidth = obs.thickness;
 
-                // 1. ОДИНАРНОЕ КОЛЬЦО
-                if (obs.type === 'ring1') {
-                    ctx.strokeStyle = '#ff00ff'; ctx.shadowBlur = 15; ctx.shadowColor = '#ff00ff';
+                if (obs.type === 'ring1') { // ОДИНАРНОЕ КОЛЬЦО
+                    ctx.strokeStyle = '#fff'; ctx.shadowBlur = 10; ctx.shadowColor = '#fff';
                     ctx.beginPath(); ctx.arc(cx, obs.y, obs.radius, obs.angle, obs.angle + Math.PI*2 - obs.gap); ctx.stroke();
                     checkRingHit(obs, obs.radius, obs.angle, obs.gap);
                 } 
-                // 2. ДВОЙНОЕ КОЛЬЦО (Синхронное)
-                else if (obs.type === 'ring2') {
-                    let a1 = obs.angle;
-                    let a2 = -obs.angle; // Идеальная противоположность
-                    
-                    ctx.strokeStyle = '#00ffcc'; ctx.shadowBlur = 15; ctx.shadowColor = '#00ffcc';
-                    ctx.beginPath(); ctx.arc(cx, obs.y, obs.radius, a1, a1 + Math.PI*2 - obs.gap); ctx.stroke();
-                    checkRingHit(obs, obs.radius, a1, obs.gap);
-                    
-                    ctx.strokeStyle = '#ff00ff'; ctx.shadowColor = '#ff00ff';
-                    ctx.beginPath(); ctx.arc(cx, obs.y, obs.radius - 25, a2, a2 + Math.PI*2 - obs.gap); ctx.stroke();
-                    checkRingHit(obs, obs.radius - 25, a2, obs.gap);
+                else if (obs.type === 'ring2') { // ИДЕАЛЬНОЕ ДВОЙНОЕ КОЛЬЦО
+                    ctx.strokeStyle = '#00ffcc'; ctx.beginPath(); ctx.arc(cx, obs.y, obs.radius, obs.angle, obs.angle + Math.PI*2 - obs.gap); ctx.stroke();
+                    checkRingHit(obs, obs.radius, obs.angle, obs.gap);
+                    ctx.strokeStyle = '#ff00ff'; ctx.beginPath(); ctx.arc(cx, obs.y, obs.radius - 25, -obs.angle, -obs.angle + Math.PI*2 - obs.gap); ctx.stroke();
+                    checkRingHit(obs, obs.radius - 25, -obs.angle, obs.gap);
                 }
-                // 3. ТРОЙНОЕ КОЛЬЦО (Идеальный тоннель)
-                else if (obs.type === 'ring3') {
-                    let a1 = obs.angle;
-                    let a2 = -obs.angle; // Встречное
-                    let a3 = obs.angle;  // Синхронное с первым
-                    
-                    ctx.strokeStyle = '#ff3300'; ctx.shadowBlur = 15; ctx.shadowColor = '#ff3300';
-                    ctx.beginPath(); ctx.arc(cx, obs.y, obs.radius, a1, a1 + Math.PI*2 - obs.gap); ctx.stroke();
-                    checkRingHit(obs, obs.radius, a1, obs.gap);
-                    
-                    ctx.strokeStyle = '#ffcc00'; ctx.shadowColor = '#ffcc00';
-                    ctx.beginPath(); ctx.arc(cx, obs.y, obs.radius - 25, a2, a2 + Math.PI*2 - obs.gap); ctx.stroke();
-                    checkRingHit(obs, obs.radius - 25, a2, obs.gap);
-                    
-                    ctx.strokeStyle = '#00ffff'; ctx.shadowColor = '#00ffff';
-                    ctx.beginPath(); ctx.arc(cx, obs.y, obs.radius - 50, a3, a3 + Math.PI*2 - obs.gap); ctx.stroke();
-                    checkRingHit(obs, obs.radius - 50, a3, obs.gap);
-                }
-                // 4. МИГАЮЩИЙ ЛАЗЕР (НОВОЕ!)
-                else if (obs.type === 'laser') {
-                    ctx.fillStyle = '#444'; ctx.shadowBlur = 0;
-                    ctx.fillRect(cx - 120, obs.y - 15, 40, 30); // Левая пушка
-                    ctx.fillRect(cx + 80, obs.y - 15, 40, 30);  // Правая пушка
-                    
-                    // Лазер мигает раз в 2 секунды
-                    let laserOn = Math.sin(obs.angle * 2) > 0;
-                    if (laserOn) {
-                        ctx.fillStyle = '#ff0000'; ctx.shadowBlur = 20; ctx.shadowColor = '#ff0000';
-                        ctx.fillRect(cx - 80, obs.y - 5, 160, 10);
-                        if (Math.abs(player.y - obs.y) < player.radius + 5) endGame();
+                else if (obs.type === 'pulse') { // НОВОЕ: ПУЛЬСИРУЮЩЕЕ КОЛЬЦО
+                    if (gameActive) {
+                        obs.radius += 1.5 * obs.pulseDir;
+                        if(obs.radius > 120 || obs.radius < 60) obs.pulseDir *= -1;
                     }
+                    ctx.strokeStyle = '#ff3300'; ctx.shadowColor = '#ff3300';
+                    ctx.beginPath(); ctx.arc(cx, obs.y, obs.radius, obs.angle, obs.angle + Math.PI*2 - obs.gap); ctx.stroke();
+                    checkRingHit(obs, obs.radius, obs.angle, obs.gap);
                 }
-                // 5. ИДЕАЛЬНАЯ МЕЛЬНИЦА
-                else if (obs.type === 'windmill') {
-                    ctx.strokeStyle = '#ff9900'; ctx.shadowBlur = 15; ctx.shadowColor = '#ff9900';
+                else if (obs.type === 'windmill') { // МЕЛЬНИЦА (ПРОХОДИМАЯ)
+                    ctx.strokeStyle = '#ffcc00'; ctx.shadowColor = '#ffcc00';
                     ctx.save(); ctx.translate(cx, obs.y); ctx.rotate(obs.angle);
                     for(let b=0; b<4; b++) {
                         ctx.rotate(Math.PI/2);
-                        ctx.beginPath(); ctx.moveTo(35, 0); ctx.lineTo(obs.radius + 15, 0); ctx.stroke(); // Дырка в центре стала больше!
+                        ctx.beginPath(); ctx.moveTo(45, 0); ctx.lineTo(100, 0); ctx.stroke(); // Дырка в центре 90px!
                     }
                     ctx.restore();
 
                     let distY = player.y - obs.y;
-                    if (Math.abs(distY) < obs.radius + 15) {
+                    if (Math.abs(distY) < 100) {
                         let pAngle = Math.atan2(distY, 0); 
                         let relAngle = (pAngle - obs.angle) % (Math.PI/2);
                         if (relAngle < 0) relAngle += Math.PI/2;
-                        if ((relAngle < 0.2 || relAngle > (Math.PI/2 - 0.2)) && Math.abs(distY) > 35) endGame();
+                        if ((relAngle < 0.2 || relAngle > (Math.PI/2 - 0.2)) && Math.abs(distY) > 45) endGame();
                     }
                 }
-                // 6. СЛАЙДЕРЫ
-                else if (obs.type === 'slider') {
+                else if (obs.type === 'slider') { // ИДЕАЛЬНЫЙ СЛАЙДЕР
                     if (gameActive) {
-                        obs.sliderX += 2.5 * obs.sliderDir;
-                        if (obs.sliderX > 75 || obs.sliderX < -75) obs.sliderDir *= -1;
+                        obs.sliderX += 2 * obs.sliderDir;
+                        if (obs.sliderX > 70 || obs.sliderX < -70) obs.sliderDir *= -1;
                     }
-                    ctx.fillStyle = '#ff0055'; ctx.shadowBlur = 15; ctx.shadowColor = '#ff0055';
-                    ctx.fillRect(0, obs.y - 10, cx - 65 + obs.sliderX, 20); // Левый блок
-                    ctx.fillRect(cx + 65 + obs.sliderX, obs.y - 10, cx, 20); // Правый блок
+                    ctx.fillStyle = '#ff0055'; ctx.shadowBlur = 0;
+                    ctx.fillRect(0, obs.y - 10, cx - 70 + obs.sliderX, 20); 
+                    ctx.fillRect(cx + 70 + obs.sliderX, obs.y - 10, cx, 20); 
 
                     if (Math.abs(player.y - obs.y) < player.radius + 10) {
                         let gapCenter = cx + obs.sliderX;
-                        if (Math.abs(cx - gapCenter) > 65 - player.radius) endGame();
+                        if (Math.abs(cx - gapCenter) > 70 - player.radius) endGame();
                     }
                 }
                 ctx.shadowBlur = 0;
 
-                // Начисление очков и УСКОРЕНИЕ
                 if (obs.y > player.y && !obs.passed) {
                     score++; document.getElementById('scoreBoard').innerText = score; obs.passed = true;
-                    if (score % 5 === 0) player.gravity += 0.03; // Игра становится сложнее!
+                    if (score % 5 === 0) player.gravity += 0.02; // Плавное усложнение
                 }
 
                 if (obs.y > canvas.height + 150) {
                     obstacles.splice(i, 1); i--;
-                    spawnObstacle(obstacles[obstacles.length - 1].y - 380 - Math.random() * 100); // Спавн новых
+                    spawnObstacle(obstacles[obstacles.length - 1].y - 400 - Math.random() * 100);
                 }
             }
 
-            if (player.y < canvas.height / 2) player.y = canvas.height / 2; // Фиксация камеры
+            if (player.y < canvas.height / 2) player.y = canvas.height / 2;
             if (!gameOver) requestAnimationFrame(draw);
         }
 
-        // БЕЗОШИБОЧНАЯ МАТЕМАТИКА СТОЛКНОВЕНИЙ
         function checkRingHit(obs, radius, angle, gap) {
             let dist = Math.abs(player.y - obs.y);
             if (dist < radius + obs.thickness/2 && dist > radius - obs.thickness/2) {
                 let playerAngle = (player.y > obs.y) ? Math.PI / 2 : -Math.PI / 2; 
-                
                 let normalize = (a) => { let res = a % (Math.PI*2); if (res < 0) res += Math.PI*2; return res; };
                 let startAngle = normalize(angle);
                 let endAngle = normalize(angle + Math.PI*2 - gap);
@@ -255,22 +228,20 @@
 
         function endGame() {
             gameActive = false; gameOver = true;
-            document.getElementById('msg').innerText = 'РАЗБИТ! Сохраняем...';
-            setTimeout(() => { tg.sendData(JSON.stringify({ game: "orbit", earned: score * 20, score: score })); }, 1500); // ПЛАТИМ 20 МОНЕТ ЗА ЭТУ СЛОЖНОСТЬ!
+            document.getElementById('msg').innerText = 'РАЗБИТ!';
+            setTimeout(() => { tg.sendData(JSON.stringify({ game: "orbit", earned: score * 15, score: score })); }, 1500);
         }
 
         function flap() {
             if (!gameActive && !gameOver) { gameActive = true; document.getElementById('msg').innerText = ''; }
-            if (gameActive) {
-                player.velocity = player.jump;
-                for(let i=0; i<5; i++) particles.push({ x: cx, y: player.y + 10, size: Math.random()*3+2, speedX: (Math.random()-0.5)*4, speedY: Math.random()*4, life: 1 });
-            }
+            if (gameActive) player.velocity = player.jump;
         }
 
         window.addEventListener('touchstart', flap);
         window.addEventListener('mousedown', flap);
 
-        draw();
+        drawBackground(); // Предварительная отрисовка
+        drawPlayer();
     </script>
 </body>
 </html>
