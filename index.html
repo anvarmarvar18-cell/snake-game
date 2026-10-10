@@ -3,122 +3,342 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aero City PRO</title>
+    <title>Aero City 2.0 - Cyber Edition</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { margin: 0; background: linear-gradient(to bottom, #0a0a2a, #1a0b2e); overflow: hidden; touch-action: none; color: white; font-family: 'Courier New', monospace;}
-        canvas { display: block; width: 100vw; height: 100vh; }
-        #ui { position: absolute; top: 10%; width: 100%; text-align: center; font-size: 60px; font-weight: 900; color: #00ffcc; text-shadow: 0 0 20px #00ffcc; pointer-events: none; z-index: 10;}
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body, html { width: 100%; height: 100%; background-color: #020205; overflow: hidden; font-family: 'Courier New', Courier, monospace; touch-action: none; }
+        canvas { display: block; width: 100%; height: 100%; }
+        #ui { position: absolute; top: 20px; left: 0; width: 100%; text-align: center; color: #fff; font-size: 36px; font-weight: bold; text-shadow: 0 0 15px #00ffff, 0 0 30px #00ffff; z-index: 10; pointer-events: none; }
+        #gameOverScreen { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, rgba(10,0,30,0.9) 0%, rgba(0,0,0,0.95) 100%); flex-direction: column; justify-content: center; align-items: center; z-index: 20; }
+        h1 { color: #ff0055; text-shadow: 0 0 20px #ff0055, 0 0 40px #ff0000; font-size: 48px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 2px; }
+        p { font-size: 24px; margin-bottom: 30px; color: #00ffff; text-shadow: 0 0 10px #00ffff; }
+        .btn { background: linear-gradient(90deg, #00ffff, #0055ff); border: none; padding: 15px 50px; font-size: 24px; color: #fff; font-weight: bold; border-radius: 40px; cursor: pointer; box-shadow: 0 0 20px rgba(0, 255, 255, 0.5); margin: 10px; text-transform: uppercase; transition: transform 0.1s; }
+        .btn:active { transform: scale(0.9); }
     </style>
 </head>
 <body>
-    <div id="ui">ТАПАЙ!</div>
+
+    <div id="ui"><span id="scoreVal">0</span></div>
+
+    <div id="gameOverScreen">
+        <h1>CRITICAL HIT</h1>
+        <p>SCORE: <span id="finalScore">0</span></p>
+        <button class="btn" onclick="sendScore()">ЗАБРАТЬ МОНЕТЫ</button>
+        <button class="btn" style="background: linear-gradient(90deg, #ff0055, #880000); box-shadow: 0 0 20px rgba(255, 0, 85, 0.5);" onclick="restartGame()">РЕТРАЙ</button>
+    </div>
+
     <canvas id="gameCanvas"></canvas>
+
     <script>
-        let tg = window.Telegram.WebApp; tg.expand();
-        if (tg.isVersionAtLeast('7.7')) tg.disableVerticalSwipes();
-        document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+        // Инициализация Telegram API
+        let tg;
+        try { tg = window.Telegram.WebApp; tg.expand(); } catch(e) { console.log("Not in Telegram"); }
 
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-
-        // Читаем ГЛОБАЛЬНЫЙ СКИН из бота
+        // Чтение скина из ссылки (например: index.html?skin=rocket)
         const urlParams = new URLSearchParams(window.location.search);
         const currentSkin = urlParams.get('skin') || 'neon';
 
-        // Загрузка фото друга
-        const imgFriend = new Image();
-        imgFriend.src = 'friend.png'; // ТВОЙ PNG ФАЙЛ НА GITHUB
-        let imgLoaded = false;
-        imgFriend.onload = () => { imgLoaded = true; };
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
 
-        let gameActive = false, gameOver = false, score = 0, frames = 0;
-        let gameSpeed = 5;
+        // Игровые переменные
+        let frames = 0;
+        let score = 0;
+        let gameOver = false;
+        let gameSpeed = 3;
 
-        const player = {
-            x: 50, y: canvas.height/2, size: 36, velocity: 0, gravity: 0.5, jump: -8,
+        // Загрузка фото друга (если скин friend)
+        let friendImg = new Image();
+        let isFriendLoaded = false;
+        if (currentSkin === 'friend') {
+            friendImg.src = 'friend.png'; // Убедись, что файл friend.png есть на GitHub
+            friendImg.onload = () => { isFriendLoaded = true; };
+        }
+
+        // --- КЛАССЫ: ЖИВОЙ МИР ---
+
+        // Звезды на фоне
+        class Star {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.size = Math.random() * 2;
+                this.speed = Math.random() * 0.5 + 0.1;
+            }
+            update() {
+                this.x -= this.speed;
+                if (this.x < 0) { this.x = width; this.y = Math.random() * height; }
+            }
             draw() {
-                // Отрисовка скинов (размер физического хитбокса - 36px, картинки рисуются крупнее)
-                if (currentSkin === 'friend') {
-                    if (imgLoaded) ctx.drawImage(imgFriend, this.x-10, this.y-10, 56, 56);
-                    else { ctx.fillStyle = '#fff'; ctx.fillRect(this.x, this.y, this.size, this.size); }
-                } else if (currentSkin === 'rocket') {
-                    ctx.font = "45px Arial"; ctx.fillText("🚀", this.x-5, this.y + 35);
-                } else if (currentSkin === 'btc') {
-                    ctx.font = "45px Arial"; ctx.fillText("₿", this.x, this.y + 35);
-                } else if (currentSkin === 'ball') {
-                    ctx.font = "45px Arial"; ctx.fillText("🏀", this.x-5, this.y + 35);
-                } else if (currentSkin === 'bird') {
-                    ctx.font = "45px Arial"; ctx.fillText("🦅", this.x-5, this.y + 35);
-                } else if (currentSkin === 'star') {
-                    ctx.font = "45px Arial"; ctx.fillText("⭐", this.x-5, this.y + 35);
-                } else {
-                    ctx.fillStyle = '#00ffcc'; ctx.shadowBlur = 20; ctx.shadowColor = '#00ffcc';
-                    ctx.beginPath(); ctx.arc(this.x+this.size/2, this.y+this.size/2, this.size/2, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
-                }
+                ctx.fillStyle = `rgba(255, 255, 255, ${Math.random()})`;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill();
             }
-        };
+        }
+        let stars = Array.from({length: 100}, () => new Star());
 
-        let obstacles = [];
-        function spawnObstacle() {
-            let gap = 220 - (score * 2.5); if (gap < 120) gap = 120; // Проход сужается!
-            let topH = Math.random() * (canvas.height - gap - 100) + 50;
-            obstacles.push({ x: canvas.width, w: 70, top: topH, bottom: canvas.height - (topH + gap), passed: false });
+        // Частицы дыма от игрока
+        let particles = [];
+        class Particle {
+            constructor(x, y) {
+                this.x = x; this.y = y;
+                this.size = Math.random() * 6 + 2;
+                this.speedX = -Math.random() * 3 - 1;
+                this.speedY = (Math.random() - 0.5) * 2;
+                this.color = Math.random() > 0.5 ? '#00ffff' : '#ff0055';
+                this.life = 1.0;
+            }
+            update() {
+                this.x += this.speedX; this.y += this.speedY;
+                this.life -= 0.04;
+                this.size *= 0.95;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
         }
 
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Звездный фон
-            ctx.fillStyle = 'rgba(255,255,255,0.3)';
-            for(let i=0; i<30; i++) ctx.fillRect((frames*0.5 + i*50)%canvas.width, (i*47)%canvas.height, 2, 2);
+        // --- КЛАСС: ИГРОК (С УЧЕТОМ 10 СКИНОВ И ФИЗИКИ) ---
+        class Player {
+            constructor() {
+                this.x = width * 0.2;
+                this.y = height / 2;
+                this.width = 34;
+                this.height = 34;
+                this.velocity = 0;
+                this.gravity = 0.4;
+                this.jumpStrength = -7.5;
+                this.rotation = 0;
+            }
 
-            if (gameActive) {
-                player.velocity += player.gravity; player.y += player.velocity;
-                if (player.y > canvas.height || player.y < -50) endGame();
+            jump() {
+                this.velocity = this.jumpStrength;
+                // Частицы при прыжке
+                for(let i=0; i<5; i++) particles.push(new Particle(this.x, this.y + this.height));
+            }
+
+            update() {
+                this.velocity += this.gravity;
+                this.y += this.velocity;
+
+                // Математика реалистичного наклона
+                if (this.velocity >= this.jumpStrength) {
+                    this.rotation = Math.min(Math.PI / 4, (this.velocity * 0.1));
+                }
+
+                // Частицы хвоста
+                if (frames % 3 === 0) particles.push(new Particle(this.x, this.y + this.height/2));
+
+                // Удар об пол или потолок
+                if (this.y + this.height >= height || this.y <= 0) {
+                    triggerGameOver();
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x + this.width/2, this.y + this.height/2);
+                ctx.rotate(this.rotation);
                 
-                if (frames % 90 === 0) spawnObstacle();
+                // РИСОВАНИЕ СКИНОВ НА ХОДУ
+                let sx = -this.width/2; let sy = -this.height/2;
                 
-                for (let i = 0; i < obstacles.length; i++) {
-                    let obs = obstacles[i];
-                    obs.x -= gameSpeed;
-                    
-                    // Неоновые башни
-                    ctx.fillStyle = '#ff00ff'; ctx.shadowBlur = 15; ctx.shadowColor = '#ff00ff';
-                    ctx.fillRect(obs.x, 0, obs.w, obs.top);
-                    ctx.fillRect(obs.x, canvas.height - obs.bottom, obs.w, obs.bottom);
+                if (currentSkin === 'friend' && isFriendLoaded) {
+                    // Кастомное фото друга
+                    ctx.drawImage(friendImg, sx, sy, this.width, this.height);
+                } 
+                else if (currentSkin === 'btc') {
+                    ctx.fillStyle = '#ffcc00'; ctx.beginPath(); ctx.arc(0, 0, this.width/2, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = '#fff'; ctx.font = '20px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('₿', 0, 0);
+                } 
+                else if (currentSkin === 'rocket') {
+                    ctx.fillStyle = '#ff0055';
+                    ctx.beginPath(); ctx.moveTo(sx, sy+this.height); ctx.lineTo(0, sy); ctx.lineTo(sx+this.width, sy+this.height); ctx.fill();
+                }
+                else if (currentSkin === 'ball') {
+                    let grad = ctx.createRadialGradient(0, 0, 2, 0, 0, this.width/2);
+                    grad.addColorStop(0, '#ffaaaa'); grad.addColorStop(1, '#ff0000');
+                    ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, 0, this.width/2, 0, Math.PI*2); ctx.fill();
+                }
+                else if (currentSkin === 'star') {
+                    ctx.fillStyle = '#ffff00'; ctx.font = '30px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('⭐', 0, 0);
+                }
+                else {
+                    // Дефолтный неоновый куб (neon) или неизвестный скин
+                    ctx.shadowBlur = 15; ctx.shadowColor = '#00ffff';
+                    ctx.fillStyle = '#00ffff';
+                    ctx.fillRect(sx, sy, this.width, this.height);
                     ctx.shadowBlur = 0;
-                    
-                    // Жесткий Хитбокс
-                    if (player.x < obs.x + obs.w && player.x + player.size > obs.x &&
-                        (player.y < obs.top || player.y + player.size > canvas.height - obs.bottom)) {
-                        endGame();
-                    }
-                    
-                    if (obs.x + obs.w < player.x && !obs.passed) {
-                        score++; document.getElementById('ui').innerText = score; obs.passed = true;
-                        if(score % 5 === 0) gameSpeed += 0.5; // Ускорение!
-                    }
                 }
-                obstacles = obstacles.filter(o => o.x + o.w > 0);
-                frames++;
+                
+                ctx.restore();
             }
-            player.draw();
-            if (!gameOver) requestAnimationFrame(draw);
         }
 
-        function endGame() {
-            gameActive = false; gameOver = true; document.getElementById('ui').innerText = "РАЗБИТ!";
-            setTimeout(() => tg.sendData(JSON.stringify({ game: "drive", earned: score * 10, score: score })), 1500);
+        // --- КЛАСС: ТРУБЫ (С ДВИЖЕНИЕМ) ---
+        let pipes = [];
+        class Pipe {
+            constructor() {
+                this.x = width;
+                this.width = 60;
+                this.gap = 180; // Расстояние между верхней и нижней
+                this.minHeight = 50;
+                // Случайная высота верхней трубы
+                this.topHeight = Math.floor(Math.random() * (height - this.gap - this.minHeight * 2)) + this.minHeight;
+                this.bottomY = this.topHeight + this.gap;
+                this.passed = false;
+
+                // Каждая 3-я труба двигается вверх-вниз!
+                this.isMoving = Math.random() > 0.7;
+                this.moveOffset = 0;
+                this.moveDirection = 1;
+            }
+
+            update() {
+                this.x -= gameSpeed;
+
+                // Логика движения башни
+                if (this.isMoving) {
+                    this.moveOffset += 1 * this.moveDirection;
+                    if (this.moveOffset > 50 || this.moveOffset < -50) this.moveDirection *= -1;
+                }
+
+                // Проверка на столкновение (Хитбоксы)
+                let actualTopHeight = this.topHeight + this.moveOffset;
+                let actualBottomY = this.bottomY + this.moveOffset;
+
+                // Уменьшил хитбокс на 4px для честной игры
+                if (player.x + player.width - 4 > this.x && player.x + 4 < this.x + this.width) {
+                    if (player.y + 4 < actualTopHeight || player.y + player.height - 4 > actualBottomY) {
+                        triggerGameOver();
+                    }
+                }
+
+                // Начисление очков
+                if (this.x + this.width < player.x && !this.passed) {
+                    score++;
+                    document.getElementById('scoreVal').innerText = score;
+                    this.passed = true;
+                    // Ускорение игры каждые 5 очков
+                    if (score % 5 === 0) gameSpeed += 0.2;
+                }
+            }
+
+            draw() {
+                let actualTopHeight = this.topHeight + this.moveOffset;
+                let actualBottomY = this.bottomY + this.moveOffset;
+
+                ctx.save();
+                // Неоновый градиент для труб
+                let grad = ctx.createLinearGradient(this.x, 0, this.x + this.width, 0);
+                grad.addColorStop(0, '#002255');
+                grad.addColorStop(0.5, '#00ffff');
+                grad.addColorStop(1, '#002255');
+                
+                ctx.fillStyle = grad;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#00ffff';
+
+                // Верхняя труба
+                ctx.fillRect(this.x, 0, this.width, actualTopHeight);
+                // Наконечник верхней
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(this.x - 5, actualTopHeight - 20, this.width + 10, 20);
+
+                // Нижняя труба
+                ctx.fillStyle = grad;
+                ctx.fillRect(this.x, actualBottomY, this.width, height - actualBottomY);
+                // Наконечник нижней
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(this.x - 5, actualBottomY, this.width + 10, 20);
+
+                ctx.restore();
+            }
         }
-        
-        function flap() {
-            if (!gameActive && !gameOver) { gameActive = true; document.getElementById('ui').innerText = "0"; }
-            if (gameActive) player.velocity = player.jump;
+
+        const player = new Player();
+
+        // Основной Игровой Цикл
+        function gameLoop() {
+            if (gameOver) return;
+
+            // Очистка экрана
+            ctx.fillStyle = '#020205';
+            ctx.fillRect(0, 0, width, height);
+
+            // Отрисовка звезд
+            stars.forEach(star => { star.update(); star.draw(); });
+
+            // Спавн труб
+            if (frames % Math.max(70, 120 - Math.floor(score * 2)) === 0) {
+                pipes.push(new Pipe());
+            }
+
+            // Обновление частиц
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update(); particles[i].draw();
+                if (particles[i].life <= 0) particles.splice(i, 1);
+            }
+
+            // Обновление труб
+            for (let i = pipes.length - 1; i >= 0; i--) {
+                pipes[i].update(); pipes[i].draw();
+                if (pipes[i].x + pipes[i].width < 0) pipes.splice(i, 1);
+            }
+
+            // Игрок
+            player.update();
+            player.draw();
+
+            frames++;
+            requestAnimationFrame(gameLoop);
         }
-        window.addEventListener('touchstart', flap); window.addEventListener('mousedown', flap);
-        draw();
+
+        function triggerGameOver() {
+            gameOver = true;
+            document.getElementById('finalScore').innerText = score;
+            document.getElementById('gameOverScreen').style.display = 'flex';
+        }
+
+        function restartGame() {
+            player.y = height / 2;
+            player.velocity = 0;
+            player.rotation = 0;
+            pipes = [];
+            particles = [];
+            score = 0;
+            frames = 0;
+            gameSpeed = 3;
+            gameOver = false;
+            document.getElementById('scoreVal').innerText = score;
+            document.getElementById('gameOverScreen').style.display = 'none';
+            gameLoop();
+        }
+
+        function sendScore() {
+            if(tg && tg.sendData) {
+                tg.sendData(JSON.stringify({ game: 'aero', score: score }));
+                tg.close();
+            } else {
+                alert("Score: " + score + ". Play in Telegram to save coins!");
+                restartGame();
+            }
+        }
+
+        // Управление касанием и мышкой
+        window.addEventListener('touchstart', (e) => { if(!gameOver) player.jump(); });
+        window.addEventListener('mousedown', (e) => { if(!gameOver) player.jump(); });
+        window.addEventListener('keydown', (e) => { if((e.code === 'Space' || e.code === 'ArrowUp') && !gameOver) player.jump(); });
+
+        // Старт
+        gameLoop();
     </script>
 </body>
 </html>
