@@ -3,198 +3,256 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hyper Traffic</title>
+    <title>Hyper Traffic 2.0 - Realism</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body, html {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            background-color: #050505; overflow: hidden; font-family: 'Courier New', Courier, monospace;
-            touch-action: none; /* Запрет свайпов браузера */
-        }
-        canvas {
-            display: block; width: 100%; height: 100%;
-        }
-        #ui {
-            position: absolute; top: 20px; left: 20px;
-            color: #00ffcc; font-size: 24px; font-weight: bold;
-            text-shadow: 0 0 10px #00ffcc; z-index: 10;
-        }
-        #gameOverScreen {
-            display: none; position: absolute; top: 0; left: 0;
-            width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85);
-            color: white; flex-direction: column; justify-content: center; align-items: center; z-index: 20;
-        }
-        h1 { color: #ff0055; text-shadow: 0 0 20px #ff0055; font-size: 40px; margin-bottom: 10px; }
-        p { font-size: 20px; margin-bottom: 30px; color: #aaa; }
-        .btn {
-            background: linear-gradient(45deg, #00ffcc, #0088ff);
-            border: none; padding: 15px 40px; font-size: 22px; color: #000;
-            font-weight: bold; border-radius: 30px; cursor: pointer;
-            box-shadow: 0 0 20px rgba(0, 255, 204, 0.6); margin: 10px;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body, html { width: 100%; height: 100%; background-color: #111; overflow: hidden; font-family: 'Arial', sans-serif; touch-action: none; }
+        canvas { display: block; width: 100%; height: 100%; }
+        
+        #ui { position: absolute; top: 20px; left: 20px; color: #fff; font-size: 24px; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.8); z-index: 10; pointer-events: none; }
+        .hud-box { background: rgba(0, 0, 0, 0.6); padding: 10px 20px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); backdrop-filter: blur(5px); margin-bottom: 10px; }
+        
+        #speedometer { position: absolute; bottom: 30px; right: 20px; font-size: 30px; font-weight: 900; color: #00ffcc; text-shadow: 0 0 15px #00ffcc; font-style: italic; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 10px; border-right: 5px solid #00ffcc; pointer-events: none;}
+        
+        #gameOverScreen { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); flex-direction: column; justify-content: center; align-items: center; z-index: 20; }
+        h1 { color: #ff3333; text-shadow: 0 0 30px #ff0000; font-size: 45px; margin-bottom: 10px; text-transform: uppercase; }
+        p { font-size: 22px; margin-bottom: 30px; color: #ddd; }
+        
+        .btn { background: linear-gradient(45deg, #ff8800, #ff0055); border: none; padding: 15px 40px; font-size: 20px; color: white; font-weight: bold; border-radius: 30px; cursor: pointer; box-shadow: 0 10px 20px rgba(255, 0, 85, 0.4); transition: transform 0.1s; text-transform: uppercase; }
         .btn:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
 
-    <div id="ui">SCORE: <span id="scoreVal">0</span></div>
+    <div id="ui">
+        <div class="hud-box">SCORE: <span id="scoreVal">0</span></div>
+    </div>
+    
+    <div id="speedometer"><span id="speedVal">120</span> KM/H</div>
 
     <div id="gameOverScreen">
-        <h1>CRASHED!</h1>
-        <p>Your Score: <span id="finalScore">0</span></p>
+        <h1>АВАРИЯ!</h1>
+        <p>Счет: <span id="finalScore">0</span></p>
         <button class="btn" onclick="sendScore()">Получить монеты</button>
-        <button class="btn" style="background: #333; color: white; box-shadow: none;" onclick="restartGame()">Играть еще</button>
+        <button class="btn" style="background: #333; margin-top: 15px; box-shadow: none;" onclick="restartGame()">Повторить</button>
     </div>
 
     <canvas id="gameCanvas"></canvas>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
+        // Инициализация Telegram
+        let tg;
+        try { tg = window.Telegram.WebApp; tg.expand(); } catch(e) { console.log("Not in Telegram"); }
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
         let width = window.innerWidth;
         let height = window.innerHeight;
         canvas.width = width;
         canvas.height = height;
 
+        // --- ЛОГИКА 10 СКИНОВ ---
+        const skinsColors = {
+            'lambo': '#ffcc00',     // Желтый
+            'ferrari': '#ff0000',   // Красный
+            'bmw': '#0055ff',       // Синий
+            'mercedes': '#dddddd',  // Серебряный
+            'bugatti': '#002288',   // Темно-синий
+            'maserati': '#000000',  // Черный
+            'porsche': '#ffffff',   // Белый
+            'gtr': '#ff5500',       // Оранжевый
+            'audi': '#888888',      // Серый
+            'mclaren': '#ff8800'    // Ярко-оранжевый
+        };
+        const skinsList = Object.keys(skinsColors);
+
+        // Получаем скин игрока из ссылки (например ?skin=lambo). Если нет - берем lambo.
+        const urlParams = new URLSearchParams(window.location.search);
+        let playerSkin = urlParams.get('skin');
+        if (!skinsList.includes(playerSkin)) playerSkin = 'lambo';
+
+        // Загрузчик реальных картинок (если загрузишь их на гитхаб)
+        const loadedImages = {};
+        skinsList.forEach(skin => {
+            let img = new Image();
+            img.src = `${skin}.png`; 
+            img.onload = () => { loadedImages[skin] = img; };
+        });
+
         // Настройки дороги
         const laneCount = 3;
         const laneWidth = width / laneCount;
         let roadOffset = 0;
-        let gameSpeed = 5;
+        let curbOffset = 0;
+        let gameSpeed = 6;
         let score = 0;
         let gameOver = false;
-        let animationId;
+        
+        // --- ПРОФЕССИОНАЛЬНАЯ ОТРИСОВКА МАШИНЫ (ЕСЛИ НЕТ КАРТИНКИ) ---
+        function drawProceduralCar(ctx, x, y, w, h, brandColor, isPlayer) {
+            ctx.save();
+            
+            // Глубокая тень
+            ctx.shadowColor = 'rgba(0,0,0,0.7)';
+            ctx.shadowBlur = 15;
+            ctx.shadowOffsetY = 10;
+            
+            // Основной кузов (Аэродинамичный)
+            ctx.fillStyle = brandColor;
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.2, y); // Левый нос
+            ctx.lineTo(x + w * 0.8, y); // Правый нос
+            ctx.quadraticCurveTo(x + w, y, x + w, y + h * 0.2); // Правое крыло
+            ctx.lineTo(x + w, y + h * 0.9);
+            ctx.quadraticCurveTo(x + w, y + h, x + w * 0.8, y + h); // Правый зад
+            ctx.lineTo(x + w * 0.2, y + h); // Левый зад
+            ctx.quadraticCurveTo(x, y + h, x, y + h * 0.9);
+            ctx.lineTo(x, y + h * 0.2);
+            ctx.quadraticCurveTo(x, y, x + w * 0.2, y);
+            ctx.fill();
 
-        // Физика частиц (Выхлоп)
-        let particles = [];
-        class Particle {
-            constructor(x, y) {
-                this.x = x;
-                this.y = y;
-                this.size = Math.random() * 5 + 2;
-                this.speedX = (Math.random() - 0.5) * 2;
-                this.speedY = Math.random() * 3 + 2;
-                this.color = `rgba(255, ${Math.floor(Math.random() * 150 + 100)}, 0, ${Math.random()})`;
-                this.life = 1.0;
-            }
-            update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
-                this.life -= 0.05;
-            }
-            draw() {
-                ctx.fillStyle = this.color;
-                ctx.globalAlpha = Math.max(0, this.life);
+            ctx.shadowColor = 'transparent';
+
+            // Лобовое стекло
+            ctx.fillStyle = '#111';
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.15, y + h * 0.25);
+            ctx.lineTo(x + w * 0.85, y + h * 0.25);
+            ctx.lineTo(x + w * 0.75, y + h * 0.45);
+            ctx.lineTo(x + w * 0.25, y + h * 0.45);
+            ctx.fill();
+
+            // Заднее стекло
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.25, y + h * 0.65);
+            ctx.lineTo(x + w * 0.75, y + h * 0.65);
+            ctx.lineTo(x + w * 0.85, y + h * 0.8);
+            ctx.lineTo(x + w * 0.15, y + h * 0.8);
+            ctx.fill();
+
+            // Крыша
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.fillRect(x + w * 0.25, y + h * 0.45, w * 0.5, h * 0.2);
+
+            // Зеркала
+            ctx.fillStyle = brandColor;
+            ctx.fillRect(x - 2, y + h * 0.35, 5, 8);
+            ctx.fillRect(x + w - 3, y + h * 0.35, 5, 8);
+
+            // Фары
+            if (isPlayer) {
+                // Свет от фар игрока
+                ctx.fillStyle = 'rgba(255, 255, 200, 0.4)';
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.globalAlpha = 1.0;
+                ctx.moveTo(x + 5, y); ctx.lineTo(x - 20, y - 80); ctx.lineTo(x + 20, y - 80); ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(x + w - 5, y); ctx.lineTo(x + w - 20, y - 80); ctx.lineTo(x + w + 20, y - 80); ctx.fill();
             }
+
+            // Сами фары
+            ctx.fillStyle = isPlayer ? '#ffffcc' : '#ffaaaa';
+            ctx.fillRect(x + 5, y + 2, 8, 4);
+            ctx.fillRect(x + w - 13, y + 2, 8, 4);
+
+            // Задние габариты (красные)
+            ctx.fillStyle = '#ff0000';
+            ctx.shadowColor = '#ff0000';
+            ctx.shadowBlur = 10;
+            ctx.fillRect(x + 5, y + h - 5, 12, 4);
+            ctx.fillRect(x + w - 17, y + h - 5, 12, 4);
+
+            ctx.restore();
         }
 
-        // Класс Машины
+        // --- КЛАСС МАШИНЫ ---
         class Car {
-            constructor(lane, isPlayer = false) {
-                this.lane = lane; // 0 (left), 1 (center), 2 (right)
+            constructor(lane, isPlayer = false, skinName = 'lambo') {
+                this.lane = lane;
                 this.isPlayer = isPlayer;
-                this.carWidth = laneWidth * 0.6;
-                this.carHeight = this.carWidth * 2;
+                this.skin = skinName;
+                this.width = laneWidth * 0.55;
+                this.height = this.width * 2.1;
                 this.x = this.getLaneCenterX();
-                this.y = isPlayer ? height - this.carHeight - 40 : -this.carHeight;
-                // Плавное перестроение
+                this.y = isPlayer ? height - this.height - 50 : -this.height * 2;
                 this.targetX = this.x; 
             }
 
-            getLaneCenterX() {
-                return (this.lane * laneWidth) + (laneWidth / 2) - (this.carWidth / 2);
-            }
+            getLaneCenterX() { return (this.lane * laneWidth) + (laneWidth / 2) - (this.width / 2); }
 
             moveLeft() { if (this.lane > 0) { this.lane--; this.targetX = this.getLaneCenterX(); } }
             moveRight() { if (this.lane < laneCount - 1) { this.lane++; this.targetX = this.getLaneCenterX(); } }
 
             update() {
-                // Интерполяция для плавного движения влево/вправо
-                this.x += (this.targetX - this.x) * 0.15;
+                // Очень плавное перестроение (управляемость спорткара)
+                this.x += (this.targetX - this.x) * 0.2;
 
                 if (!this.isPlayer) {
-                    this.y += gameSpeed * 0.7; // Скорость встречного трафика
-                } else {
-                    // Спавн частиц для игрока
-                    particles.push(new Particle(this.x + this.carWidth/2 - 10, this.y + this.carHeight));
-                    particles.push(new Particle(this.x + this.carWidth/2 + 10, this.y + this.carHeight));
+                    this.y += gameSpeed * 0.5; // Встречный трафик
                 }
             }
 
             draw() {
-                ctx.save();
-                // Тень машины
-                ctx.shadowColor = 'rgba(0,0,0,0.8)';
-                ctx.shadowBlur = 15;
-                ctx.shadowOffsetX = 5;
-                ctx.shadowOffsetY = 10;
-
-                // Градиент кузова
-                let grad = ctx.createLinearGradient(this.x, this.y, this.x + this.carWidth, this.y + this.carHeight);
-                if (this.isPlayer) {
-                    grad.addColorStop(0, '#00ffcc'); grad.addColorStop(1, '#0055ff');
+                if (loadedImages[this.skin]) {
+                    // Если ты загрузил PNG картинку на гитхаб - рисуем её
+                    ctx.drawImage(loadedImages[this.skin], this.x, this.y, this.width, this.height);
                 } else {
-                    grad.addColorStop(0, '#ff0055'); grad.addColorStop(1, '#880000');
+                    // Иначе рисуем крутой векторный концепт
+                    let color = skinsColors[this.skin] || '#ff0000';
+                    drawProceduralCar(ctx, this.x, this.y, this.width, this.height, color, this.isPlayer);
                 }
-                
-                // Рисуем кузов
-                ctx.fillStyle = grad;
-                ctx.beginPath();
-                ctx.roundRect(this.x, this.y, this.carWidth, this.carHeight, 10);
-                ctx.fill();
-
-                // Лобовое стекло
-                ctx.shadowBlur = 0;
-                ctx.fillStyle = '#111';
-                ctx.fillRect(this.x + 5, this.y + 15, this.carWidth - 10, this.carHeight * 0.25);
-                
-                // Заднее стекло
-                ctx.fillRect(this.x + 5, this.y + this.carHeight - 30, this.carWidth - 10, 15);
-
-                // Фары
-                ctx.shadowColor = this.isPlayer ? '#00ffcc' : '#ff0000';
-                ctx.shadowBlur = 20;
-                ctx.fillStyle = '#fff';
-                ctx.fillRect(this.x + 5, this.y - 2, 10, 5); // Левая
-                ctx.fillRect(this.x + this.carWidth - 15, this.y - 2, 10, 5); // Правая
-
-                ctx.restore();
             }
         }
 
-        let player = new Car(1, true);
+        let player = new Car(1, true, playerSkin);
         let traffic = [];
 
+        // --- ИДЕАЛЬНАЯ ЛОГИКА СПАВНА (БЕЗ ТУПИКОВ) ---
+        let frames = 0;
+        let lastSpawnRowTime = 0;
+
         function spawnTraffic() {
-            if (frames % (Math.max(40, 100 - Math.floor(score/5))) === 0) {
-                let randomLane = Math.floor(Math.random() * laneCount);
-                traffic.push(new Car(randomLane, false));
+            // Динамический интервал: чем выше скорость, тем быстрее спавн, но есть защитный лимит
+            let spawnInterval = Math.max(40, 100 - Math.floor(score / 10));
+            
+            if (frames - lastSpawnRowTime > spawnInterval) {
+                lastSpawnRowTime = frames;
+
+                // 1. Выбираем ОДНУ полосу, которая 100% будет СВОБОДНА (Гарантия выхода)
+                let safeLane = Math.floor(Math.random() * laneCount);
+
+                // 2. Спавним машины в остальных полосах
+                for (let i = 0; i < laneCount; i++) {
+                    if (i !== safeLane) {
+                        // 60% шанс, что в занятой полосе реально появится машина (чтобы не всегда было по 2 машины)
+                        if (Math.random() > 0.4) {
+                            // Выбираем случайную марку машины для трафика
+                            let randomSkin = skinsList[Math.floor(Math.random() * skinsList.length)];
+                            traffic.push(new Car(i, false, randomSkin));
+                        }
+                    }
+                }
             }
         }
 
-        let frames = 0;
-
+        // --- РЕАЛИСТИЧНАЯ ДОРОГА ---
         function drawRoad() {
-            // Асфальт
-            ctx.fillStyle = '#111';
+            // Асфальт (градиент для объема)
+            let roadGrad = ctx.createLinearGradient(0, 0, width, 0);
+            roadGrad.addColorStop(0, '#1a1a1a');
+            roadGrad.addColorStop(0.5, '#2a2a2a');
+            roadGrad.addColorStop(1, '#1a1a1a');
+            ctx.fillStyle = roadGrad;
             ctx.fillRect(0, 0, width, height);
 
-            // Разделительные полосы
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-            ctx.lineWidth = 4;
-            ctx.setLineDash([40, 40]);
-            
+            // Скорость дороги
             roadOffset += gameSpeed;
-            if (roadOffset > 80) roadOffset = 0;
+            if (roadOffset > 100) roadOffset = 0;
 
+            // Белые разделительные полосы (пунктир)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.lineWidth = 6;
+            ctx.setLineDash([40, 60]);
             for (let i = 1; i < laneCount; i++) {
                 ctx.lineDashOffset = -roadOffset;
                 ctx.beginPath();
@@ -203,46 +261,61 @@
                 ctx.stroke();
             }
             ctx.setLineDash([]);
+
+            // Гоночные поребрики по бокам (Красный / Белый)
+            curbOffset += gameSpeed * 1.2;
+            if (curbOffset > 60) curbOffset = 0;
+            
+            let curbWidth = 15;
+            for(let y = -60; y < height; y += 60) {
+                let actualY = y + curbOffset;
+                // Левый
+                ctx.fillStyle = (y / 60) % 2 === 0 ? '#cc0000' : '#ffffff';
+                ctx.fillRect(0, actualY, curbWidth, 60);
+                // Правый
+                ctx.fillStyle = (y / 60) % 2 === 0 ? '#ffffff' : '#cc0000';
+                ctx.fillRect(width - curbWidth, actualY, curbWidth, 60);
+            }
         }
 
         function checkCollision(rect1, rect2) {
-            // Уменьшаем хитбокс для честной игры (на 10 пикселей)
+            // Точный хитбокс (чуть меньше картинки, чтобы не было несправедливых аварий из-за 1 пикселя)
+            let marginX = rect1.width * 0.15;
+            let marginY = rect1.height * 0.1;
             return (
-                rect1.x + 10 < rect2.x + rect2.carWidth - 10 &&
-                rect1.x + rect1.carWidth - 10 > rect2.x + 10 &&
-                rect1.y + 10 < rect2.y + rect2.carHeight - 10 &&
-                rect1.y + rect1.carHeight - 10 > rect2.y + 10
+                rect1.x + marginX < rect2.x + rect2.width - marginX &&
+                rect1.x + rect1.width - marginX > rect2.x + marginX &&
+                rect1.y + marginY < rect2.y + rect2.height - marginY &&
+                rect1.y + rect1.height - marginY > rect2.y + marginY
             );
         }
 
         function gameLoop() {
             if (gameOver) return;
             
-            ctx.clearRect(0, 0, width, height);
             drawRoad();
-
-            player.update();
-            player.draw();
-
             spawnTraffic();
 
-            // Обновляем и рисуем встречку
+            // Встречные машины
             for (let i = traffic.length - 1; i >= 0; i--) {
                 let car = traffic[i];
                 car.update();
                 car.draw();
 
-                // Удаляем машины, которые уехали вниз
+                // Проехали машину = +10 очков
                 if (car.y > height) {
                     traffic.splice(i, 1);
                     score += 10;
                     document.getElementById('scoreVal').innerText = score;
                     
-                    // Увеличиваем скорость
-                    if (score % 100 === 0) gameSpeed += 0.5;
+                    // Реалистичный спидометр и ускорение
+                    if (score % 50 === 0) {
+                        gameSpeed += 0.4;
+                        document.getElementById('speedVal').innerText = Math.floor(120 + gameSpeed * 5);
+                    }
                 }
 
-                // Проверка столкновения
+                // АВАРИЯ
                 if (checkCollision(player, car)) {
                     gameOver = true;
                     document.getElementById('finalScore').innerText = score;
@@ -250,18 +323,15 @@
                 }
             }
 
-            // Обновляем частицы
-            for (let i = particles.length - 1; i >= 0; i--) {
-                particles[i].update();
-                particles[i].draw();
-                if (particles[i].life <= 0) particles.splice(i, 1);
-            }
+            // Игрок
+            player.update();
+            player.draw();
 
             frames++;
-            animationId = requestAnimationFrame(gameLoop);
+            requestAnimationFrame(gameLoop);
         }
 
-        // Управление тапами по краям экрана
+        // Управление касанием экрана
         window.addEventListener('touchstart', (e) => {
             if (gameOver) return;
             let touchX = e.touches[0].clientX;
@@ -269,31 +339,29 @@
             else player.moveRight();
         });
 
-        // Управление клавиатурой (для тестов на Маке)
-        window.addEventListener('keydown', (e) => {
-            if (gameOver) return;
-            if (e.key === 'ArrowLeft' || e.key === 'a') player.moveLeft();
-            if (e.key === 'ArrowRight' || e.key === 'd') player.moveRight();
-        });
-
         function sendScore() {
-            tg.sendData(JSON.stringify({ game: 'traffic', score: score }));
-            tg.close();
+            if(tg && tg.sendData) {
+                tg.sendData(JSON.stringify({ game: 'traffic', score: score }));
+                tg.close();
+            } else {
+                alert("Ты заработал " + score + " очков! (Сохранение работает только в Telegram)");
+                restartGame();
+            }
         }
 
         function restartGame() {
             gameOver = false;
             score = 0;
-            gameSpeed = 5;
+            gameSpeed = 6;
             traffic = [];
-            particles = [];
-            player = new Car(1, true);
+            player = new Car(1, true, playerSkin);
             document.getElementById('scoreVal').innerText = score;
+            document.getElementById('speedVal').innerText = "120";
             document.getElementById('gameOverScreen').style.display = 'none';
             gameLoop();
         }
 
-        // Запуск
+        // Старт!
         gameLoop();
     </script>
 </body>
