@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cyber 2048</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; touch-action: none; font-family: 'Arial', sans-serif; }
+        body { background-color: #050508; color: #fff; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: space-between; overflow: hidden; }
+        
+        .header { width: 100%; padding: 20px; display: flex; justify-content: space-between; align-items: flex-start; z-index: 10; }
+        .score-container { display: flex; flex-direction: column; gap: 10px; }
+        .score-box { background: rgba(0,255,204,0.1); border: 1px solid #00ffcc; padding: 10px 20px; border-radius: 10px; text-align: center; box-shadow: 0 0 10px rgba(0,255,204,0.2); }
+        .score-box span { display: block; font-size: 12px; color: #00ffcc; text-transform: uppercase; font-weight: bold; margin-bottom: 5px; }
+        .score-box strong { font-size: 24px; color: #fff; }
+        
+        .balance-box { background: rgba(255,215,0,0.1); border: 1px solid #ffd700; padding: 10px 20px; border-radius: 10px; text-align: center; box-shadow: 0 0 10px rgba(255,215,0,0.2); }
+        .balance-box span { display: block; font-size: 12px; color: #ffd700; text-transform: uppercase; font-weight: bold; margin-bottom: 5px; }
+        .balance-box strong { font-size: 24px; color: #fff; }
+
+        .game-container { position: relative; width: 90vw; max-width: 400px; height: 90vw; max-height: 400px; background: #1a1a2e; border-radius: 15px; padding: 10px; border: 2px solid #333; box-shadow: 0 0 20px rgba(0,0,0,0.8); display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); gap: 10px; }
+        
+        .grid-cell { background: rgba(255,255,255,0.05); border-radius: 10px; }
+        
+        .tile { position: absolute; display: flex; justify-content: center; align-items: center; border-radius: 10px; font-weight: bold; font-size: 35px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.5); transition: 150ms ease-in-out; z-index: 5; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        .tile-new { animation: appear 200ms ease; }
+        .tile-merged { animation: pop 200ms ease; z-index: 6; }
+        
+        @keyframes appear { 0% { opacity: 0; transform: scale(0); } 100% { opacity: 1; transform: scale(1); } }
+        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
+        .controls { width: 100%; padding: 20px; display: flex; justify-content: center; gap: 15px; }
+        .btn { padding: 15px 30px; border: none; border-radius: 20px; font-size: 16px; font-weight: bold; color: #fff; cursor: pointer; text-transform: uppercase; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .btn-shop { background: linear-gradient(45deg, #11998e, #38ef7d); }
+        .btn-exit { background: #333; }
+
+        .overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; }
+        h1 { color: #ff3333; font-size: 45px; margin-bottom: 10px; text-shadow: 0 0 20px #ff0000; text-transform: uppercase; }
+        
+        /* Магазин */
+        .skins-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; max-width: 400px; overflow-y: auto; max-height: 65vh; padding-bottom: 20px; margin-top: 10px; }
+        .skin-card { background: rgba(20,20,30,0.9); border: 2px solid #444; border-radius: 15px; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+        .skin-card.active { border-color: #00ffcc; box-shadow: 0 0 20px rgba(0,255,204,0.4); }
+        
+        /* Бонусный текст при слиянии */
+        .bonus-text { position: absolute; color: #ffea00; font-weight: bold; font-size: 24px; text-shadow: 0 0 10px #ffea00; z-index: 30; pointer-events: none; animation: floatUp 1s forwards; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-50px); } }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="score-container">
+            <div class="score-box"><span>Очки</span><strong id="scoreVal">0</strong></div>
+        </div>
+        <div class="balance-box"><span>Монеты</span><strong id="balanceVal">0</strong></div>
+    </div>
+
+    <div class="game-container" id="grid">
+        <!-- Ячейки фона 4x4 -->
+        <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+        <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+        <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+        <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-shop" onclick="openShop()">🎨 Скины</button>
+        <button class="btn btn-exit" onclick="saveAndExit()">💾 Выход</button>
+    </div>
+
+    <div class="overlay" id="gameOverScreen">
+        <h1>ХОДОВ НЕТ!</h1>
+        <p style="font-size: 20px; color: #ccc; margin-bottom: 10px;">Финальный счет: <span id="finalScore" style="color:#fff; font-weight:bold;">0</span></p>
+        <p style="font-size: 24px; color: #ffd700; margin-bottom: 30px;">Монет за игру: +<span id="earnedCoins">0</span> 💰</p>
+        <button class="btn" style="background: linear-gradient(45deg, #ff8800, #ff0055); width: 250px; margin-bottom: 15px;" onclick="restartGame()">ИГРАТЬ ЗАНОВО</button>
+        <button class="btn btn-exit" style="width: 250px;" onclick="saveAndExit()">В МЕНЮ</button>
+    </div>
+
+    <div class="overlay" id="shopModal">
+        <div style="width:100%; max-width:400px; display:flex; justify-content:space-between; align-items:center;">
+            <h2 style="color:white; font-size: 26px;">Скины (1000💰)</h2>
+            <button style="background:none; border:none; color:#ff3333; font-size:40px; cursor:pointer;" onclick="closeShop()">&times;</button>
+        </div>
+        <div class="skins-grid" id="skinsGrid"></div>
+    </div>
+
+    <script>
+        let tg; try { tg = window.Telegram.WebApp; tg.expand(); } catch(e) {}
+
+        let balance = 1500;
+        let inventory = ['neon'];
+        let activeSkinId = 'neon';
+
+        // --- 10 СКИНОВ ДЛЯ ПЛИТОК ---
+        const skins = [
+            { id: 'neon', name: 'Неон', getLabel: (val) => val, getBg: (val) => getNeonColor(val) },
+            { id: 'crypto', name: 'Крипта', getLabel: (val) => getCryptoIcon(val), getBg: (val) => getCryptoColor(val) },
+            { id: 'it', name: 'IT Гиганты', getLabel: (val) => getItIcon(val), getBg: (val) => getItColor(val) },
+            { id: 'gems', name: 'Камни', getLabel: (val) => getGemIcon(val), getBg: (val) => getNeonColor(val) },
+            { id: 'planets', name: 'Планеты', getLabel: (val) => getPlanetIcon(val), getBg: (val) => getNeonColor(val) },
+            { id: 'cars', name: 'Машины', getLabel: (val) => getCarIcon(val), getBg: (val) => getNeonColor(val) },
+            { id: 'army', name: 'Армия', getLabel: (val) => getArmyIcon(val), getBg: (val) => getNeonColor(val) },
+            { id: 'spectrum', name: 'Спектр', getLabel: (val) => val, getBg: (val) => getSpectrumColor(val) },
+            { id: 'hacker', name: 'Хакер', getLabel: (val) => val, getBg: (val) => '#0a0', color: '#0f0', font: 'Courier New' },
+            { id: 'cards', name: 'Масти', getLabel: (val) => getCardIcon(val), getBg: (val) => getCardColor(val) }
+        ];
+
+        // Цветовые палитры для скинов
+        function getNeonColor(val) {
+            const colors = { 2:'#002244', 4:'#004488', 8:'#0088ff', 16:'#00ffcc', 32:'#00ff55', 64:'#88ff00', 128:'#ffea00', 256:'#ff8800', 512:'#ff0055', 1024:'#ff00ff', 2048:'#aa00ff' };
+            return colors[val] || '#fff';
+        }
+        function getSpectrumColor(val) {
+            const hue = (Math.log2(val) * 30) % 360;
+            return `hsl(${hue}, 100%, 40%)`;
+        }
+        
+        // Значения для скинов
+        function getCryptoIcon(val) { const d = {2:'SHIB', 4:'DOGE', 8:'TRX', 16:'ADA', 32:'XRP', 64:'SOL', 128:'BNB', 256:'TON', 512:'ETH', 1024:'BTC', 2048:'💎'}; return d[val] || val; }
+        function getCryptoColor(val) { const d = {2:'#8b0000', 4:'#c2a278', 8:'#ff0000', 16:'#0033aa', 32:'#23292f', 64:'#00ffa3', 128:'#f3ba2f', 256:'#0088cc', 512:'#627eea', 1024:'#f7931a', 2048:'#00ffff'}; return d[val] || '#fff'; }
+        
+        function getItIcon(val) { const d = {2:'Nokia', 4:'Yahoo', 8:'IBM', 16:'Intel', 32:'AMD', 64:'Meta', 128:'Amazon', 256:'Google', 512:'MSFT', 1024:'Apple', 2048:'AI'}; return d[val] || val; }
+        function getItColor(val) { const d = {2:'#124191', 4:'#410093', 8:'#0530ad', 16:'#0071c5', 32:'#ed1c24', 64:'#0668e1', 128:'#ff9900', 256:'#ea4335', 512:'#00a4ef', 1024:'#555555', 2048:'#00ffcc'}; return d[val] || '#fff'; }
+
+        function getGemIcon(val) { const d = {2:'Уголь', 4:'Кварц', 8:'Опал', 16:'Топаз', 32:'Нефрит', 64:'Сапфир', 128:'Изумруд', 256:'Рубин', 512:'Алмаз', 1024:'Метеорит', 2048:'Антиматерия'}; return d[val] || val; }
+        function getPlanetIcon(val) { const d = {2:'Плутон', 4:'Меркурий', 8:'Марс', 16:'Венера', 32:'Земля', 64:'Нептун', 128:'Уран', 256:'Сатурн', 512:'Юпитер', 1024:'Солнце', 2048:'Черная Дыра'}; return d[val] || val; }
+        function getCarIcon(val) { const d = {2:'Lada', 4:'Kia', 8:'Toyota', 16:'Ford', 32:'BMW', 64:'Audi', 128:'Porsche', 256:'Ferrari', 512:'Lambo', 1024:'Bugatti', 2048:'F1'}; return d[val] || val; }
+        function getArmyIcon(val) { const d = {2:'Рядовой', 4:'Сержант', 8:'Лейтенант', 16:'Капитан', 32:'Майор', 64:'Полковник', 128:'Генерал', 256:'Маршал', 512:'Император', 1024:'Бог Войны', 2048:'Властелин'}; return d[val] || val; }
+        
+        function getCardIcon(val) { const d = {2:'6', 4:'7', 8:'8', 16:'9', 32:'10', 64:'Валет', 128:'Дама', 256:'Король', 512:'Туз ♠', 1024:'Джокер', 2048:'ROYAL'}; return d[val] || val; }
+        function getCardColor(val) { return val >= 512 ? '#ff0000' : '#111'; }
+
+        // Игровая логика
+        let board = [];
+        let score = 0;
+        let earnedCoinsGame = 0;
+        let gameOver = false;
+        const size = 4;
+        let tileElements = [];
+
+        function initGame() {
+            board = Array(size).fill().map(() => Array(size).fill(0));
+            score = 0; earnedCoinsGame = 0; gameOver = false;
+            document.getElementById('scoreVal').innerText = score;
+            document.getElementById('gameOverScreen').style.display = 'none';
+            
+            const grid = document.getElementById('grid');
+            // Удаляем старые плитки (оставляем только ячейки фона)
+            Array.from(grid.children).forEach(child => { if (child.className.includes('tile')) child.remove(); });
+            tileElements = [];
+
+            addRandomTile();
+            addRandomTile();
+            updateUI();
+        }
+
+        function addRandomTile() {
+            let emptyCells = [];
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    if (board[r][c] === 0) emptyCells.push({r, c});
+                }
+            }
+            if (emptyCells.length > 0) {
+                let {r, c} = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                board[r][c] = Math.random() < 0.9 ? 2 : 4;
+                createTileElement(r, c, board[r][c], true);
+            }
+        }
+
+        function createTileElement(r, c, value, isNew = false, isMerged = false) {
+            const grid = document.getElementById('grid');
+            const tile = document.createElement('div');
+            tile.className = `tile ${isNew ? 'tile-new' : ''} ${isMerged ? 'tile-merged' : ''}`;
+            tile.id = `tile-${r}-${c}`;
+            
+            updateTileAppearance(tile, value);
+            positionTile(tile, r, c);
+            
+            grid.appendChild(tile);
+            tileElements.push({r, c, el: tile});
+        }
+
+        function positionTile(tile, r, c) {
+            const spacing = 10;
+            // Вычисляем размер ячейки ( (100% - 3*gap) / 4 )
+            tile.style.width = `calc(25% - ${spacing * 3 / 4}px)`;
+            tile.style.height = `calc(25% - ${spacing * 3 / 4}px)`;
+            tile.style.top = `calc(${r * 25}% + ${r === 0 ? 0 : spacing * r - (spacing*r)/4}px)`;
+            tile.style.left = `calc(${c * 25}% + ${c === 0 ? 0 : spacing * c - (spacing*c)/4}px)`;
+        }
+
+        function updateTileAppearance(tile, value) {
+            let skinDef = skins.find(s => s.id === activeSkinId);
+            
+            let label = skinDef.getLabel(value);
+            tile.innerText = label;
+            
+            tile.style.background = skinDef.getBg(value);
+            tile.style.color = skinDef.color || '#fff';
+            tile.style.fontFamily = skinDef.font || 'Arial, sans-serif';
+            
+            // Динамический размер текста
+            if (String(label).length > 4) tile.style.fontSize = '16px';
+            else if (String(label).length > 3) tile.style.fontSize = '22px';
+            else tile.style.fontSize = '35px';
+        }
+
+        function renderBoard() {
+            const grid = document.getElementById('grid');
+            Array.from(grid.children).forEach(child => { if (child.className.includes('tile')) child.remove(); });
+            tileElements = [];
+            
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    if (board[r][c] !== 0) {
+                        createTileElement(r, c, board[r][c]);
+                    }
+                }
+            }
+        }
+
+        function showBonusText(text, r, c) {
+            const grid = document.getElementById('grid');
+            const bonus = document.createElement('div');
+            bonus.className = 'bonus-text';
+            bonus.innerText = text;
+            
+            const spacing = 10;
+            bonus.style.top = `calc(${r * 25}% + ${r * spacing}px)`;
+            bonus.style.left = `calc(${c * 25}% + ${c * spacing}px)`;
+            
+            grid.appendChild(bonus);
+            setTimeout(() => bonus.remove(), 1000);
+        }
+
+        // --- ЛОГИКА СДВИГА И СЛИЯНИЯ ---
+        function move(direction) {
+            if (gameOver) return;
+            let moved = false;
+            let newBoard = JSON.parse(JSON.stringify(board));
+
+            const shiftAndMerge = (row) => {
+                let filteredRow = row.filter(val => val !== 0);
+                for (let i = 0; i < filteredRow.length - 1; i++) {
+                    if (filteredRow[i] !== 0 && filteredRow[i] === filteredRow[i + 1]) {
+                        filteredRow[i] *= 2;
+                        filteredRow[i + 1] = 0;
+                        score += filteredRow[i];
+                        
+                        // Экономика: 1 монета за каждые 50 очков
+                        let coinsToAdd = Math.floor(filteredRow[i] / 50);
+                        if (coinsToAdd > 0) {
+                            balance += coinsToAdd;
+                            earnedCoinsGame += coinsToAdd;
+                        }
+
+                        // Спец бонусы за сборку больших цифр
+                        if (filteredRow[i] === 512) { balance += 50; earnedCoinsGame += 50; showBonusText('+50💰', 2, 2); }
+                        if (filteredRow[i] === 1024) { balance += 100; earnedCoinsGame += 100; showBonusText('+100💰', 2, 2); }
+                        if (filteredRow[i] === 2048) { balance += 500; earnedCoinsGame += 500; showBonusText('ДЖЕКПОТ!', 2, 2); }
+                    }
+                }
+                let newRow = filteredRow.filter(val => val !== 0);
+                while (newRow.length < size) newRow.push(0);
+                return newRow;
+            };
+
+            if (direction === 'Left' || direction === 'Right') {
+                for (let r = 0; r < size; r++) {
+                    let row = newBoard[r];
+                    if (direction === 'Right') row.reverse();
+                    let newRow = shiftAndMerge(row);
+                    if (direction === 'Right') newRow.reverse();
+                    if (newBoard[r].join(',') !== newRow.join(',')) moved = true;
+                    newBoard[r] = newRow;
+                }
+            } else if (direction === 'Up' || direction === 'Down') {
+                for (let c = 0; c < size; c++) {
+                    let col = [newBoard[0][c], newBoard[1][c], newBoard[2][c], newBoard[3][c]];
+                    if (direction === 'Down') col.reverse();
+                    let newCol = shiftAndMerge(col);
+                    if (direction === 'Down') newCol.reverse();
+                    
+                    for (let r = 0; r < size; r++) {
+                        if (newBoard[r][c] !== newCol[r]) moved = true;
+                        newBoard[r][c] = newCol[r];
+                    }
+                }
+            }
+
+            if (moved) {
+                board = newBoard;
+                document.getElementById('scoreVal').innerText = score;
+                updateUI();
+                renderBoard(); // Рендерим новое состояние
+                
+                setTimeout(() => {
+                    addRandomTile();
+                    if (checkGameOver()) triggerGameOver();
+                }, 50);
+            }
+        }
+
+        function checkGameOver() {
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    if (board[r][c] === 0) return false;
+                    if (c < size - 1 && board[r][c] === board[r][c + 1]) return false;
+                    if (r < size - 1 && board[r][c] === board[r + 1][c]) return false;
+                }
+            }
+            return true;
+        }
+
+        // --- УПРАВЛЕНИЕ (СВАЙПЫ И КЛАВИАТУРА) ---
+        let touchStartX = 0; let touchStartY = 0;
+        window.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, {passive: false});
+
+        window.addEventListener('touchend', e => {
+            if (gameOver) return;
+            let touchEndX = e.changedTouches[0].screenX;
+            let touchEndY = e.changedTouches[0].screenY;
+            let diffX = touchEndX - touchStartX;
+            let diffY = touchEndY - touchStartY;
+            
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 30) {
+                if (diffX > 0) move('Right'); else move('Left');
+            } else if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 30) {
+                if (diffY > 0) move('Down'); else move('Up');
+            }
+        });
+
+        window.addEventListener('keydown', e => {
+            if (gameOver) return;
+            if (['ArrowUp', 'w', 'W'].includes(e.key)) move('Up');
+            if (['ArrowDown', 's', 'S'].includes(e.key)) move('Down');
+            if (['ArrowLeft', 'a', 'A'].includes(e.key)) move('Left');
+            if (['ArrowRight', 'd', 'D'].includes(e.key)) move('Right');
+        });
+
+        function triggerGameOver() {
+            gameOver = true;
+            document.getElementById('finalScore').innerText = score;
+            document.getElementById('earnedCoins').innerText = earnedCoinsGame;
+            document.getElementById('gameOverScreen').style.display = 'flex';
+        }
+
+        function restartGame() { initGame(); }
+        function updateUI() { document.getElementById('balanceVal').innerText = `${balance}`; }
+
+        // --- МАГАЗИН СКИНОВ ---
+        function openShop() { document.getElementById('shopModal').style.display = 'flex'; renderShop(); }
+        function closeShop() { document.getElementById('shopModal').style.display = 'none'; }
+
+        function renderShop() {
+            const grid = document.getElementById('skinsGrid');
+            grid.innerHTML = '';
+            
+            skins.forEach(skin => {
+                const isOwned = inventory.includes(skin.id);
+                const isActive = activeSkinId === skin.id;
+                const card = document.createElement('div');
+                card.className = `skin-card ${isActive ? 'active' : ''}`;
+                
+                let sampleVal = 2048; // Показываем лучшую плитку на превью
+                let label = skin.getLabel(sampleVal);
+                let bg = skin.getBg(sampleVal);
+                let color = skin.color || '#fff';
+                let fSize = String(label).length > 4 ? '12px' : '18px';
+
+                let btn = isActive ? `<button style="width:100%; padding:10px; background:#555; color:#fff; border:none; border-radius:10px; font-weight:bold;" disabled>НАДЕТО</button>` :
+                          isOwned ? `<button style="width:100%; padding:10px; background:#00ffcc; color:#000; font-weight:bold; border:none; border-radius:10px; cursor:pointer;" onclick="applySkin('${skin.id}')">НАДЕТЬ</button>` :
+                          `<button style="width:100%; padding:10px; background:#ffaa00; color:#000; font-weight:bold; border:none; border-radius:10px; cursor:pointer;" onclick="buySkin('${skin.id}')">1000 💰</button>`;
+
+                card.innerHTML = `<div style="width:60px; height:60px; background:${bg}; color:${color}; border-radius:10px; display:flex; justify-content:center; align-items:center; font-weight:bold; font-size:${fSize}; margin-bottom:10px; font-family:${skin.font || 'Arial'};">${label}</div>
+                                  <div style="font-size:16px; font-weight:bold; color:#fff; margin-bottom:10px;">${skin.name}</div>${btn}`;
+                grid.appendChild(card);
+            });
+        }
+
+        function buySkin(id) { if(balance >= 1000) { balance -= 1000; inventory.push(id); updateUI(); renderShop(); } else alert("Мало монет!"); }
+        function applySkin(id) { activeSkinId = id; renderShop(); renderBoard(); }
+
+        function saveAndExit() {
+            if(tg && tg.sendData) { tg.sendData(JSON.stringify({ game: '2048', score: score, coins: balance, activeSkin: activeSkinId, inventory: inventory.join(',') })); tg.close(); } 
+            else alert(`Выход. Баланс: ${balance}`);
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
