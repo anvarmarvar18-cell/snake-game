@@ -3,321 +3,351 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Arcade Empire: VIP Wheel</title>
+    <title>Wheel of Fortune</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; touch-action: none; font-family: 'Arial', sans-serif; }
-        body { background-color: #0b0c10; color: #c5c6c7; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        /* БАЗА И ЗАЩИТА ТЕЛЕГРАМА */
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background: radial-gradient(circle at center, #2a0845, #050010); overflow: hidden; touch-action: none; color: white; height: 100vh; display: flex; flex-direction: column; align-items: center; }
         
-        /* Элитный фон */
-        .bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at 50% 50%, #1f2833 0%, #0b0c10 100%); z-index: -1; }
-
-        /* Верхняя панель */
-        .header { width: 100%; padding: 20px; display: flex; justify-content: space-between; align-items: center; z-index: 10; border-bottom: 2px solid rgba(255, 215, 0, 0.2); background: rgba(0,0,0,0.5); }
-        .title-box { display: flex; flex-direction: column; }
-        .title { font-size: 24px; font-weight: 900; color: #ffd700; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 10px rgba(255,215,0,0.5); }
-        .subtitle { font-size: 12px; color: #00ffcc; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; margin-top: 2px; }
+        /* ИНТЕРФЕЙС ИГРЫ */
+        .header { width: 100%; padding: 20px; display: flex; justify-content: space-between; align-items: flex-start; z-index: 100; }
+        .score-box { background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 12px; border: 1px solid #ffd700; text-align: center; box-shadow: 0 0 15px rgba(255,215,0,0.2); }
+        .score-title { color: #ffd700; font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        .score-val { color: #fff; font-size: 24px; font-weight: 900; }
+        .session-profit { font-size: 14px; color: #0f0; margin-top: 5px; }
+        .session-loss { font-size: 14px; color: #ff0055; margin-top: 5px; }
         
-        .balance-box { background: rgba(255,215,0,0.1); border: 1px solid #ffd700; padding: 8px 15px; border-radius: 8px; text-align: right; box-shadow: 0 0 10px rgba(255,215,0,0.2); }
-        .balance-val { font-size: 22px; color: #fff; font-weight: bold; }
+        .smart-menu-btn { background: rgba(0, 0, 0, 0.7); color: #ffd700; border: 2px solid #ffd700; border-radius: 8px; padding: 12px 18px; font-weight: bold; cursor: pointer; box-shadow: 0 0 10px rgba(255,215,0,0.5); }
 
-        /* Зона Колеса */
-        .wheel-container { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; width: 100%; padding: 20px; }
-        canvas { display: block; max-width: 100%; filter: drop-shadow(0 0 30px rgba(255,215,0,0.15)); }
+        /* КОЛЕСО И УКАЗАТЕЛЬ */
+        .wheel-container { position: relative; margin-top: 30px; width: 90vw; max-width: 380px; height: 90vw; max-height: 380px; display: flex; justify-content: center; align-items: center; }
         
-        /* Указатель (Стрелка) */
-        .pointer { position: absolute; top: calc(50% - 170px); left: 50%; transform: translateX(-50%); width: 40px; height: 50px; background: #ff0055; clip-path: polygon(50% 100%, 0 0, 100% 0); z-index: 10; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.8)); border-top: 5px solid #fff; }
-
-        /* Нижняя панель */
-        .controls { width: 100%; padding: 20px; display: flex; flex-direction: column; gap: 15px; background: rgba(0,0,0,0.8); z-index: 10; border-top: 1px solid #333; }
+        /* Указатель (Золотой треугольник) */
+        .pointer { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-top: 40px solid #ffd700; z-index: 50; filter: drop-shadow(0 0 10px #ff0); }
         
-        .btn-spin { background: linear-gradient(135deg, #ffd700, #daa520); border: none; padding: 20px; border-radius: 15px; font-size: 22px; font-weight: 900; color: #000; cursor: pointer; text-transform: uppercase; box-shadow: 0 10px 20px rgba(255, 215, 0, 0.3); transition: transform 0.1s; letter-spacing: 1px; }
-        .btn-spin:active { transform: scale(0.95); }
-        .btn-spin:disabled { background: #333; color: #666; box-shadow: none; cursor: not-allowed; }
+        /* Само колесо */
+        canvas { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 0 50px rgba(255, 215, 0, 0.3), inset 0 0 20px rgba(0,0,0,0.8); border: 8px solid #331a00; border-color: #ffd700 #aa8800 #ffd700 #aa8800; transition: transform 5s cubic-bezier(0.1, 0.9, 0.2, 1); }
 
-        .btn-exit { padding: 15px; border: 1px solid #45a29e; border-radius: 12px; font-size: 16px; font-weight: bold; color: #45a29e; background: transparent; cursor: pointer; text-transform: uppercase; }
+        /* КНОПКА КРУТИТЬ */
+        .spin-btn-container { margin-top: 40px; z-index: 100; }
+        .spin-btn { background: linear-gradient(45deg, #ff0055, #ffaa00); border: 3px solid #fff; border-radius: 20px; padding: 15px 40px; font-size: 28px; font-weight: 900; color: #fff; text-shadow: 0 2px 5px rgba(0,0,0,0.5); cursor: pointer; box-shadow: 0 0 20px #ff0055; transition: transform 0.1s, filter 0.3s; text-transform: uppercase; }
+        .spin-btn:active { transform: scale(0.95); }
+        .spin-btn:disabled { filter: grayscale(1); cursor: not-allowed; transform: scale(1); }
+        .cost-text { text-align: center; color: #ffd700; font-size: 16px; font-weight: bold; margin-top: 10px; }
 
-        /* Оверлей Выигрыша */
-        .overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 30; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; }
-        .win-title { font-size: 50px; font-weight: 900; color: #ffd700; text-shadow: 0 0 30px #ffd700; margin-bottom: 20px; text-transform: uppercase; }
-        .win-subtitle { font-size: 20px; color: #00ffcc; margin-bottom: 40px; }
-        .win-btn { background: #fff; color: #000; font-size: 20px; font-weight: bold; padding: 15px 40px; border-radius: 30px; border: none; cursor: pointer; }
+        /* МОДАЛЬНЫЕ ОКНА */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 2000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .hidden { display: none !important; }
+        .modal-content { background: linear-gradient(135deg, #111, #2a0845); border: 2px solid #ffd700; border-radius: 15px; width: 85%; padding: 25px; display: flex; flex-direction: column; gap: 15px; text-align: center; box-shadow: 0 0 30px rgba(255, 215, 0, 0.3); }
+        
+        .btn { padding: 15px; font-size: 16px; font-weight: bold; border-radius: 10px; color: white; border: none; text-transform: uppercase; cursor: pointer; }
+        .btn-green { background: linear-gradient(45deg, #00b09b, #96c93d); }
+        .btn-red { background: linear-gradient(45deg, #ff416c, #ff4b2b); }
+
+        /* ЧАСТИЦЫ КОНФЕТТИ */
+        #confetti-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 1500; }
+        
+        .win-text { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 50px; font-weight: 900; color: #fff; text-shadow: 0 0 30px #ffd700; opacity: 0; pointer-events: none; z-index: 1600; text-align: center; width: 100%; }
+        @keyframes popIn { 0% { opacity: 0; transform: translate(-50%, -40%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -60%) scale(1); } }
     </style>
 </head>
 <body>
 
-    <div class="bg"></div>
-
     <div class="header">
-        <div class="title-box">
-            <span class="title">FORTUNE</span>
-            <span class="subtitle">Секретный скин: +20%💰</span>
+        <div class="score-box">
+            <div class="score-title">Твой Баланс</div>
+            <div class="score-val" id="displayBalance">0</div>
+            <div id="sessionProfit" class="session-profit">Прибыль: 0 💰</div>
         </div>
-        <div class="balance-box">
-            <div class="balance-val" id="balanceVal">1500 💰</div>
-        </div>
+        <button id="mainMenuBtn" class="smart-menu-btn">⚙️ МЕНЮ</button>
     </div>
 
+    <!-- КОЛЕСО -->
     <div class="wheel-container">
         <div class="pointer"></div>
-        <canvas id="wheelCanvas" width="340" height="340"></canvas>
+        <canvas id="wheelCanvas" width="400" height="400"></canvas>
     </div>
 
-    <div class="controls">
-        <button class="btn-spin" id="spinBtn" onclick="spinWheel()">Крутить (500 💰)</button>
-        <button class="btn-exit" onclick="saveAndExit()">💾 Сохранить и выйти</button>
+    <!-- КНОПКА -->
+    <div class="spin-btn-container">
+        <button class="spin-btn" id="spinBtn">КРУТИТЬ</button>
+        <div class="cost-text">Цена: 500 💰</div>
     </div>
 
-    <!-- Экран Выигрыша -->
-    <div class="overlay" id="winModal">
-        <div class="win-title" id="winTitle">10.000!</div>
-        <div class="win-subtitle" id="winSubtitle">ДЖЕКПОТ ТВОЙ!</div>
-        <button class="win-btn" onclick="closeWinModal()">ЗАБРАТЬ</button>
+    <canvas id="confetti-canvas"></canvas>
+    <div id="winMsg" class="win-text"></div>
+
+    <!-- Главное Меню -->
+    <div id="smartModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 style="color: #ffd700; margin-bottom: 10px;">ПАУЗА</h2>
+            <button class="btn btn-red" onclick="saveAndExit()">💾 ЗАБРАТЬ И ВЫЙТИ</button>
+            <button class="btn btn-green" onclick="closeMenu()">▶ ПРОДОЛЖИТЬ</button>
+        </div>
     </div>
 
-    <script>
-        let tg; try { tg = window.Telegram.WebApp; tg.expand(); } catch(e) {}
+<script>
+    // ==========================================
+    // 1. БЛОКИРОВКИ ТЕЛЕГРАМА И ЗАЩИТА
+    // ==========================================
+    const tg = window.Telegram.WebApp;
+    tg.ready(); tg.expand();
+    if (tg.isVersionAtLeast('7.7')) tg.disableVerticalSwipes();
+    if (tg.isVersionAtLeast('6.1')) tg.enableClosingConfirmation();
 
-        const canvas = document.getElementById('wheelCanvas');
-        const ctx = canvas.getContext('2d');
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
-        const radius = 160;
+    document.body.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 
-        let balance = 1500; // Для теста. В Пайтоне загрузим реальный.
-        let inventory = [];
-        let isSpinning = false;
+    // ==========================================
+    // 2. ДАННЫЕ И ЭКОНОМИКА
+    // ==========================================
+    // Чтобы колесо работало, дадим игроку тестовые 5000 монет локально, если он впервые. 
+    // На сервере Питона этот баланс сведется честно!
+    let localBalance = parseInt(localStorage.getItem('wheel_fake_balance')) || 5000; 
+    let sessionNetProfit = 0; // Главная цифра для Питона (может быть минусовой!)
+    let isSpinning = false;
+    let startTime = Date.now();
+    let blackHoleUnlocked = localStorage.getItem('black_hole_unlocked') === 'true';
+    
+    // Структура секторов (12 штук). Это визуал.
+    const SLICES = [
+        { label: '0', val: 0, color: '#333', txt: '#fff' },
+        { label: '100', val: 100, color: '#cd7f32', txt: '#fff' },
+        { label: '250', val: 250, color: '#b87333', txt: '#fff' },
+        { label: '500', val: 500, color: '#c0c0c0', txt: '#000' }, // Окуп
+        { label: '1000', val: 1000, color: '#ffd700', txt: '#000' },
+        { label: '3000', val: 3000, color: '#ff8c00', txt: '#000' },
+        { label: '0', val: 0, color: '#333', txt: '#fff' },
+        { label: '100', val: 100, color: '#cd7f32', txt: '#fff' },
+        { label: '250', val: 250, color: '#b87333', txt: '#fff' },
+        { label: '500', val: 500, color: '#c0c0c0', txt: '#000' },
+        { label: '10k 💎', val: 10000, color: '#00ffff', txt: '#000' }, // Джекпот
+        { label: '🌀 SKIN', val: 'skin', color: '#800080', txt: '#fff' } // Черная дыра
+    ];
 
-        // --- ДИЗАЙН 12 СЕКТОРОВ ---
-        // 0: Пусто, 1: 100, 2: 250, 3: 500, 4: 1000, 5: 3000, 6: 10000(JACKPOT), 7: СКИН, 8: Пусто, 9: 100, 10: 250, 11: 500
-        const sectors = [
-            { label: '0', color: '#111', text: '#555', value: 0 },
-            { label: '100', color: '#1f2833', text: '#c5c6c7', value: 100 },
-            { label: '250', color: '#2b3a4a', text: '#45a29e', value: 250 },
-            { label: '500', color: '#1f2833', text: '#00ffcc', value: 500 },
-            { label: '1000', color: '#002244', text: '#ffd700', value: 1000 },
-            { label: '3000', color: '#330000', text: '#ff5500', value: 3000 },
-            { label: '10K 💎', color: '#ff0055', text: '#fff', value: 10000 },
-            { label: 'СКИН🌌', color: '#aa00ff', text: '#fff', value: 'skin' },
-            { label: '0', color: '#111', text: '#555', value: 0 },
-            { label: '100', color: '#1f2833', text: '#c5c6c7', value: 100 },
-            { label: '250', color: '#2b3a4a', text: '#45a29e', value: 250 },
-            { label: '500', color: '#1f2833', text: '#00ffcc', value: 500 }
-        ];
+    const canvas = document.getElementById('wheelCanvas');
+    const ctx = canvas.getContext('2d');
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const radius = canvas.width / 2;
+    
+    let currentRotation = 0; // В градусах
 
-        const numSectors = sectors.length;
-        const arc = (2 * Math.PI) / numSectors;
+    // ==========================================
+    // 3. ОТРИСОВКА КОЛЕСА (CASINO STYLE)
+    // ==========================================
+    function drawWheel() {
+        let sliceAngle = (2 * Math.PI) / SLICES.length;
+        for (let i = 0; i < SLICES.length; i++) {
+            let slice = SLICES[i];
+            let startAngle = i * sliceAngle - Math.PI / 2; // -90 градусов, чтобы сектор 0 был сверху
+            let endAngle = startAngle + sliceAngle;
 
-        let currentAngle = 0; // Текущий угол вращения колеса (в радианах)
-
-        // --- ОТРИСОВКА КОЛЕСА ---
-        function drawWheel() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            ctx.save();
-            ctx.translate(cx, cy);
-            ctx.rotate(currentAngle); // Крутим весь холст
-
-            for (let i = 0; i < numSectors; i++) {
-                let angle = i * arc;
-                
-                // Рисуем кусок пирога
-                ctx.beginPath();
-                ctx.moveTo(0, 0);
-                ctx.arc(0, 0, radius, angle, angle + arc);
-                ctx.fillStyle = sectors[i].color;
-                ctx.fill();
-                
-                // Золотая окантовка между секторами
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = '#daa520';
-                ctx.stroke();
-
-                // Текст
-                ctx.save();
-                // Поворачиваем так, чтобы текст смотрел из центра наружу
-                ctx.rotate(angle + arc / 2);
-                ctx.translate(radius * 0.55, 0); // Отступ от центра
-                ctx.fillStyle = sectors[i].text;
-                ctx.font = 'bold 20px Arial';
-                
-                // Спец шрифты для крупных призов
-                if(sectors[i].value === 10000) ctx.font = '900 22px Arial';
-                if(sectors[i].value === 'skin') ctx.font = '900 18px Arial';
-
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText(sectors[i].label, 0, 0);
-                ctx.restore();
-            }
-
-            // Центральный штифт (Втулка)
+            // Сектор
             ctx.beginPath();
-            ctx.arc(0, 0, 25, 0, 2 * Math.PI);
-            let hubGrad = ctx.createRadialGradient(0,0,5, 0,0,25);
-            hubGrad.addColorStop(0, '#ffd700');
-            hubGrad.addColorStop(1, '#8b6508');
-            ctx.fillStyle = hubGrad;
+            ctx.moveTo(cx, cy);
+            ctx.arc(cx, cy, radius, startAngle, endAngle);
+            ctx.fillStyle = slice.color;
             ctx.fill();
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = '#111';
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = '#ffd700'; // Золотые рамки
             ctx.stroke();
 
+            // Текст
+            ctx.save();
+            ctx.translate(cx, cy);
+            // Поворачиваем текст в центр сектора
+            ctx.rotate(startAngle + sliceAngle / 2);
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = slice.txt;
+            ctx.font = 'bold 24px Arial';
+            ctx.shadowBlur = 4;
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.fillText(slice.label, radius - 20, 0);
             ctx.restore();
         }
+        
+        // Центральная заглушка (Ось)
+        ctx.beginPath(); ctx.arc(cx, cy, 30, 0, 2*Math.PI);
+        ctx.fillStyle = '#111'; ctx.fill();
+        ctx.lineWidth = 3; ctx.strokeStyle = '#ffd700'; ctx.stroke();
+        ctx.fillStyle = '#ffd700'; ctx.beginPath(); ctx.arc(cx, cy, 10, 0, 2*Math.PI); ctx.fill();
+    }
 
-        // --- МАТЕМАТИКА ВЕРОЯТНОСТЕЙ ---
-        function getWinningSector() {
-            let r = Math.random() * 100;
-            // 0 - 15% (Сектора 0 или 8)
-            if (r < 15) return Math.random() > 0.5 ? 0 : 8;
-            // 100 - 20% (Сектора 1 или 9)
-            if (r < 35) return Math.random() > 0.5 ? 1 : 9;
-            // 250 - 20% (Сектора 2 или 10)
-            if (r < 55) return Math.random() > 0.5 ? 2 : 10;
-            // 500 - 20% (Сектора 3 или 11)
-            if (r < 75) return Math.random() > 0.5 ? 3 : 11;
-            // 1000 - 10% (Сектор 4)
-            if (r < 85) return 4;
-            // 3000 - 5% (Сектор 5)
-            if (r < 90) return 5;
-            // 10000 - 2% (Сектор 6)
-            if (r < 92) return 6;
-            // Скин - 8% (Сектор 7)
-            return 7;
+    function updateUI() {
+        document.getElementById('displayBalance').innerText = localBalance;
+        let pEl = document.getElementById('sessionProfit');
+        if (sessionNetProfit >= 0) {
+            pEl.innerText = `Прибыль: +${sessionNetProfit} 💰`;
+            pEl.className = 'session-profit';
+        } else {
+            pEl.innerText = `Убыток: ${sessionNetProfit} 💰`;
+            pEl.className = 'session-loss';
+        }
+    }
+
+    // ==========================================
+    // 4. ИДЕАЛЬНАЯ МАТЕМАТИКА (ЧЕСТНЫЙ РАНДОМ)
+    // ==========================================
+    document.getElementById('spinBtn').addEventListener('click', () => {
+        if (isSpinning) return;
+        if (localBalance < 500) {
+            tg.showAlert('Мало монет! Иди играй в другие игры.');
+            return;
         }
 
-        // --- АНИМАЦИЯ ВРАЩЕНИЯ ---
-        let spinStart = 0;
-        let spinTime = 0;
-        let spinDuration = 0;
-        let startAngle = 0;
-        let targetAngle = 0;
-
-        function spinWheel() {
-            if (isSpinning || balance < 500) {
-                if (balance < 500) alert("Не хватает монет! Иди в Кликер!");
-                return;
-            }
-            
-            balance -= 500;
-            updateUI();
-            isSpinning = true;
-            document.getElementById('spinBtn').disabled = true;
-
-            let winningSector = getWinningSector();
-            
-            // Математика остановки: 
-            // Указатель находится СВЕРХУ (это 270 градусов, или -PI/2 в радианах).
-            // Чтобы нужный сектор оказался под указателем:
-            // Угол сектора = winningSector * arc + (arc/2).
-            // Нам нужно, чтобы (currentAngle + Угол сектора) === 270 градусов (1.5 * PI).
-            
-            let sectorCenterAngle = winningSector * arc + (arc / 2);
-            // Добавляем микро-рандом внутри сектора, чтобы не останавливалось ровно по центру (выглядит реалистичнее)
-            let randomOffset = (Math.random() * 0.6 - 0.3) * arc; 
-            
-            let rotationToTop = (1.5 * Math.PI) - sectorCenterAngle + randomOffset;
-            
-            // Добавляем 5-7 полных оборотов
-            let spins = 5 + Math.floor(Math.random() * 3);
-            
-            startAngle = currentAngle;
-            targetAngle = currentAngle + (spins * 2 * Math.PI) + ((rotationToTop - currentAngle) % (2 * Math.PI));
-            // Обеспечиваем, чтобы цель всегда была впереди
-            if (targetAngle < startAngle) targetAngle += 2 * Math.PI;
-
-            spinStart = performance.now();
-            spinDuration = 5000 + Math.random() * 1000; // 5-6 секунд
-            
-            requestAnimationFrame(animateSpin);
-        }
-
-        // Функция плавного торможения (Easing Out Quart)
-        function easeOutQuart(t) { return 1 - (--t) * t * t * t; }
-
-        function animateSpin(time) {
-            let elapsed = time - spinStart;
-            if (elapsed > spinDuration) {
-                currentAngle = targetAngle % (2 * Math.PI);
-                drawWheel();
-                isSpinning = false;
-                document.getElementById('spinBtn').disabled = false;
-                handleWin();
-                return;
-            }
-
-            let progress = elapsed / spinDuration;
-            let ease = easeOutQuart(progress);
-            
-            currentAngle = startAngle + (targetAngle - startAngle) * ease;
-            drawWheel();
-            
-            requestAnimationFrame(animateSpin);
-        }
-
-        // --- ЛОГИКА ВЫИГРЫША ---
-        function handleWin() {
-            // Вычисляем, что находится под стрелкой (-PI/2)
-            // Нормализуем текущий угол
-            let normAngle = currentAngle % (2 * Math.PI);
-            if (normAngle < 0) normAngle += 2 * Math.PI;
-            
-            // Угол указателя (270 градусов)
-            let pointerAngle = 1.5 * Math.PI;
-            
-            // Угол на колесе под указателем
-            let hitAngle = (pointerAngle - normAngle + 2 * Math.PI) % (2 * Math.PI);
-            
-            // Определяем индекс сектора
-            let sectorIndex = Math.floor(hitAngle / arc);
-            let prize = sectors[sectorIndex];
-
-            if (prize.value === 0) {
-                showModal("УВЫ...", "ПУСТОЙ СЕКТОР", "#777");
-            } else if (prize.value === 'skin') {
-                if (!inventory.includes('blackhole')) inventory.push('blackhole');
-                showModal("СЕКРЕТНЫЙ СКИН!", "ЧЕРНАЯ ДЫРА (+20% МОНЕТ ВО ВСЕХ ИГРАХ)", "#aa00ff");
-            } else {
-                balance += prize.value;
-                updateUI();
-                let color = prize.value >= 1000 ? "#ffd700" : "#00ffcc";
-                showModal(`+${prize.value} 💰`, prize.value >= 10000 ? "ДЖЕКПОТ!" : "ВЫИГРЫШ!", color);
-            }
-        }
-
-        function showModal(title, subtitle, color) {
-            document.getElementById('winTitle').innerText = title;
-            document.getElementById('winTitle').style.color = color;
-            document.getElementById('winTitle').style.textShadow = `0 0 20px ${color}`;
-            document.getElementById('winSubtitle').innerText = subtitle;
-            document.getElementById('winModal').style.display = 'flex';
-        }
-
-        function closeWinModal() {
-            document.getElementById('winModal').style.display = 'none';
-        }
-
-        function updateUI() {
-            document.getElementById('balanceVal').innerText = `${balance} 💰`;
-        }
-
-        function saveAndExit() {
-            if(tg && tg.sendData) {
-                tg.sendData(JSON.stringify({ 
-                    game: 'fortune', 
-                    coins: balance, 
-                    inventory: inventory.join(',') 
-                }));
-                tg.close();
-            } else {
-                alert(`Выход. Баланс: ${balance}`);
-            }
-        }
-
-        // Старт
-        drawWheel();
+        // Списываем 500 монет
+        isSpinning = true;
+        localBalance -= 500;
+        sessionNetProfit -= 500;
         updateUI();
-    </script>
+        document.getElementById('spinBtn').disabled = true;
+
+        // --- ГЕНЕРАЦИЯ ПРОЦЕНТОВ ---
+        let rand = Math.random() * 100;
+        let resultVal;
+        
+        if (rand < 15) resultVal = 0; // 15%
+        else if (rand < 35) resultVal = 100; // 20%
+        else if (rand < 55) resultVal = 250; // 20% (Суммарно 40% на 100 и 250)
+        else if (rand < 75) resultVal = 500; // 20% (Возврат)
+        else if (rand < 82.5) resultVal = 1000; // 7.5%
+        else if (rand < 90) resultVal = 3000; // 7.5% (Суммарно 15%)
+        else if (rand < 98) resultVal = 'skin'; // 8% (Черная Дыра)
+        else resultVal = 10000; // 2% (Джекпот)
+
+        // Ищем индекс сектора на колесе
+        let possibleIndices = [];
+        for (let i = 0; i < SLICES.length; i++) {
+            if (SLICES[i].val === resultVal) possibleIndices.push(i);
+        }
+        // Если секторов несколько (например, два нуля), выбираем случайный
+        let sliceIndex = possibleIndices[Math.floor(Math.random() * possibleIndices.length)];
+
+        // --- АНИМАЦИЯ КОЛЕСА ---
+        let sliceAngle = 360 / SLICES.length;
+        // Угол, чтобы нужный сектор встал ровно под стрелку (стрелка на 0 градусов / сверху)
+        let targetAngle = 360 - (sliceIndex * sliceAngle + sliceAngle / 2);
+        
+        // Делаем 5-7 полных оборотов для эффекта + целевой угол
+        let spins = 5 + Math.floor(Math.random() * 3); 
+        let totalRotation = currentRotation + (360 * spins) + (targetAngle - (currentRotation % 360));
+        
+        // Чтобы стрелка не указывала ровно в линию, добавим легкий сдвиг внутри сектора
+        totalRotation += (Math.random() * (sliceAngle - 4) - (sliceAngle / 2 - 2));
+
+        canvas.style.transform = `rotate(${totalRotation}deg)`;
+        currentRotation = totalRotation;
+
+        // Ждем завершения анимации (5 секунд)
+        setTimeout(() => processWin(resultVal), 5000);
+    });
+
+    function processWin(val) {
+        isSpinning = false;
+        document.getElementById('spinBtn').disabled = false;
+
+        let msg = '';
+        let color = '#fff';
+
+        if (val === 'skin') {
+            blackHoleUnlocked = true;
+            localStorage.setItem('black_hole_unlocked', 'true');
+            msg = 'СЕКРЕТНЫЙ СКИН:\nЧЕРНАЯ ДЫРА!';
+            color = '#800080';
+            fireConfetti();
+        } 
+        else if (val === 10000) {
+            localBalance += 10000; sessionNetProfit += 10000;
+            msg = 'ДЖЕКПОТ!!!\n+10 000 💰';
+            color = '#00ffff';
+            fireConfetti();
+        } 
+        else if (val > 0) {
+            localBalance += val; sessionNetProfit += val;
+            msg = `+${val} 💰`;
+            color = val >= 1000 ? '#ffd700' : '#0f0';
+            if (val >= 1000) fireConfetti();
+        } 
+        else {
+            msg = 'ПУСТО!';
+            color = '#ff0055';
+        }
+
+        updateUI();
+        localStorage.setItem('wheel_fake_balance', localBalance);
+
+        // Всплывающее сообщение
+        let winEl = document.getElementById('winMsg');
+        winEl.innerText = msg;
+        winEl.style.color = color;
+        winEl.style.textShadow = `0 0 20px ${color}`;
+        winEl.style.animation = 'none';
+        setTimeout(() => winEl.style.animation = 'popIn 2.5s forwards', 50);
+    }
+
+    // ==========================================
+    // 5. ЭФФЕКТЫ КОНФЕТТИ (ДЛЯ ДЖЕКПОТА)
+    // ==========================================
+    const confCanvas = document.getElementById('confetti-canvas');
+    const cCtx = confCanvas.getContext('2d');
+    confCanvas.width = window.innerWidth; confCanvas.height = window.innerHeight;
+    let particles = [];
+
+    function fireConfetti() {
+        for(let i=0; i<100; i++) {
+            particles.push({
+                x: window.innerWidth / 2, y: window.innerHeight / 2,
+                vx: (Math.random()-0.5)*20, vy: (Math.random()-0.5)*20 - 5,
+                c: ['#ffd700', '#00ffff', '#ff0055', '#0f0'][Math.floor(Math.random()*4)],
+                s: Math.random()*8 + 4, life: 1
+            });
+        }
+    }
+
+    function loopConfetti() {
+        requestAnimationFrame(loopConfetti);
+        cCtx.clearRect(0, 0, confCanvas.width, confCanvas.height);
+        for(let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.vy += 0.3; p.x += p.vx; p.y += p.vy; p.life -= 0.01;
+            cCtx.globalAlpha = Math.max(0, p.life);
+            cCtx.fillStyle = p.c;
+            cCtx.fillRect(p.x, p.y, p.s, p.s);
+            if(p.life <= 0 || p.y > confCanvas.height) particles.splice(i, 1);
+        }
+    }
+
+    // ==========================================
+    // 6. МЕНЮ И СВЯЗЬ С ПИТОНОМ (ФИНАЛ)
+    // ==========================================
+    document.getElementById('mainMenuBtn').onclick = () => document.getElementById('smartModal').classList.remove('hidden');
+    function closeMenu() { document.getElementById('smartModal').classList.add('hidden'); }
+    
+    window.saveAndExit = function() {
+        // САМОЕ ВАЖНОЕ: Мы отправляем ЧИСТУЮ ПРИБЫЛЬ (Она может быть минусовой!)
+        // Python код: balance = balance + earned_coins. Математика сойдется идеально.
+        
+        // Если игрок выбил скин, мы передаем этот флаг, чтобы Питон дал ему +20% во всех играх!
+        let activeSkinCode = blackHoleUnlocked ? 'black_hole' : 'default';
+
+        let data = {
+            game: "wheel",
+            coins: sessionNetProfit, 
+            score: 0, // У рулетки нет рекордов
+            time_spent: Math.floor((Date.now() - startTime) / 1000),
+            active_skin: activeSkinCode
+        };
+        
+        tg.sendData(JSON.stringify(data));
+    }
+
+    // Запуск
+    drawWheel();
+    updateUI();
+    loopConfetti();
+
+</script>
 </body>
 </html>
