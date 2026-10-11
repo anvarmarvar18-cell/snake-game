@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Aero City 2.0</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        /* БАЗОВЫЕ СТИЛИ И БЛОКИРОВКА ТЕЛЕГРАМА */
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #050510; overflow: hidden; touch-action: none; color: white; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        
+        /* ИНТЕРФЕЙС ИГРЫ */
+        #ui-layer { position: absolute; top: 15px; left: 15px; z-index: 100; text-shadow: 0 0 10px #0ff; font-weight: bold; font-size: 20px; pointer-events: none; }
+        .smart-menu-btn { position: absolute; top: 15px; right: 15px; z-index: 1000; background: rgba(0, 0, 0, 0.7); color: #0ff; border: 2px solid #0ff; border-radius: 8px; padding: 10px 15px; font-weight: bold; font-size: 16px; cursor: pointer; box-shadow: 0 0 10px #0ff; }
+        
+        /* МОДАЛЬНЫЕ ОКНА (МЕНЮ И АНГАР) */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 2000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .hidden { display: none !important; }
+        .modal-content { background: linear-gradient(135deg, #111, #222); border: 2px solid #0ff; border-radius: 15px; width: 85%; max-height: 85vh; padding: 20px; display: flex; flex-direction: column; gap: 15px; text-align: center; box-shadow: 0 0 30px rgba(0, 255, 255, 0.2); }
+        .modal-title { color: #fff; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; text-shadow: 0 0 10px #0ff; }
+        
+        /* КНОПКИ */
+        .btn { padding: 15px; font-size: 16px; font-weight: bold; border-radius: 10px; color: white; border: none; cursor: pointer; text-transform: uppercase; transition: transform 0.1s; }
+        .btn:active { transform: scale(0.95); }
+        .btn-green { background: linear-gradient(45deg, #00b09b, #96c93d); }
+        .btn-blue { background: linear-gradient(45deg, #2193b0, #6dd5ed); }
+        .btn-red { background: linear-gradient(45deg, #ff416c, #ff4b2b); }
+        
+        /* АНГАР (МАГАЗИН) - С ИДЕАЛЬНЫМ СКРОЛЛОМ */
+        .shop-container { overflow-y: auto; max-height: 50vh; -webkit-overflow-scrolling: touch; touch-action: pan-y; padding: 10px; background: rgba(0,0,0,0.5); border-radius: 10px; display: flex; flex-direction: column; gap: 10px; }
+        .skin-card { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 15px; border-radius: 10px; border: 1px solid #444; }
+        .skin-card.active { border-color: #0ff; box-shadow: 0 0 15px rgba(0,255,255,0.4); }
+        .skin-name { font-weight: bold; font-size: 16px; }
+        .skin-price { color: #ffd700; font-size: 14px; }
+        .buy-btn { padding: 8px 15px; border-radius: 5px; border: none; font-weight: bold; cursor: pointer; }
+        .btn-buy { background: #ffd700; color: #000; }
+        .btn-select { background: #0ff; color: #000; }
+        .btn-selected { background: #444; color: #888; }
+        
+        /* ЭКРАН СМЕРТИ */
+        #game-over-screen { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 1500; }
+        .go-title { font-size: 40px; color: #ff416c; text-shadow: 0 0 20px #ff0000; margin-bottom: 20px; font-weight: 900; }
+    </style>
+</head>
+<body>
+
+    <!-- Игровой интерфейс -->
+    <div id="ui-layer">Очки: <span id="score">0</span><br>Монеты: <span id="coins">0</span> 💰</div>
+    <button id="mainMenuBtn" class="smart-menu-btn">⚙️ МЕНЮ</button>
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Экран проигрыша -->
+    <div id="gameOverScreen" class="modal hidden">
+        <div id="game-over-screen">
+            <div class="go-title">РАЗБИТ!</div>
+            <button class="btn btn-blue" onclick="resetGame()" style="margin-bottom: 10px; width: 200px;">🔄 ИГРАТЬ ЕЩЕ</button><br>
+            <button class="btn btn-red" onclick="saveAndExit()" style="width: 200px;">💾 ЗАБРАТЬ МОНЕТЫ</button>
+        </div>
+    </div>
+
+    <!-- Главное Меню (Пауза) -->
+    <div id="smartModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 class="modal-title">ПАУЗА</h2>
+            <button class="btn btn-blue" onclick="openHangar()">🚀 АНГАР (СКИНЫ)</button>
+            <button class="btn btn-red" onclick="saveAndExit()">💾 ВЫХОД В БОТА</button>
+            <button class="btn btn-green" onclick="closeMenu()">▶ ПРОДОЛЖИТЬ</button>
+        </div>
+    </div>
+
+    <!-- Ангар (Скины) -->
+    <div id="hangarModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 class="modal-title">АНГАР</h2>
+            <div style="color: #ffd700; margin-bottom: 10px;">Баланс: <span id="shopCoins">0</span> 💰</div>
+            <div class="shop-container" id="skinsList">
+                <!-- Скины генерируются через JS -->
+            </div>
+            <button class="btn btn-green" onclick="closeHangar()">НАЗАД</button>
+        </div>
+    </div>
+
+<script>
+    // ==========================================
+    // 1. ИНИЦИАЛИЗАЦИЯ TELEGRAM И БЛОКИРОВКИ
+    // ==========================================
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+    if (tg.isVersionAtLeast('7.7')) tg.disableVerticalSwipes();
+    if (tg.isVersionAtLeast('6.1')) tg.enableClosingConfirmation();
+
+    // Запрет скролла везде, КРОМЕ магазина скинов
+    document.body.addEventListener('touchmove', function(e) {
+        if (!e.target.closest('.shop-container')) e.preventDefault();
+    }, { passive: false });
+
+    // ==========================================
+    // 2. БАЗА ДАННЫХ СКИНОВ (10 штук)
+    // ==========================================
+    const SKINS = [
+        { id: 'default', name: 'Cyber Drone', price: 0, color1: '#aaa', color2: '#fff' },
+        { id: 'neon', name: 'Neon Glider', price: 1000, color1: '#00f', color2: '#0ff' },
+        { id: 'rocket', name: 'Fire Rocket', price: 1000, color1: '#f00', color2: '#ff0' },
+        { id: 'bitcoin', name: 'Crypto Coin', price: 1000, color1: '#d4af37', color2: '#ffd700', text: '₿' },
+        { id: 'star', name: 'Super Star', price: 1000, color1: '#ff8c00', color2: '#ffff00' },
+        { id: 'ufo', name: 'Alien UFO', price: 1000, color1: '#0f0', color2: '#8f8' },
+        { id: 'phantom', name: 'Phantom', price: 1000, color1: '#800080', color2: '#ff00ff' },
+        { id: 'meteor', name: 'Meteorite', price: 1000, color1: '#8b4513', color2: '#ff4500' },
+        { id: 'ice', name: 'Ice Crystal', price: 1000, color1: '#aee', color2: '#fff' },
+        { id: 'black_hole', name: 'Black Hole (+20%)', price: 3000, color1: '#111', color2: '#800080' } // Тот самый бонус!
+    ];
+
+    // Локальное хранилище для скинов и монет
+    let localCoins = parseInt(localStorage.getItem('aero_coins')) || 0;
+    let unlockedSkins = JSON.parse(localStorage.getItem('aero_unlocked')) || ['default'];
+    let activeSkinId = localStorage.getItem('aero_active_skin') || 'default';
+    
+    let sessionEarnedCoins = 0; // Заработок за текущую сессию (отправим боту)
+    let timeSpent = 0;
+    let startTime = Date.now();
+
+    // ==========================================
+    // 3. ДВИЖОК ИГРЫ (CANVAS)
+    // ==========================================
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    let cw = canvas.width = window.innerWidth;
+    let ch = canvas.height = window.innerHeight;
+
+    let frames = 0;
+    let gameState = 'start'; // start, playing, paused, gameover
+    let score = 0;
+    let baseSpeed = 4;
+    
+    // Птичка (Корабль)
+    const bird = {
+        x: cw * 0.3, y: ch / 2,
+        r: 15,
+        velocity: 0, gravity: 0.25, jump: -6,
+        draw() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            // Наклон корабля в зависимости от скорости падения
+            ctx.rotate(Math.min(Math.PI / 4, Math.max(-Math.PI / 4, (this.velocity * 0.1))));
+            
+            let skin = SKINS.find(s => s.id === activeSkinId);
+            
+            // 3D Градиент для скина
+            let grad = ctx.createRadialGradient(0, 0, 0, 0, 0, this.r * 1.5);
+            grad.addColorStop(0, skin.color2);
+            grad.addColorStop(1, skin.color1);
+            
+            ctx.shadowColor = skin.color2;
+            ctx.shadowBlur = 15;
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            
+            // Если Черная Дыра - рисуем кольцо
+            if (skin.id === 'black_hole') {
+                ctx.arc(0, 0, this.r, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(0, 0, this.r * 0.6, 0, Math.PI*2);
+                ctx.fill();
+            } else {
+                ctx.arc(0, 0, this.r, 0, Math.PI*2);
+                ctx.fill();
+                if(skin.text) {
+                    ctx.fillStyle = 'black';
+                    ctx.font = '20px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(skin.text, 0, 0);
+                }
+            }
+            ctx.restore();
+        },
+        update() {
+            this.velocity += this.gravity;
+            this.y += this.velocity;
+            // Частицы дыма от двигателя
+            if (frames % 3 === 0) particles.push(new Particle(this.x - this.r, this.y));
+            if (this.y + this.r >= ch || this.y - this.r <= 0) gameOver();
+        }
+    };
+
+    // Частицы
+    const particles = [];
+    class Particle {
+        constructor(x, y) {
+            this.x = x; this.y = y;
+            this.size = Math.random() * 5 + 2;
+            this.speedX = Math.random() * -2 - 1;
+            this.speedY = (Math.random() - 0.5) * 1;
+            this.life = 1;
+        }
+        update() {
+            this.x += this.speedX; this.y += this.speedY;
+            this.life -= 0.05;
+        }
+        draw() {
+            ctx.fillStyle = `rgba(0, 255, 255, ${this.life})`;
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill();
+        }
+    }
+
+    // Трубы (Лазеры)
+    const pipes = [];
+    const pipeWidth = 60;
+    let pipeGap = 180;
+
+    function drawPipes() {
+        for (let i = 0; i < pipes.length; i++) {
+            let p = pipes[i];
+            
+            // 3D Градиент для труб
+            let grad = ctx.createLinearGradient(p.x, 0, p.x + pipeWidth, 0);
+            grad.addColorStop(0, '#001133');
+            grad.addColorStop(0.5, '#00ffff');
+            grad.addColorStop(1, '#001133');
+            
+            ctx.fillStyle = grad;
+            ctx.shadowColor = '#00ffff';
+            ctx.shadowBlur = 10;
+            
+            // Верхняя труба
+            ctx.fillRect(p.x, 0, pipeWidth, p.top);
+            // Нижняя труба
+            ctx.fillRect(p.x, ch - p.bottom, pipeWidth, p.bottom);
+            
+            p.x -= baseSpeed;
+
+            // Столкновение
+            if (bird.x + bird.r > p.x && bird.x - bird.r < p.x + pipeWidth) {
+                if (bird.y - bird.r < p.top || bird.y + bird.r > ch - p.bottom) gameOver();
+            }
+
+            // Очки и монеты
+            if (p.x === bird.x) {
+                score++;
+                document.getElementById('score').innerText = score;
+                // Награждаем монетами за пролет
+                let earned = 10;
+                sessionEarnedCoins += earned;
+                localCoins += earned;
+                document.getElementById('coins').innerText = sessionEarnedCoins;
+                
+                // Усложнение игры (каждые 10 очков скорость растет, а щель сужается)
+                if (score % 10 === 0) {
+                    baseSpeed += 0.5;
+                    pipeGap = Math.max(100, pipeGap - 10);
+                }
+            }
+        }
+        // Удаляем ушедшие трубы
+        if (pipes.length > 0 && pipes[0].x < -pipeWidth) pipes.shift();
+    }
+
+    // Параллакс Звезды
+    const stars = Array(50).fill().map(() => ({x: Math.random()*cw, y: Math.random()*ch, s: Math.random()*3, v: Math.random()*2+0.5}));
+    function drawStars() {
+        ctx.fillStyle = 'white';
+        stars.forEach(s => {
+            ctx.beginPath(); ctx.arc(s.x, s.y, s.s, 0, Math.PI*2); ctx.fill();
+            s.x -= s.v;
+            if (s.x < 0) { s.x = cw; s.y = Math.random()*ch; }
+        });
+    }
+
+    // Главный цикл
+    function loop() {
+        if (gameState === 'paused' || gameState === 'gameover') {
+            requestAnimationFrame(loop);
+            return;
+        }
+
+        ctx.fillStyle = '#050510';
+        ctx.fillRect(0, 0, cw, ch);
+        
+        drawStars();
+
+        if (gameState === 'playing') {
+            bird.update();
+            if (frames % Math.floor(120 / baseSpeed) === 0) {
+                let topH = Math.random() * (ch - pipeGap - 100) + 50;
+                pipes.push({ x: cw, top: topH, bottom: ch - topH - pipeGap });
+            }
+            drawPipes();
+        } else if (gameState === 'start') {
+            ctx.fillStyle = 'white'; ctx.font = '30px Arial'; ctx.textAlign = 'center';
+            ctx.fillText("ТАПНИ ЧТОБЫ ЛЕТЕТЬ", cw/2, ch/2);
+        }
+
+        // Отрисовка частиц
+        for (let i = particles.length - 1; i >= 0; i--) {
+            particles[i].update(); particles[i].draw();
+            if (particles[i].life <= 0) particles.splice(i, 1);
+        }
+
+        bird.draw();
+        frames++;
+        requestAnimationFrame(loop);
+    }
+
+    // Управление
+    window.addEventListener('touchstart', (e) => {
+        // Если тапнули по кнопкам интерфейса - игнорируем
+        if(e.target.closest('.smart-menu-btn') || e.target.closest('.modal')) return;
+        
+        if (gameState === 'start') gameState = 'playing';
+        if (gameState === 'playing') bird.velocity = bird.jump;
+    });
+
+    function gameOver() {
+        gameState = 'gameover';
+        localStorage.setItem('aero_coins', localCoins); // Сохраняем локально
+        document.getElementById('gameOverScreen').classList.remove('hidden');
+    }
+
+    function resetGame() {
+        bird.y = ch / 2; bird.velocity = 0;
+        pipes.length = 0; particles.length = 0;
+        score = 0; baseSpeed = 4; pipeGap = 180; frames = 0;
+        document.getElementById('score').innerText = score;
+        document.getElementById('gameOverScreen').classList.add('hidden');
+        gameState = 'start';
+    }
+
+    // ==========================================
+    // 4. МЕНЮ, АНГАР И ИНТЕГРАЦИЯ С TELEGRAM
+    // ==========================================
+    
+    document.getElementById('mainMenuBtn').onclick = () => {
+        if (gameState === 'playing') gameState = 'paused';
+        document.getElementById('smartModal').classList.remove('hidden');
+    };
+
+    function closeMenu() {
+        document.getElementById('smartModal').classList.add('hidden');
+        if (gameState === 'paused') gameState = 'playing';
+    }
+
+    function openHangar() {
+        document.getElementById('smartModal').classList.add('hidden');
+        document.getElementById('hangarModal').classList.remove('hidden');
+        document.getElementById('shopCoins').innerText = localCoins;
+        renderSkins();
+    }
+
+    function closeHangar() {
+        document.getElementById('hangarModal').classList.add('hidden');
+        document.getElementById('smartModal').classList.remove('hidden');
+    }
+
+    function renderSkins() {
+        const list = document.getElementById('skinsList');
+        list.innerHTML = '';
+        
+        SKINS.forEach(skin => {
+            let isUnlocked = unlockedSkins.includes(skin.id);
+            let isActive = activeSkinId === skin.id;
+            
+            let btnHtml = '';
+            if (isActive) {
+                btnHtml = `<button class="buy-btn btn-selected">ВЫБРАН</button>`;
+            } else if (isUnlocked) {
+                btnHtml = `<button class="buy-btn btn-select" onclick="equipSkin('${skin.id}')">НАДЕТЬ</button>`;
+            } else {
+                btnHtml = `<button class="buy-btn btn-buy" onclick="buySkin('${skin.id}', ${skin.price})">КУПИТЬ (${skin.price})</button>`;
+            }
+
+            list.innerHTML += `
+                <div class="skin-card ${isActive ? 'active' : ''}">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(${skin.color2}, ${skin.color1}); border: 2px solid #fff;"></div>
+                        <div>
+                            <div class="skin-name">${skin.name}</div>
+                        </div>
+                    </div>
+                    ${btnHtml}
+                </div>
+            `;
+        });
+    }
+
+    window.buySkin = function(id, price) {
+        if (localCoins >= price) {
+            localCoins -= price;
+            unlockedSkins.push(id);
+            localStorage.setItem('aero_coins', localCoins);
+            localStorage.setItem('aero_unlocked', JSON.stringify(unlockedSkins));
+            equipSkin(id);
+        } else {
+            tg.showAlert('Не хватает монет! Играй и копи.');
+        }
+    }
+
+    window.equipSkin = function(id) {
+        activeSkinId = id;
+        localStorage.setItem('aero_active_skin', activeSkinId);
+        document.getElementById('shopCoins').innerText = localCoins;
+        renderSkins();
+    }
+
+    // ОТПРАВКА В ПИТОН
+    window.saveAndExit = function() {
+        timeSpent = Math.floor((Date.now() - startTime) / 1000);
+        
+        let data = {
+            game: "aero",
+            coins: sessionEarnedCoins,
+            score: score,
+            time_spent: timeSpent,
+            active_skin: activeSkinId
+        };
+        
+        // Отправляем json в бота и Телеграм закроет WebApp
+        tg.sendData(JSON.stringify(data));
+    }
+
+    // Запуск графики
+    requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>
