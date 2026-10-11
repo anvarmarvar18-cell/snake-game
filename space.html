@@ -3,133 +3,435 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Space Defender PRO</title>
+    <title>Space Shooter: Galactic Wars</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; color: white; touch-action: none; font-family: 'Arial', sans-serif; }
-        canvas { display: block; }
-        #ui { position: absolute; top: 10%; width: 100%; text-align: center; font-size: 30px; font-weight: bold; pointer-events: none; text-shadow: 0 0 15px #00ffff; }
-        #bossHpContainer { display: none; position: absolute; top: 5%; left: 10%; width: 80%; height: 20px; background: #333; border: 2px solid #ff0000; }
-        #bossHpFill { width: 100%; height: 100%; background: #ff0000; transition: width 0.1s; }
+        * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; font-family: 'Arial', sans-serif; user-select: none; }
+        body { background-color: #020205; color: #fff; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
+        
+        .hud { position: absolute; top: 0; left: 0; width: 100%; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 10; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); pointer-events: none; }
+        .score-box { font-size: 24px; font-weight: bold; color: #00ffcc; text-shadow: 0 0 10px #00ffcc; }
+        .balance-box { font-size: 24px; font-weight: bold; color: #ffd700; text-shadow: 0 0 10px rgba(255,215,0,0.5); }
+        .multiplier { font-size: 16px; color: #ff0055; text-shadow: 0 0 10px #ff0055; margin-top: 5px; animation: pulse 1s infinite alternate; }
+        
+        @keyframes pulse { from { opacity: 0.7; } to { opacity: 1; transform: scale(1.1); } }
+
+        canvas { display: block; width: 100%; height: 100%; }
+
+        .controls { position: absolute; bottom: 20px; left: 0; width: 100%; display: flex; justify-content: center; gap: 15px; z-index: 10; padding: 0 20px; }
+        .btn { padding: 15px 30px; border: none; border-radius: 20px; font-size: 16px; font-weight: bold; color: #fff; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.5); text-transform: uppercase; }
+        .btn-shop { background: linear-gradient(45deg, #11998e, #38ef7d); }
+        .btn-exit { background: #333; }
+
+        .overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center; }
+        h1 { color: #ff3333; font-size: 45px; margin-bottom: 10px; text-shadow: 0 0 20px #ff0000; text-transform: uppercase; }
+        
+        /* Магазин */
+        .skins-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; max-width: 400px; overflow-y: auto; max-height: 70vh; padding-bottom: 20px; }
+        .skin-card { background: rgba(20,20,40,0.9); border: 2px solid #333; border-radius: 15px; padding: 15px; text-align: center; }
+        .skin-card.active { border-color: #00ffcc; box-shadow: 0 0 15px rgba(0,255,204,0.3); }
+        .skin-color-preview { width: 40px; height: 40px; margin: 0 auto 10px; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); }
     </style>
 </head>
 <body>
-    <div id="ui">СЧЕТ: <span id="score">0</span></div>
-    <div id="bossHpContainer"><div id="bossHpFill"></div></div>
+
+    <div class="hud">
+        <div>
+            <div class="score-box">Киллы: <b id="scoreVal">0</b></div>
+            <div id="multiplier" class="multiplier" style="display:none;">ОЧКИ х2 (20 монет/килл)</div>
+        </div>
+        <div class="balance-box" id="balanceVal">0 💰</div>
+    </div>
+
     <canvas id="gameCanvas"></canvas>
-    
+
+    <div class="controls">
+        <button class="btn btn-shop" onclick="openShop()">🚀 Ангар (Скины)</button>
+        <button class="btn btn-exit" onclick="saveAndExit()">💾 Выход</button>
+    </div>
+
+    <!-- Экран проигрыша -->
+    <div class="overlay" id="gameOverScreen">
+        <h1>КОРАБЛЬ УНИЧТОЖЕН</h1>
+        <p style="font-size: 20px; color: #aaa; margin-bottom: 10px;">Уничтожено врагов: <span id="finalScore" style="color:#fff; font-weight:bold;">0</span></p>
+        <p style="font-size: 24px; color: #ffd700; margin-bottom: 30px;">Заработано монет: +<span id="earnedCoins">0</span></p>
+        <button class="btn" style="background: linear-gradient(45deg, #ff8800, #ff0055); width: 250px; margin-bottom: 15px;" onclick="restartGame()">НОВЫЙ ВЫЛЕТ</button>
+        <button class="btn btn-exit" style="width: 250px;" onclick="saveAndExit()">В ГЛАВНОЕ МЕНЮ</button>
+    </div>
+
+    <!-- Магазин -->
+    <div class="overlay" id="shopModal">
+        <div style="width:100%; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; max-width:400px;">
+            <h2 style="color:white;">Ангар (1000💰)</h2>
+            <button style="background:none; border:none; color:red; font-size:30px;" onclick="closeShop()">&times;</button>
+        </div>
+        <div class="skins-grid" id="skinsGrid"></div>
+    </div>
+
     <script>
-        let tg = window.Telegram.WebApp; tg.expand();
-        if(tg.isVersionAtLeast('7.7')) tg.disableVerticalSwipes();
-        document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+        let tg; try { tg = window.Telegram.WebApp; tg.expand(); } catch(e) {}
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
 
-        let score = 0; let gameActive = true; let frames = 0;
-        let player = { x: canvas.width/2 - 25, y: canvas.height - 100, width: 50, height: 50 };
+        // Экономика
+        let balance = 1500; 
+        let inventory = ['fighter'];
+        let activeSkinId = 'fighter';
+
+        // 10 Скинов Кораблей
+        const skins = [
+            { id: 'fighter', name: 'Истребитель', c1: '#aaaaaa', c2: '#00ccff', engine: '#00ffff' },
+            { id: 'phoenix', name: 'Феникс', c1: '#ff4400', c2: '#ffcc00', engine: '#ff0000' },
+            { id: 'plasma', name: 'Плазма', c1: '#cc00ff', c2: '#ff00ff', engine: '#aa00ff' },
+            { id: 'neon', name: 'Неон', c1: '#00ffcc', c2: '#00ff55', engine: '#00ff00' },
+            { id: 'phantom', name: 'Фантом', c1: '#222222', c2: '#555555', engine: '#444444' },
+            { id: 'titan', name: 'Титан', c1: '#888888', c2: '#ffaa00', engine: '#ff5500' },
+            { id: 'comet', name: 'Комета', c1: '#ffffff', c2: '#aaddff', engine: '#ffffff' },
+            { id: 'pulse', name: 'Импульс', c1: '#0055ff', c2: '#00aaff', engine: '#0055ff' },
+            { id: 'gold', name: 'Золотой', c1: '#ffcc00', c2: '#ffffff', engine: '#ffcc00' },
+            { id: 'toxic', name: 'Ядовитый', c1: '#ccff00', c2: '#55aa00', engine: '#ccff00' }
+        ];
+
+        // Игровые переменные
+        let frames = 0;
+        let score = 0;
+        let earnedCoinsTotal = 0;
+        let gameOver = false;
         
-        window.addEventListener('touchmove', e => { player.x = e.touches[0].clientX - player.width/2; });
-        window.addEventListener('mousemove', e => { player.x = e.clientX - player.width/2; });
+        let player = { x: canvas.width/2, y: canvas.height - 100, size: 25, speed: 10, isDragging: false };
+        let bullets = [];
+        let enemies = [];
+        let particles = [];
+        let stars = [];
 
-        let bullets = []; let enemies = []; let bossBullets = [];
-        let boss = { active: false, hp: 0, maxHp: 0, x: 0, y: 50, width: 120, height: 80, speedX: 3 };
+        // Уровни и Боссы
+        let bossActive = false;
+        let boss = null;
+        let bossKills = 0;
 
+        // Создаем параллакс звезды
+        for(let i=0; i<150; i++) {
+            stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: Math.random()*2, speed: Math.random()*3 + 0.5 });
+        }
+
+        function spawnEnemy() {
+            if (bossActive) return; // Не спавним мелочь во время босса
+            
+            // Если убили кратно 20 врагам — спавним босса
+            if (score > 0 && score % 20 === 0 && !bossActive && enemies.length === 0) {
+                spawnBoss();
+                return;
+            }
+
+            // Чем больше очков, тем больше врагов (до предела)
+            let spawnRate = Math.max(30, 90 - (score * 2));
+            if (frames % spawnRate === 0) {
+                enemies.push({
+                    x: Math.random() * (canvas.width - 40) + 20,
+                    y: -30,
+                    size: 20,
+                    hp: 1,
+                    maxHp: 1,
+                    speedY: Math.random() * 2 + (score > 50 ? 3 : 1),
+                    speedX: (Math.random() - 0.5) * (score > 30 ? 2 : 0),
+                    isBoss: false
+                });
+            }
+        }
+
+        function spawnBoss() {
+            bossActive = true;
+            bossKills++;
+            boss = {
+                x: canvas.width / 2,
+                y: -100,
+                size: 60,
+                hp: 15 + (bossKills * 10), // Здоровье растет с каждым боссом
+                maxHp: 15 + (bossKills * 10),
+                speedY: 1,
+                speedX: 2 + bossKills,
+                directionX: 1,
+                isBoss: true,
+                shootTimer: 0
+            };
+            enemies.push(boss);
+        }
+
+        // --- ВЕКТОРНАЯ ОТРИСОВКА ---
         function drawPlayer() {
-            ctx.fillStyle = '#00ffff'; ctx.shadowBlur = 20; ctx.shadowColor = '#00ffff';
-            ctx.beginPath(); ctx.moveTo(player.x+25, player.y); ctx.lineTo(player.x+50, player.y+50); ctx.lineTo(player.x, player.y+50); ctx.fill();
+            let skin = skins.find(s => s.id === activeSkinId);
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            
+            // Турбина (Огонь)
+            ctx.shadowBlur = 15; ctx.shadowColor = skin.engine; ctx.fillStyle = skin.engine;
+            ctx.beginPath(); ctx.moveTo(-5, 10); ctx.lineTo(5, 10); ctx.lineTo(0, 30 + Math.random()*10); ctx.fill();
+            
+            // Крылья
+            ctx.shadowBlur = 0; ctx.fillStyle = skin.c2;
+            ctx.beginPath(); ctx.moveTo(0, -player.size); ctx.lineTo(-player.size, player.size); ctx.lineTo(player.size, player.size); ctx.fill();
+            
+            // Кабина (Фюзеляж)
+            ctx.fillStyle = skin.c1;
+            ctx.beginPath(); ctx.moveTo(0, -player.size - 5); ctx.lineTo(-player.size/2, player.size); ctx.lineTo(player.size/2, player.size); ctx.fill();
+            
+            // Стекло кабины
+            ctx.fillStyle = '#111';
+            ctx.beginPath(); ctx.moveTo(0, -player.size/2); ctx.lineTo(-4, 0); ctx.lineTo(4, 0); ctx.fill();
+            
+            ctx.restore();
         }
 
-        function drawBoss() {
-            if(!boss.active) return;
-            boss.x += boss.speedX;
-            if(boss.x <= 0 || boss.x + boss.width >= canvas.width) boss.speedX *= -1;
+        function drawEnemy(e) {
+            ctx.save();
+            ctx.translate(e.x, e.y);
             
-            ctx.fillStyle = '#ff0000'; ctx.shadowBlur = 30; ctx.shadowColor = '#ff0000';
-            ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
+            if (e.isBoss) {
+                // Отрисовка Босса
+                ctx.shadowBlur = 20; ctx.shadowColor = '#ff0055';
+                ctx.fillStyle = '#222'; ctx.strokeStyle = '#ff0055'; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.moveTo(0, e.size); ctx.lineTo(-e.size, -e.size/2); ctx.lineTo(-e.size/2, -e.size); ctx.lineTo(e.size/2, -e.size); ctx.lineTo(e.size, -e.size/2); ctx.closePath(); ctx.fill(); ctx.stroke();
+                
+                // Глаз босса
+                ctx.fillStyle = '#ff0055'; ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI*2); ctx.fill();
+
+                // Полоска ХП босса
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#333'; ctx.fillRect(-e.size, -e.size - 15, e.size*2, 8);
+                ctx.fillStyle = '#00ffcc'; ctx.fillRect(-e.size, -e.size - 15, (e.size*2) * (e.hp / e.maxHp), 8);
+            } else {
+                // Обычный дрон
+                ctx.fillStyle = '#aa0000'; ctx.beginPath(); ctx.moveTo(0, e.size); ctx.lineTo(-e.size, -e.size); ctx.lineTo(e.size, -e.size); ctx.fill();
+                ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.arc(0, 0, e.size/2, 0, Math.PI*2); ctx.fill();
+            }
             
-            // Босс стреляет
-            if(frames % 30 === 0) {
-                bossBullets.push({ x: boss.x + boss.width/2 - 5, y: boss.y + boss.height, width: 10, height: 20, speed: 8 });
+            ctx.restore();
+        }
+
+        function createExplosion(x, y, color, count) {
+            for(let i=0; i<count; i++) {
+                particles.push({
+                    x: x, y: y, size: Math.random()*4+1,
+                    speedX: (Math.random()-0.5)*8, speedY: (Math.random()-0.5)*8,
+                    color: color, life: 1.0
+                });
             }
         }
 
-        function handleBullets() {
-            // Игрок стреляет
-            if(frames % 12 === 0 && gameActive) bullets.push({ x: player.x+20, y: player.y, width: 10, height: 20, speed: 12 });
-            
-            ctx.fillStyle = '#ff00ff'; ctx.shadowColor = '#ff00ff';
-            for(let i=0; i<bullets.length; i++) {
-                bullets[i].y -= bullets[i].speed;
-                ctx.fillRect(bullets[i].x, bullets[i].y, bullets[i].width, bullets[i].height);
+        function updateUI() {
+            document.getElementById('balanceVal').innerText = `${balance} 💰`;
+            document.getElementById('scoreVal').innerText = score;
+            if (score >= 100) document.getElementById('multiplier').style.display = 'block';
+        }
+
+        function gameLoop() {
+            if (gameOver) return;
+
+            // Звезды параллакс
+            ctx.fillStyle = '#020205'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#fff';
+            stars.forEach(s => {
+                s.y += s.speed;
+                if (s.y > canvas.height) { s.y = 0; s.x = Math.random()*canvas.width; }
+                ctx.globalAlpha = s.size/2;
+                ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill();
+            });
+            ctx.globalAlpha = 1.0;
+
+            // Игрок
+            drawPlayer();
+
+            // Автострельба игрока (чем больше очков, тем выше скорострельность)
+            let shootRate = score > 100 ? 5 : 10;
+            if (frames % shootRate === 0) {
+                let skin = skins.find(s => s.id === activeSkinId);
+                bullets.push({ x: player.x, y: player.y - player.size, speed: 15, color: skin.c2, isEnemy: false });
+                // Если счет > 50, стреляем двойными!
+                if (score > 50) {
+                    bullets.push({ x: player.x-15, y: player.y - player.size, speed: 15, color: skin.c2, isEnemy: false });
+                    bullets.push({ x: player.x+15, y: player.y - player.size, speed: 15, color: skin.c2, isEnemy: false });
+                }
+            }
+
+            spawnEnemy();
+
+            // Пули (Игрока и Босса)
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i];
+                b.y += b.isEnemy ? b.speed : -b.speed;
                 
-                // Попадание в босса
-                if(boss.active && bullets[i].x < boss.x + boss.width && bullets[i].x + bullets[i].width > boss.x && bullets[i].y < boss.y + boss.height) {
-                    boss.hp--; 
-                    document.getElementById('bossHpFill').style.width = (boss.hp / boss.maxHp * 100) + '%';
-                    bullets.splice(i, 1); i--;
-                    if(boss.hp <= 0) {
-                        boss.active = false; score += 5; document.getElementById('score').innerText = score;
-                        document.getElementById('bossHpContainer').style.display = 'none';
+                ctx.shadowBlur = 10; ctx.shadowColor = b.color; ctx.fillStyle = b.color;
+                ctx.fillRect(b.x - 3, b.y, 6, 15);
+                ctx.shadowBlur = 0;
+
+                if (b.y < 0 || b.y > canvas.height) { bullets.splice(i, 1); continue; }
+
+                // Если пуля вражеская -> бьет игрока
+                if (b.isEnemy) {
+                    if (Math.abs(b.x - player.x) < player.size && Math.abs(b.y - player.y) < player.size) {
+                        createExplosion(player.x, player.y, '#00ffff', 50);
+                        triggerGameOver();
+                    }
+                } else {
+                    // Пуля игрока -> бьет врагов
+                    for (let j = enemies.length - 1; j >= 0; j--) {
+                        let e = enemies[j];
+                        if (Math.abs(b.x - e.x) < e.size && Math.abs(b.y - e.y) < e.size) {
+                            bullets.splice(i, 1);
+                            e.hp--;
+                            createExplosion(b.x, b.y, '#ffcc00', 5);
+                            if (e.hp <= 0) {
+                                createExplosion(e.x, e.y, e.isBoss ? '#ff0055' : '#ffaa00', e.isBoss ? 50 : 15);
+                                enemies.splice(j, 1);
+                                
+                                score++;
+                                let coinsGained = score > 100 ? 20 : 10;
+                                if (e.isBoss) coinsGained = 200; // Награда за босса
+                                
+                                balance += coinsGained;
+                                earnedCoinsTotal += coinsGained;
+                                
+                                if (e.isBoss) bossActive = false;
+                                updateUI();
+                            }
+                            break;
+                        }
                     }
                 }
             }
 
-            // Пули босса
-            ctx.fillStyle = '#ff3300'; ctx.shadowColor = '#ff3300';
-            for(let i=0; i<bossBullets.length; i++) {
-                bossBullets[i].y += bossBullets[i].speed;
-                ctx.fillRect(bossBullets[i].x, bossBullets[i].y, bossBullets[i].width, bossBullets[i].height);
+            // Враги
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                let e = enemies[i];
                 
-                if(bossBullets[i].x < player.x + player.width && bossBullets[i].x + bossBullets[i].width > player.x && bossBullets[i].y > player.y && bossBullets[i].y < player.y + player.height) {
-                    endGame();
-                }
-            }
-        }
-
-        function handleEnemies() {
-            if(!boss.active) {
-                // Появление босса каждые 10 очков
-                if(score > 0 && score % 10 === 0) {
-                    boss.active = true; boss.maxHp = 20 + (score * 2); boss.hp = boss.maxHp;
-                    boss.x = canvas.width/2 - boss.width/2;
-                    document.getElementById('bossHpContainer').style.display = 'block';
-                    enemies = []; // Очищаем мелких врагов
-                    return;
-                }
-
-                // Спавн мелких врагов (ускоряются со временем)
-                let spawnRate = Math.max(15, 40 - score);
-                if(frames % spawnRate === 0) enemies.push({ x: Math.random()*(canvas.width-40), y: -40, width: 40, height: 40, speed: Math.random()*2 + 3 + (score*0.1) });
-            }
-
-            ctx.fillStyle = '#ff9900'; ctx.shadowColor = '#ff9900';
-            for(let i=0; i<enemies.length; i++) {
-                enemies[i].y += enemies[i].speed;
-                ctx.fillRect(enemies[i].x, enemies[i].y, enemies[i].width, enemies[i].height);
-                
-                if(enemies[i].x < player.x + player.width && enemies[i].x + enemies[i].width > player.x && enemies[i].y + enemies[i].height > player.y) endGame();
-
-                for(let j=0; j<bullets.length; j++) {
-                    if(bullets[j].x < enemies[i].x + enemies[i].width && bullets[j].x + bullets[j].width > enemies[i].x && bullets[j].y < enemies[i].y + enemies[i].height) {
-                        score++; document.getElementById('score').innerText = score;
-                        enemies.splice(i, 1); bullets.splice(j, 1); i--; break;
+                if (e.isBoss) {
+                    // Логика Босса (Выходит сверху и летает влево-вправо)
+                    if (e.y < 80) e.y += e.speedY;
+                    else {
+                        e.x += e.speedX * e.directionX;
+                        if (e.x < e.size || e.x > canvas.width - e.size) e.directionX *= -1;
+                        
+                        // Босс стреляет
+                        e.shootTimer++;
+                        let bossFireRate = Math.max(20, 50 - (bossKills * 5));
+                        if (e.shootTimer > bossFireRate) {
+                            e.shootTimer = 0;
+                            bullets.push({ x: e.x, y: e.y + e.size, speed: 8 + bossKills, color: '#ff0055', isEnemy: true });
+                            // Тройной выстрел для сложных боссов
+                            if (bossKills > 2) {
+                                bullets.push({ x: e.x-30, y: e.y + e.size, speed: 8 + bossKills, color: '#ff0055', isEnemy: true });
+                                bullets.push({ x: e.x+30, y: e.y + e.size, speed: 8 + bossKills, color: '#ff0055', isEnemy: true });
+                            }
+                        }
                     }
+                } else {
+                    e.y += e.speedY;
+                    e.x += e.speedX;
+                    if (e.x < e.size || e.x > canvas.width - e.size) e.speedX *= -1;
                 }
+
+                drawEnemy(e);
+
+                // Столкновение кораблей
+                if (Math.abs(player.x - e.x) < (player.size + e.size)*0.7 && Math.abs(player.y - e.y) < (player.size + e.size)*0.7) {
+                    createExplosion(player.x, player.y, '#00ffff', 50);
+                    triggerGameOver();
+                }
+
+                if (e.y > canvas.height + 50) enemies.splice(i, 1);
             }
+
+            // Частицы
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.speedX; p.y += p.speedY; p.life -= 0.05;
+                if (p.life <= 0) { particles.splice(i, 1); continue; }
+                ctx.fillStyle = p.color; ctx.globalAlpha = p.life;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+
+            frames++;
+            requestAnimationFrame(gameLoop);
         }
 
-        function endGame() {
-            gameActive = false; document.getElementById('ui').innerHTML = "РАЗБИТ!";
-            setTimeout(() => { tg.sendData(JSON.stringify({ game: "space", earned: score * 10, score: score })); }, 1500);
+        // --- УПРАВЛЕНИЕ ---
+        window.addEventListener('touchstart', e => {
+            if (gameOver) return;
+            player.x = e.touches[0].clientX;
+            player.y = e.touches[0].clientY - 50; // Палец чуть ниже корабля
+        });
+        window.addEventListener('touchmove', e => {
+            if (gameOver) return;
+            player.x = e.touches[0].clientX;
+            player.y = e.touches[0].clientY - 50;
+        });
+        
+        // Мышка для ПК
+        canvas.addEventListener('mousemove', e => {
+            if(gameOver) return;
+            player.x = e.clientX; player.y = e.clientY;
+        });
+
+        function triggerGameOver() {
+            gameOver = true;
+            document.getElementById('finalScore').innerText = score;
+            document.getElementById('earnedCoins').innerText = earnedCoinsTotal;
+            document.getElementById('gameOverScreen').style.display = 'flex';
         }
 
-        function animate() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // Чистим экран
-            if(gameActive) { drawPlayer(); drawBoss(); handleBullets(); handleEnemies(); frames++; requestAnimationFrame(animate); }
+        function restartGame() {
+            gameOver = false; score = 0; earnedCoinsTotal = 0; frames = 0;
+            enemies = []; bullets = []; particles = []; bossActive = false; bossKills = 0;
+            player.x = canvas.width/2; player.y = canvas.height - 100;
+            document.getElementById('multiplier').style.display = 'none';
+            document.getElementById('gameOverScreen').style.display = 'none';
+            updateUI();
+            gameLoop();
         }
-        animate();
+
+        // --- МАГАЗИН ---
+        function openShop() { document.getElementById('shopModal').style.display = 'flex'; renderShop(); }
+        function closeShop() { document.getElementById('shopModal').style.display = 'none'; }
+        
+        function renderShop() {
+            const grid = document.getElementById('skinsGrid');
+            grid.innerHTML = '';
+            skins.forEach(skin => {
+                const isOwned = inventory.includes(skin.id);
+                const isActive = activeSkinId === skin.id;
+                const card = document.createElement('div');
+                card.className = `skin-card ${isActive ? 'active' : ''}`;
+                
+                let btn = isActive ? `<button style="width:100%; padding:8px; background:#555; color:#fff; border:none; border-radius:10px;" disabled>Надето</button>` :
+                          isOwned ? `<button style="width:100%; padding:8px; background:#00ffcc; color:#000; font-weight:bold; border:none; border-radius:10px; cursor:pointer;" onclick="applySkin('${skin.id}')">Надеть</button>` :
+                          `<button style="width:100%; padding:8px; background:#ffaa00; color:#000; font-weight:bold; border:none; border-radius:10px; cursor:pointer;" onclick="buySkin('${skin.id}')">Купить (1000)</button>`;
+
+                card.innerHTML = `<div class="skin-color-preview" style="background: ${skin.c1}; border: 3px solid ${skin.c2};"></div><div style="font-size:14px; font-weight:bold; margin-bottom:10px; color:white;">${skin.name}</div>${btn}`;
+                grid.appendChild(card);
+            });
+        }
+
+        function buySkin(id) {
+            if(balance >= 1000) { balance -= 1000; inventory.push(id); updateUI(); renderShop(); }
+            else alert("Не хватает монет!");
+        }
+        function applySkin(id) { activeSkinId = id; renderShop(); }
+
+        // --- СОХРАНЕНИЕ ---
+        function saveAndExit() {
+            if(tg && tg.sendData) {
+                tg.sendData(JSON.stringify({ game: 'space', score: score, coins: balance, activeSkin: activeSkinId, inventory: inventory.join(',') }));
+                tg.close();
+            } else alert(`Выход. Баланс: ${balance}`);
+        }
+
+        updateUI();
+        gameLoop();
     </script>
 </body>
 </html>
