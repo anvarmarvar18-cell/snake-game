@@ -3,468 +3,516 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cyber Helix 2.0</title>
+    <title>Helix Drop 8.0</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; user-select: none; font-family: 'Arial', sans-serif; }
-        body { background-color: #050505; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
-        canvas { display: block; width: 100%; height: 100%; }
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background: #1a1a2e; overflow: hidden; touch-action: none; color: white; height: 100vh; transition: background 0.5s; }
+        canvas { display: block; width: 100vw; height: 100vh; }
         
-        .hud { position: absolute; top: 0; left: 0; width: 100%; padding: 15px 20px; display: flex; justify-content: space-between; align-items: flex-start; z-index: 10; pointer-events: none; }
-        .score-box { font-size: 35px; font-weight: 900; color: #fff; text-shadow: 0 0 15px #00ffcc; display: flex; flex-direction: column; }
-        .combo-text { font-size: 16px; color: #ff3300; text-shadow: 0 0 10px #ff3300; opacity: 0; transition: opacity 0.2s; font-weight: bold; text-transform: uppercase; }
-        .balance-box { font-size: 24px; font-weight: bold; color: #ffd700; text-shadow: 0 0 10px rgba(255,215,0,0.6); background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 15px; }
-
-        .controls { position: absolute; bottom: 20px; left: 0; width: 100%; display: flex; justify-content: center; gap: 15px; z-index: 10; padding: 0 20px; }
-        .btn { padding: 15px 30px; border: none; border-radius: 20px; font-size: 16px; font-weight: bold; color: #fff; cursor: pointer; text-transform: uppercase; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
-        .btn-shop { background: linear-gradient(45deg, #11998e, #38ef7d); }
-        .btn-exit { background: #333; }
-
-        .overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; }
-        h1 { color: #ff3333; font-size: 45px; margin-bottom: 10px; text-shadow: 0 0 20px #ff0000; text-transform: uppercase; }
+        #ui-layer { position: absolute; top: 15px; left: 15px; z-index: 100; text-shadow: 0 0 10px #000; font-weight: bold; pointer-events: none; }
+        .score-text { color: #fff; font-size: 26px; font-weight: 900; margin-bottom: 5px; text-shadow: 0 0 10px #0ff; }
+        .coins-text { color: #ffd700; font-size: 22px; text-shadow: 0 0 10px rgba(255, 215, 0, 0.8); }
+        .combo-text { color: #ff0055; font-size: 20px; font-weight: bold; margin-top: 5px; opacity: 0; transition: 0.2s; text-shadow: 0 0 15px #ff0055; }
         
-        .skins-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; max-width: 400px; overflow-y: auto; max-height: 65vh; padding-bottom: 20px; margin-top: 10px; }
-        .skin-card { background: rgba(20,20,30,0.9); border: 2px solid #444; border-radius: 15px; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .skin-card.active { border-color: #00ffcc; box-shadow: 0 0 20px rgba(0,255,204,0.4); }
+        .smart-menu-btn { position: absolute; top: 15px; right: 15px; z-index: 1000; background: rgba(0, 0, 0, 0.7); color: #0ff; border: 2px solid #0ff; border-radius: 8px; padding: 10px 15px; font-weight: bold; cursor: pointer; box-shadow: 0 0 10px #0ff; }
+
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 2000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .hidden { display: none !important; }
+        .modal-content { background: linear-gradient(135deg, #111, #1a1a2e); border: 2px solid #0ff; border-radius: 15px; width: 85%; max-height: 85vh; padding: 20px; display: flex; flex-direction: column; gap: 12px; text-align: center; box-shadow: 0 0 30px rgba(0, 255, 255, 0.2); }
+        
+        .btn { padding: 15px; font-size: 16px; font-weight: bold; border-radius: 10px; color: white; border: none; text-transform: uppercase; cursor: pointer; transition: 0.1s; }
+        .btn:active { transform: scale(0.95); }
+        .btn-green { background: linear-gradient(45deg, #00b09b, #96c93d); }
+        .btn-blue { background: linear-gradient(45deg, #2193b0, #6dd5ed); }
+        .btn-red { background: linear-gradient(45deg, #ff416c, #ff4b2b); }
+
+        .shop-container { overflow-y: auto; max-height: 50vh; -webkit-overflow-scrolling: touch; touch-action: pan-y; display: flex; flex-direction: column; gap: 10px; padding: 5px; }
+        .skin-card { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 15px; border-radius: 10px; border: 1px solid #444; }
+        .skin-card.active { border-color: #0ff; box-shadow: 0 0 15px rgba(0,255,255,0.4); }
+        .buy-btn { padding: 8px 15px; border-radius: 5px; border: none; font-weight: bold; }
+        .btn-buy { background: #ffd700; color: #000; }
+        .btn-select { background: #0ff; color: #000; }
+        .btn-selected { background: #444; color: #888; }
+        
+        .floating-text { position: absolute; font-size: 30px; font-weight: 900; color: #fff; text-shadow: 0 0 15px #0f0; pointer-events: none; animation: floatUp 1s ease-out forwards; z-index: 500; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-80px) scale(1.5); } }
     </style>
 </head>
 <body>
 
-    <div class="hud">
-        <div class="score-box">
-            <span id="scoreVal">0</span>
-            <span id="comboVal" class="combo-text">FIREBALL MODE!</span>
-        </div>
-        <div class="balance-box" id="balanceVal">0 💰</div>
+    <div id="ui-layer">
+        <div class="score-text">Этаж: <span id="score">0</span></div>
+        <div class="coins-text"><span id="coins">0</span> 💰</div>
+        <div class="combo-text" id="comboText">🔥 FIREBALL!</div>
     </div>
-
+    
+    <button id="mainMenuBtn" class="smart-menu-btn">⚙️ МЕНЮ</button>
     <canvas id="gameCanvas"></canvas>
 
-    <div class="controls">
-        <button class="btn btn-shop" onclick="openShop()">🎨 Скины</button>
-        <button class="btn btn-exit" onclick="saveAndExit()">💾 Выход</button>
-    </div>
-
-    <div class="overlay" id="gameOverScreen">
-        <h1>РАЗБИЛСЯ!</h1>
-        <p style="font-size: 20px; color: #ccc; margin-bottom: 10px;">Пройдено этажей: <span id="finalScore" style="color:#fff; font-weight:bold;">0</span></p>
-        <p style="font-size: 24px; color: #ffd700; margin-bottom: 30px;">Заработано: +<span id="earnedCoins">0</span> 💰</p>
-        <button class="btn" style="background: linear-gradient(45deg, #ff8800, #ff0055); width: 250px; margin-bottom: 15px;" onclick="restartGame()">ИГРАТЬ ЕЩЕ</button>
-        <button class="btn btn-exit" style="width: 250px;" onclick="saveAndExit()">В МЕНЮ</button>
-    </div>
-
-    <div class="overlay" id="shopModal">
-        <div style="width:100%; max-width:400px; display:flex; justify-content:space-between; align-items:center;">
-            <h2 style="color:white; font-size: 26px;">Скины (1000💰)</h2>
-            <button style="background:none; border:none; color:#ff3333; font-size:40px; cursor:pointer;" onclick="closeShop()">&times;</button>
+    <!-- Главное Меню -->
+    <div id="smartModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 style="color: white;">ПАУЗА</h2>
+            <button class="btn btn-blue" onclick="openShop()">🎨 ТЕМЫ (СКИНЫ)</button>
+            <button class="btn btn-red" onclick="saveAndExit()">💾 ВЫХОД В БОТА</button>
+            <button class="btn btn-green" onclick="closeMenu()">▶ ПРОДОЛЖИТЬ</button>
         </div>
-        <div class="skins-grid" id="skinsGrid"></div>
     </div>
 
-    <script>
-        let tg; try { tg = window.Telegram.WebApp; tg.expand(); } catch(e) {}
+    <!-- Ангар -->
+    <div id="shopModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 style="color: #0ff;">МАГАЗИН ТЕМ</h2>
+            <div style="color: #ffd700;">Баланс: <span id="shopCoins">0</span> 💰</div>
+            <div class="shop-container" id="shopList"></div>
+            <button class="btn btn-green" onclick="closeShop()">НАЗАД</button>
+        </div>
+    </div>
 
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+    <!-- Смерть -->
+    <div id="gameOverScreen" class="modal hidden">
+        <div class="modal-content" style="background: transparent; border: none; box-shadow: none;">
+            <h1 style="color: #ff416c; font-size: 45px; text-shadow: 0 0 20px red; margin-bottom: 20px;">РАЗБИЛСЯ!</h1>
+            <button class="btn btn-blue" onclick="resetGame()" style="margin-bottom: 15px;">🔄 НАЧАТЬ ЗАНОВО</button>
+            <button class="btn btn-red" onclick="saveAndExit()">💾 ЗАБРАТЬ МОНЕТЫ</button>
+        </div>
+    </div>
 
-        let balance = 1500;
-        let inventory = ['neon'];
-        let activeSkinId = 'neon';
+<script>
+    // ==========================================
+    // 1. ИНИЦИАЛИЗАЦИЯ И БЛОКИРОВКИ ТЕЛЕГРАМА
+    // ==========================================
+    const tg = window.Telegram.WebApp;
+    tg.ready(); tg.expand();
+    if (tg.isVersionAtLeast('7.7')) tg.disableVerticalSwipes();
+    if (tg.isVersionAtLeast('6.1')) tg.enableClosingConfirmation();
 
-        // 10 Скинов для шарика
-        const skins = [
-            { id: 'neon', name: 'Неон', render: (x, y, r) => { ctx.fillStyle = '#00ffcc'; ctx.shadowBlur=15; ctx.shadowColor='#00ffcc'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; } },
-            { id: 'football', name: 'Мяч', render: (x, y, r) => { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(x,y,r*0.4,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(x-r*0.6,y-r*0.4,r*0.2,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(x+r*0.6,y+r*0.3,r*0.2,0,Math.PI*2); ctx.fill(); } },
-            { id: 'earth', name: 'Земля', render: (x, y, r) => { let g = ctx.createRadialGradient(x-r/3,y-r/3,2,x,y,r); g.addColorStop(0,'#44ff44'); g.addColorStop(1,'#0033ff'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); } },
-            { id: 'sun', name: 'Солнце', render: (x, y, r) => { ctx.fillStyle = '#ffff00'; ctx.shadowBlur=20; ctx.shadowColor='#ff5500'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; } },
-            { id: 'moon', name: 'Луна', render: (x, y, r) => { ctx.fillStyle = '#dddddd'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.fillStyle = '#999'; ctx.beginPath(); ctx.arc(x-r/3,y-r/4,r/4,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(x+r/2,y+r/3,r/5,0,Math.PI*2); ctx.fill(); } },
-            { id: 'yinyang', name: 'Инь-Ян', render: (x, y, r) => { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(x,y,r,Math.PI/2, Math.PI*1.5); ctx.fill(); ctx.beginPath(); ctx.arc(x,y-r/2,r/2,0,Math.PI*2); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x,y+r/2,r/2,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(x,y-r/2,r/6,0,Math.PI*2); ctx.fill(); ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(x,y+r/2,r/6,0,Math.PI*2); ctx.fill(); } },
-            { id: 'eye', name: 'Глаз', render: (x, y, r) => { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.fillStyle = '#ff0055'; ctx.beginPath(); ctx.arc(x,y,r*0.5,0,Math.PI*2); ctx.fill(); ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(x,y,r*0.2,0,Math.PI*2); ctx.fill(); } },
-            { id: 'plasma', name: 'Плазма', render: (x, y, r) => { let g = ctx.createRadialGradient(x,y,0,x,y,r); g.addColorStop(0,'#fff'); g.addColorStop(0.5,'#ff00ff'); g.addColorStop(1,'#4400aa'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); } },
-            { id: 'gold', name: 'Золото', render: (x, y, r) => { let g = ctx.createRadialGradient(x-r/3,y-r/3,2,x,y,r); g.addColorStop(0,'#ffea00'); g.addColorStop(1,'#aa6600'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); } },
-            { id: 'toxic', name: 'Токсик', render: (x, y, r) => { ctx.fillStyle = '#333'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.fillStyle = '#ccff00'; ctx.beginPath(); ctx.arc(x,y,r*0.6,0,Math.PI*2); ctx.fill(); } }
-        ];
+    document.body.addEventListener('touchmove', e => {
+        if (!e.target.closest('.shop-container')) e.preventDefault();
+    }, { passive: false });
 
-        // Физика и логика
-        let score = 0; let earnedCoins = 0; let gameOver = false;
+    // ==========================================
+    // 2. БАЗА СКИНОВ (Меняют цвета Башни, Фона и Платформ)
+    // ==========================================
+    const SKINS = [
+        { id: 'default', name: 'Neon City', price: 0, bg: '#1a1a2e', tower: '#2d2d44', plat: '#00ffff', danger: '#ff0055' },
+        { id: 'gold', name: 'Golden Helix', price: 1000, bg: '#221100', tower: '#442200', plat: '#ffd700', danger: '#ff0000' },
+        { id: 'toxic', name: 'Toxic Dump', price: 1500, bg: '#002200', tower: '#004400', plat: '#39ff14', danger: '#8a0303' },
+        { id: 'blood', name: 'Vampire', price: 2000, bg: '#1a0000', tower: '#330000', plat: '#ff416c', danger: '#000000' },
+        { id: 'ice', name: 'Frostbite', price: 2500, bg: '#001a33', tower: '#003366', plat: '#89f7fe', danger: '#ff4500' },
+        { id: 'matrix', name: 'Matrix Code', price: 3000, bg: '#001100', tower: '#000000', plat: '#00ff00', danger: '#ff00ff' },
+        { id: 'amethyst', name: 'Amethyst', price: 3000, bg: '#110022', tower: '#330044', plat: '#d400ff', danger: '#00ffcc' },
+        { id: 'desert', name: 'Desert Sand', price: 3000, bg: '#332211', tower: '#554422', plat: '#ff9900', danger: '#333333' },
+        { id: 'mono', name: 'Monochrome', price: 3000, bg: '#111111', tower: '#444444', plat: '#ffffff', danger: '#555555' },
+        { id: 'black_hole', name: 'Dark Matter (+20%)', price: 3000, bg: '#000000', tower: '#111111', plat: '#800080', danger: '#ffff00' }
+    ];
+
+    let localCoins = parseInt(localStorage.getItem('helix_coins')) || 0;
+    let unlocked = JSON.parse(localStorage.getItem('helix_unlocked')) || ['default'];
+    let activeSkin = localStorage.getItem('helix_skin') || 'default';
+    
+    let sessionCoins = 0;
+    let startTime = Date.now();
+
+    // ==========================================
+    // 3. 3D ДВИЖОК СПИРАЛИ И МАТЕМАТИКА
+    // ==========================================
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    let cw = canvas.width = window.innerWidth;
+    let ch = canvas.height = window.innerHeight;
+
+    let gameState = 'start'; 
+    let score = 0;
+    let platforms = [];
+    let particles = [];
+    let shards = []; // Осколки разбитых платформ
+    
+    // Камера и цилиндр
+    let towerRotation = 0;
+    let towerRotVelocity = 0;
+    let towerY = 0; // Положение цилиндра по вертикали
+    let targetTowerY = 0;
+    
+    const towerRadius = 40;
+    const platRadius = 110;
+    const platHeight = 15;
+    const distanceBetween = 150; // Расстояние между этажами
+
+    // Шар (Игрок) - Он стоит на месте, башня движется вверх!
+    const ball = {
+        r: 10,
+        y: ch * 0.25, // Шар всегда висит в верхней четверти экрана
+        vy: 0,
+        gravity: 0.5,
+        jumpForce: -8,
+        combo: 0, // Количество пробитых этажей
+        isFireball: false // Режим огня
+    };
+
+    // Генератор платформы с дырой и смертельными зонами
+    function createPlatform(index) {
+        let yPos = index * distanceBetween;
+        let gapStart = Math.random() * Math.PI * 2; // Где начинается дыра
+        let gapSize = Math.PI / (1.5 + Math.min(score * 0.05, 1)); // Дыра сужается со временем
         
-        let helixRotation = 0;
-        let targetHelixRotation = 0;
+        let dangerStart = -1, dangerSize = 0;
+        // Начиная с 3 этажа добавляем красные смертельные зоны
+        if (index > 2 && Math.random() > 0.3) {
+            dangerStart = (gapStart + gapSize + Math.random() * Math.PI) % (Math.PI * 2);
+            dangerSize = Math.PI / (3 + Math.random() * 2); // Размер красной зоны
+        }
+
+        return { y: yPos, gapStart: gapStart, gapSize: gapSize, dangerStart: dangerStart, dangerSize: dangerSize, passed: false };
+    }
+
+    function initGame() {
+        score = 0; sessionCoins = 0; ball.combo = 0; ball.isFireball = false;
+        document.getElementById('comboText').style.opacity = 0;
+        document.getElementById('score').innerText = score;
+        document.getElementById('coins').innerText = sessionCoins;
         
-        let cameraY = 0;
-        let cameraTargetY = 0;
+        platforms = [];
+        for (let i = 0; i < 20; i++) platforms.push(createPlatform(i + 1));
+        
+        towerRotation = 0; towerRotVelocity = 0;
+        targetTowerY = -ch * 0.25; // Смещение вниз, чтобы первая платформа была под шаром
+        towerY = targetTowerY;
+        
+        ball.y = ch * 0.25;
+        ball.vy = ball.jumpForce; // Сразу прыгаем
+        
+        particles = []; shards = [];
+        gameState = 'playing';
+        updateColors();
+    }
 
-        let ball = {
-            y: canvas.height * 0.2,
-            baseY: canvas.height * 0.2,
-            vy: 0,
-            radius: 12,
-            passedPlatforms: 0 // Для режима FIREBALL
-        };
+    function updateColors() {
+        let s = SKINS.find(sk => sk.id === activeSkin);
+        document.body.style.background = s.bg;
+    }
 
-        let platforms = [];
-        let particles = [];
-        let splashMarks = []; // Следы на платформах
+    function createExplosion(x, y, color) {
+        for(let i=0; i<20; i++) particles.push({x: x, y: y, vx: (Math.random()-0.5)*15, vy: (Math.random()-0.5)*15, life: 1, c: color});
+    }
 
-        // Отрисовка Башни (Цилиндр и Платформы)
-        const CYLINDER_RADIUS = 30;
-        const PLATFORM_RADIUS = 100;
-        const PLATFORM_SPACING = 150;
+    function shatterPlatform(platIndex) {
+        let p = platforms[platIndex];
+        let s = SKINS.find(sk => sk.id === activeSkin);
+        
+        // Создаем осколки платформы, которые падают вниз
+        for(let i=0; i<8; i++) {
+            shards.push({
+                y: p.y, angle: i * (Math.PI/4), vy: (Math.random()-0.5)*5 - 5,
+                c: i%2===0 ? s.plat : s.danger
+            });
+        }
+        platforms.splice(platIndex, 1);
+        platforms.push(createPlatform(platforms[platforms.length-1].y/distanceBetween + 1));
+    }
 
-        function getLevelColors() {
-            let stage = Math.floor(score / 20);
-            if(stage === 0) return { bg1:'#001133', bg2:'#000', plat:'#00aaff', danger:'#ff0033' }; // Старт (Синий/Красный)
-            if(stage === 1) return { bg1:'#220033', bg2:'#000', plat:'#ff00ff', danger:'#ffea00' }; // Неон
-            if(stage === 2) return { bg1:'#003311', bg2:'#000', plat:'#00ff55', danger:'#ff0000' }; // Токсик
-            return { bg1:'#330000', bg2:'#000', plat:'#ffaa00', danger:'#000000' }; // Ад (Оранжевый/Черный)
+    // 3D Отрисовка Эллипсов (Псевдо-3D)
+    function drawPlatform(yOffset, gapStart, gapSize, dangerStart, dangerSize, color, dangerColor) {
+        let screenY = yOffset - towerY;
+        if (screenY < -50 || screenY > ch + 50) return; // Не рисуем то, что за экраном
+        
+        let cy = screenY;
+        let cx = cw / 2;
+        let rx = platRadius;
+        let ry = platRadius * 0.4; // Искажение перспективы
+
+        // Чтобы платформа крутилась, мы просто сдвигаем углы дыр
+        let currentGapStart = (gapStart + towerRotation) % (Math.PI * 2);
+        if(currentGapStart < 0) currentGapStart += Math.PI * 2;
+        
+        let currentDangerStart = -1;
+        if(dangerStart !== -1) {
+            currentDangerStart = (dangerStart + towerRotation) % (Math.PI * 2);
+            if(currentDangerStart < 0) currentDangerStart += Math.PI * 2;
         }
 
-        function generatePlatform(index) {
-            let gapStart = Math.random() * Math.PI * 2;
-            let gapWidth = Math.PI * 0.4; // Размер дырки
-            
-            // Генерируем 1 или 2 смертельные зоны рядом с дыркой
-            let dangerZones = [];
-            if (index > 0) { // На первой платформе нет смерти
-                let dangerWidth = Math.PI * 0.3;
-                let dangerStart = (gapStart + gapWidth + Math.random()*0.5) % (Math.PI*2);
-                dangerZones.push({ start: dangerStart, width: dangerWidth });
-            }
+        // Рисуем толщину (Объем)
+        ctx.fillStyle = adjustColor(color, -40); // Темнее для боковины
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + platHeight, rx, ry, 0, 0, Math.PI * 2);
+        ctx.fill();
 
-            return {
-                y: ball.baseY + index * PLATFORM_SPACING,
-                gapStart: gapStart,
-                gapWidth: gapWidth,
-                dangerZones: dangerZones,
-                broken: false
-            };
-        }
-
-        function initGame() {
-            score = 0; earnedCoins = 0; gameOver = false;
-            helixRotation = 0; targetHelixRotation = 0;
-            cameraY = 0; cameraTargetY = 0;
-            ball.y = canvas.height * 0.2; ball.vy = 0; ball.passedPlatforms = 0;
-            platforms = []; particles = []; splashMarks = [];
-
-            for(let i=0; i<10; i++) platforms.push(generatePlatform(i));
-
-            document.getElementById('scoreVal').innerText = score;
-            document.getElementById('gameOverScreen').style.display = 'none';
-            document.getElementById('comboVal').style.opacity = '0';
-            updateUI();
-            gameLoop();
-        }
-
-        function createExplosion(x, y, color, count) {
-            for(let i=0; i<count; i++) {
-                particles.push({
-                    x: x, y: y, size: Math.random()*5+2,
-                    vx: (Math.random()-0.5)*15, vy: (Math.random()-0.5)*15,
-                    color: color, life: 1.0
-                });
-            }
-        }
-
-        function drawArc3D(y, radius, startAngle, endAngle, color, isDanger = false) {
-            ctx.save();
-            ctx.translate(canvas.width/2, y - cameraY);
-            ctx.scale(1, 0.35); // 3D наклон
-
+        // Рисуем верхнюю плоскость (Основной цвет)
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+        
+        // ВЫРЕЗАЕМ ДЫРУ! 
+        // В Canvas мы рисуем клин (wedge) режимом 'destination-out', чтобы стереть часть эллипса
+        ctx.fill();
+        
+        // Рисуем красную смертельную зону (поверх основного цвета)
+        if(currentDangerStart !== -1) {
+            ctx.fillStyle = dangerColor;
             ctx.beginPath();
-            ctx.arc(0, 0, radius, startAngle, endAngle);
-            ctx.lineTo(0, 0);
-            ctx.fillStyle = color;
+            ctx.moveTo(cx, cy);
+            ctx.ellipse(cx, cy, rx, ry, 0, currentDangerStart, currentDangerStart + dangerSize);
+            ctx.closePath();
             ctx.fill();
-
-            // Если это смертельная зона, делаем ее ОЧЕНЬ яркой (штриховка или градиент)
-            if (isDanger) {
-                ctx.lineWidth = 15;
-                ctx.strokeStyle = '#000'; // Черная окантовка для контраста
-                ctx.beginPath(); ctx.arc(0, 0, radius, startAngle, endAngle); ctx.stroke();
-            }
-
-            // Толщина платформы
-            if (endAngle > 0 && startAngle < Math.PI) {
-                ctx.fillStyle = darkenColor(color);
-                ctx.beginPath();
-                ctx.arc(0, 0, radius, Math.max(0, startAngle), Math.min(Math.PI, endAngle));
-                ctx.lineTo(Math.cos(Math.min(Math.PI, endAngle))*radius, 20);
-                ctx.arc(0, 20, radius, Math.min(Math.PI, endAngle), Math.max(0, startAngle), true);
-                ctx.closePath();
-                ctx.fill();
-            }
-            ctx.restore();
         }
 
-        function darkenColor(color) {
-            // Упрощенное затемнение
-            if(color === '#00aaff') return '#005588';
-            if(color === '#ff0033') return '#880011';
-            if(color === '#ff00ff') return '#880088';
-            if(color === '#ffea00') return '#aa8800';
-            if(color === '#00ff55') return '#008822';
-            if(color === '#ff0000') return '#880000';
-            if(color === '#ffaa00') return '#885500';
-            if(color === '#000000') return '#222';
-            return '#333';
-        }
+        // Вырезаем саму дыру
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.ellipse(cx, cy, rx + 10, ry + 10, 0, currentGapStart, currentGapStart + gapSize);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+    }
 
-        function gameLoop() {
-            if (gameOver) return;
+    function adjustColor(color, amount) {
+        if(color.length === 7) return '#' + color.replace(/^#/, '').replace(/../g, c => ('0'+Math.min(255, Math.max(0, parseInt(c, 16) + amount)).toString(16)).substr(-2));
+        return color;
+    }
 
-            let colors = getLevelColors();
-            
-            // Фон
-            let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            grad.addColorStop(0, colors.bg1); grad.addColorStop(1, colors.bg2);
-            ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    function loop() {
+        requestAnimationFrame(loop);
+        if (gameState !== 'playing') return;
 
-            // Плавное вращение и камера
-            helixRotation += (targetHelixRotation - helixRotation) * 0.2;
-            cameraY += (cameraTargetY - cameraY) * 0.1;
+        let s = SKINS.find(sk => sk.id === activeSkin);
+        ctx.clearRect(0, 0, cw, ch);
 
-            // Отрисовка Башни (Задняя часть платформ)
-            platforms.forEach(p => {
-                if(p.broken || p.y - cameraY < -100 || p.y - cameraY > canvas.height + 100) return;
+        // Инерция башни
+        towerRotation += towerRotVelocity;
+        towerRotVelocity *= 0.9; // Торможение
+        
+        // Плавное движение камеры вниз (башня ползет вверх)
+        towerY += (targetTowerY - towerY) * 0.1;
+
+        // Физика шара
+        ball.vy += ball.gravity;
+        ball.y += ball.vy;
+
+        // РИСУЕМ БАШНЮ (ЦИЛИНДР)
+        // 3D градиент, имитирующий свет слева и тень справа
+        let grad = ctx.createLinearGradient(cw/2 - towerRadius, 0, cw/2 + towerRadius, 0);
+        grad.addColorStop(0, adjustColor(s.tower, 30));
+        grad.addColorStop(0.5, s.tower);
+        grad.addColorStop(1, adjustColor(s.tower, -50));
+        ctx.fillStyle = grad;
+        ctx.fillRect(cw/2 - towerRadius, 0, towerRadius*2, ch);
+
+        // ИДЕАЛЬНАЯ МАТЕМАТИКА СТОЛКНОВЕНИЙ
+        let ballRelativeZ = Math.PI / 2; // Шар всегда спереди (угол 90 градусов или PI/2 на круге)
+        
+        for (let i = 0; i < platforms.length; i++) {
+            let p = platforms[i];
+            let screenY = p.y - towerY;
+
+            // Если шар пролетает уровень платформы
+            if (ball.y + ball.r > screenY && ball.y - ball.vy <= screenY) {
                 
-                // Нормализуем углы с учетом вращения башни
-                let effStart = (p.gapStart + helixRotation) % (Math.PI*2);
-                if(effStart < 0) effStart += Math.PI*2;
-                let effEnd = (effStart + p.gapWidth) % (Math.PI*2);
-
-                // Рисуем заднюю безопасную часть
-                drawArc3D(p.y, PLATFORM_RADIUS, Math.PI, Math.PI*2, colors.plat);
-
-                // Рисуем задние смертельные зоны поверх
-                p.dangerZones.forEach(dz => {
-                    let dStart = (dz.start + helixRotation) % (Math.PI*2);
-                    if(dStart < 0) dStart += Math.PI*2;
-                    let dEnd = (dStart + dz.width) % (Math.PI*2);
-                    drawArc3D(p.y, PLATFORM_RADIUS, Math.PI, Math.PI*2, colors.danger, true); // Упрощенный оверлей
-                });
-            });
-
-            // Ствол башни (Цилиндр)
-            let cylGrad = ctx.createLinearGradient(canvas.width/2 - CYLINDER_RADIUS, 0, canvas.width/2 + CYLINDER_RADIUS, 0);
-            cylGrad.addColorStop(0, '#222'); cylGrad.addColorStop(0.5, '#555'); cylGrad.addColorStop(1, '#111');
-            ctx.fillStyle = cylGrad;
-            ctx.fillRect(canvas.width/2 - CYLINDER_RADIUS, 0, CYLINDER_RADIUS*2, canvas.height);
-
-            // Отрисовка Башни (Передняя часть платформ)
-            platforms.forEach(p => {
-                if(p.broken || p.y - cameraY < -100 || p.y - cameraY > canvas.height + 100) return;
+                // Вычисляем, где находится дыра В ДАННЫЙ МОМЕНТ (с учетом вращения башни)
+                let currentGapStart = (p.gapStart + towerRotation) % (Math.PI * 2);
+                if(currentGapStart < 0) currentGapStart += Math.PI * 2;
+                let gapEnd = (currentGapStart + p.gapSize) % (Math.PI*2);
                 
-                let effStart = (p.gapStart + helixRotation) % (Math.PI*2);
-                if(effStart < 0) effStart += Math.PI*2;
-                let effEnd = (effStart + p.gapWidth) % (Math.PI*2);
-
-                // Если дырка спереди, нужно нарисовать два куска
-                if (effStart < Math.PI || effEnd < Math.PI || (effStart > effEnd && (effStart < Math.PI || effEnd < Math.PI))) {
-                    drawArc3D(p.y, PLATFORM_RADIUS, 0, Math.PI, colors.plat);
-                    
-                    // Вырезаем дырку стиранием (в 3D это сложно, поэтому мы рисуем поверх безопасной зоны сектора)
-                    // Для оптимизации рисуем смертельные поверх
-                    p.dangerZones.forEach(dz => {
-                        let dStart = (dz.start + helixRotation) % (Math.PI*2);
-                        if(dStart < 0) dStart += Math.PI*2;
-                        let dEnd = (dStart + dz.width) % (Math.PI*2);
-                        // Рисуем красную зону только если она попадает на переднюю часть (0..PI)
-                        if (dStart < Math.PI || dEnd < Math.PI || dStart > dEnd) {
-                             drawArc3D(p.y, PLATFORM_RADIUS, 0, Math.PI, colors.danger, true); 
-                             // ВАЖНО: В реальном 3D мы бы пересекали углы. Здесь мы визуально выделяем всю переднюю кромку, если там есть опасность.
-                             // Это делает опасные зоны ГИПЕР-ВИДИМЫМИ.
-                        }
-                    });
-                } else {
-                    // Сплошная спереди
-                    drawArc3D(p.y, PLATFORM_RADIUS, 0, Math.PI, colors.plat);
-                    p.dangerZones.forEach(dz => {
-                         drawArc3D(p.y, PLATFORM_RADIUS, 0, Math.PI, colors.danger, true); 
-                    });
+                // Летит ли шар в дыру?
+                let inGap = false;
+                if (currentGapStart < gapEnd) {
+                    if (ballRelativeZ >= currentGapStart && ballRelativeZ <= gapEnd) inGap = true;
+                } else { // Дыра проходит через 0
+                    if (ballRelativeZ >= currentGapStart || ballRelativeZ <= gapEnd) inGap = true;
                 }
-            });
 
-            // Физика шарика
-            ball.vy += 0.6; // Гравитация
-            ball.y += ball.vy;
-
-            let skinDef = skins.find(s => s.id === activeSkinId);
-
-            // Отрисовка Шарика
-            let ballDrawY = ball.y - cameraY;
-            
-            // Если режим Fireball - рисуем огонь
-            if (ball.passedPlatforms >= 3) {
-                document.getElementById('comboVal').style.opacity = '1';
-                ctx.shadowBlur = 20; ctx.shadowColor = '#ff5500';
-                ctx.fillStyle = '#ffaa00';
-                ctx.beginPath(); ctx.arc(canvas.width/2, ballDrawY - 5, ball.radius+5, 0, Math.PI*2); ctx.fill();
-                ctx.shadowBlur = 0;
-            } else {
-                document.getElementById('comboVal').style.opacity = '0';
-            }
-
-            skinDef.render(canvas.width/2, ballDrawY, ball.radius);
-
-            // След шарика
-            if (ball.vy < 0) particles.push({ x: canvas.width/2, y: ballDrawY+10, size: 3, vx: 0, vy: 0, color: '#fff', life: 0.5 });
-
-            // Столкновение с платформой
-            let currentPlat = platforms.find(p => !p.broken && ball.y + ball.radius > p.y - 5 && ball.y - ball.radius < p.y + 5);
-            
-            if (currentPlat && ball.vy > 0) {
-                // Шарик находится спереди (угол Math.PI/2)
-                let hitAngle = Math.PI/2; 
-                
-                // Находим эффективные углы дырки и смерти
-                let effStart = (currentPlat.gapStart + helixRotation) % (Math.PI*2);
-                if(effStart < 0) effStart += Math.PI*2;
-                let effEnd = (effStart + currentPlat.gapWidth) % (Math.PI*2);
-
-                let isHole = false;
-                if (effStart < effEnd) { if(hitAngle >= effStart && hitAngle <= effEnd) isHole = true; } 
-                else { if(hitAngle >= effStart || hitAngle <= effEnd) isHole = true; }
-
-                if (isHole) {
-                    // ПРОЛЕТЕЛ В ДЫРКУ!
-                    score++;
-                    ball.passedPlatforms++;
-                    let reward = score > 20 ? 20 : 10;
-                    balance += reward; earnedCoins += reward;
-                    
-                    document.getElementById('scoreVal').innerText = score;
-                    updateUI();
-                    
-                    cameraTargetY = currentPlat.y - canvas.height*0.2;
-                    currentPlat.broken = true; // Платформа пройдена
-                    
-                    // Добавляем новую вниз
-                    platforms.push(generatePlatform(platforms.length));
+                if (inGap) {
+                    // ПРОЛЕТЕЛ В ДЫРУ!
+                    if (!p.passed) {
+                        p.passed = true;
+                        score++;
+                        document.getElementById('score').innerText = score;
+                        sessionCoins += 10; localCoins += 10;
+                        document.getElementById('coins').innerText = sessionCoins;
+                        
+                        ball.combo++;
+                        targetTowerY += distanceBetween; // Сдвигаем башню вверх
+                        
+                        // Активация FIREBALL
+                        if(ball.combo >= 3) {
+                            ball.isFireball = true;
+                            document.getElementById('comboText').style.opacity = 1;
+                        }
+                    }
                 } else {
-                    // УПАЛ НА ПЛАТФОРМУ
-                    let isDanger = false;
-                    currentPlat.dangerZones.forEach(dz => {
-                        let dStart = (dz.start + helixRotation) % (Math.PI*2);
-                        if(dStart < 0) dStart += Math.PI*2;
-                        let dEnd = (dStart + dz.width) % (Math.PI*2);
-                        if (dStart < dEnd) { if(hitAngle >= dStart && hitAngle <= dEnd) isDanger = true; } 
-                        else { if(hitAngle >= dStart || hitAngle <= dEnd) isDanger = true; }
-                    });
+                    // УДАР О ПЛАТФОРМУ
+                    // 1. Если был Fireball - пробиваем с силой!
+                    if (ball.isFireball) {
+                        shatterPlatform(i);
+                        ball.isFireball = false;
+                        ball.combo = 0;
+                        document.getElementById('comboText').style.opacity = 0;
+                        ball.vy = ball.jumpForce; // Легкий отскок после пробития
+                        
+                        score++; sessionCoins += 50; localCoins += 50; // Бонус за пробитие
+                        document.getElementById('score').innerText = score;
+                        document.getElementById('coins').innerText = sessionCoins;
+                        targetTowerY += distanceBetween;
+                        break;
+                    }
 
-                    // Режим FIREBALL пробивает всё!
-                    if (ball.passedPlatforms >= 3) {
-                        createExplosion(canvas.width/2, ballDrawY, '#ff5500', 40);
-                        currentPlat.broken = true;
-                        score += 2; // Бонус
-                        ball.passedPlatforms = 0; // Сброс огня
-                        cameraTargetY = currentPlat.y - canvas.height*0.2;
-                        platforms.push(generatePlatform(platforms.length));
-                    } else if (isDanger) {
-                        // СМЕРТЬ
-                        createExplosion(canvas.width/2, ballDrawY, colors.danger, 50);
-                        triggerGameOver();
+                    // 2. Обычный удар - проверяем, не красная ли это зона
+                    let inDanger = false;
+                    if (p.dangerStart !== -1) {
+                        let dStart = (p.dangerStart + towerRotation) % (Math.PI*2);
+                        if(dStart < 0) dStart += Math.PI*2;
+                        let dEnd = (dStart + p.dangerSize) % (Math.PI*2);
+                        if (dStart < dEnd) {
+                            if (ballRelativeZ >= dStart && ballRelativeZ <= dEnd) inDanger = true;
+                        } else {
+                            if (ballRelativeZ >= dStart || ballRelativeZ <= dEnd) inDanger = true;
+                        }
+                    }
+
+                    if (inDanger) {
+                        // СМЕРТЬ!
+                        createExplosion(cw/2, ball.y, '#f00');
+                        gameState = 'gameover';
+                        localStorage.setItem('helix_coins', localCoins);
+                        setTimeout(() => document.getElementById('gameOverScreen').classList.remove('hidden'), 500);
                         return;
                     } else {
-                        // ОБЫЧНЫЙ ОТСКОК
-                        ball.vy = -12;
-                        ball.passedPlatforms = 0;
-                        createExplosion(canvas.width/2, ballDrawY+10, colors.plat, 10);
+                        // Обычный отскок (Жив)
+                        ball.y = screenY - ball.r;
+                        ball.vy = ball.jumpForce;
+                        createExplosion(cw/2, ball.y + ball.r, s.plat); // Брызги краски
+                        
+                        // Сброс комбо, если мы коснулись платформы
+                        if(ball.combo > 0) {
+                            ball.combo = 0;
+                            ball.isFireball = false;
+                            document.getElementById('comboText').style.opacity = 0;
+                        }
                     }
                 }
             }
-
-            // Рендер частиц
-            for (let i = particles.length - 1; i >= 0; i--) {
-                let p = particles[i];
-                p.x += p.vx; p.y += p.vy; p.life -= 0.05;
-                if (p.life <= 0) { particles.splice(i, 1); continue; }
-                ctx.fillStyle = p.color; ctx.globalAlpha = p.life;
-                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
-                ctx.globalAlpha = 1.0;
-            }
-
-            requestAnimationFrame(gameLoop);
         }
 
-        // --- УПРАВЛЕНИЕ СВАЙПАМИ (Крутим башню) ---
-        let isDragging = false;
-        let lastX = 0;
+        // Рисуем платформы (сверху вниз)
+        for (let p of platforms) drawPlatform(p.y, p.gapStart, p.gapSize, p.dangerStart, p.dangerSize, s.plat, s.danger);
 
-        window.addEventListener('touchstart', e => { if(!gameOver) { isDragging = true; lastX = e.touches[0].clientX; } });
-        window.addEventListener('touchmove', e => {
-            if(!isDragging || gameOver) return;
-            let deltaX = e.touches[0].clientX - lastX;
-            targetHelixRotation += deltaX * 0.01; // Чувствительность вращения
-            lastX = e.touches[0].clientX;
-        });
-        window.addEventListener('touchend', () => { isDragging = false; });
+        // Физика осколков (если разбили)
+        for(let i=shards.length-1; i>=0; i--) {
+            let sh = shards[i];
+            sh.vy += 0.5; sh.y += sh.vy;
+            let sy = sh.y - towerY;
+            ctx.fillStyle = sh.c;
+            ctx.beginPath(); ctx.arc(cw/2 + Math.cos(sh.angle)*platRadius, sy, 10, 0, Math.PI*2); ctx.fill();
+            if(sy > ch) shards.splice(i, 1);
+        }
+
+        // РИСУЕМ ШАР ИГРОКА
+        ctx.shadowBlur = ball.isFireball ? 20 : 10;
+        ctx.shadowColor = ball.isFireball ? '#ff0055' : '#fff';
+        ctx.fillStyle = ball.isFireball ? '#ff0055' : '#fff';
+        ctx.beginPath(); ctx.arc(cw/2, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
+
+        // Огонь вокруг шара в режиме Fireball
+        if (ball.isFireball) {
+            ctx.fillStyle = 'rgba(255, 255, 0, 0.5)';
+            ctx.beginPath(); ctx.arc(cw/2, ball.y - 10, ball.r*1.5, 0, Math.PI*2); ctx.fill();
+        }
+
+        // Частицы
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i]; p.x += p.vx; p.y += p.vy; p.life -= 0.05;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillStyle = p.c; ctx.shadowBlur = 0;
+            ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2); ctx.fill();
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    // ==========================================
+    // 4. УПРАВЛЕНИЕ (ВРАЩЕНИЕ БАШНИ) И UI
+    // ==========================================
+    let touchStartX = 0;
+    
+    window.addEventListener('touchstart', e => {
+        if(e.target.closest('.smart-menu-btn') || e.target.closest('.modal')) return;
+        if(gameState === 'start') { initGame(); return; }
+        if(gameState === 'playing') touchStartX = e.touches[0].clientX;
+    }, {passive: false});
+
+    window.addEventListener('touchmove', e => {
+        if(gameState !== 'playing' || e.target.closest('.shop-container')) return;
         
-        // Для ПК (Мышка)
-        window.addEventListener('mousedown', e => { if(!gameOver) { isDragging = true; lastX = e.clientX; } });
-        window.addEventListener('mousemove', e => {
-            if(!isDragging || gameOver) return;
-            let deltaX = e.clientX - lastX;
-            targetHelixRotation += deltaX * 0.01;
-            lastX = e.clientX;
-        });
-        window.addEventListener('mouseup', () => { isDragging = false; });
+        let dx = e.touches[0].clientX - touchStartX;
+        // Крутим башню (Чувствительность)
+        towerRotation += dx * 0.015;
+        touchStartX = e.touches[0].clientX;
+    }, {passive: false});
 
-        function triggerGameOver() {
-            gameOver = true;
-            document.getElementById('finalScore').innerText = score;
-            document.getElementById('earnedCoins').innerText = earnedCoins;
-            document.getElementById('gameOverScreen').style.display = 'flex';
-        }
-
-        function restartGame() { initGame(); }
-        function updateUI() { document.getElementById('balanceVal').innerText = `${balance} 💰`; }
-
-        // --- МАГАЗИН СКИНОВ ---
-        function openShop() { document.getElementById('shopModal').style.display = 'flex'; renderShop(); }
-        function closeShop() { document.getElementById('shopModal').style.display = 'none'; }
-
-        function renderShop() {
-            const grid = document.getElementById('skinsGrid');
-            grid.innerHTML = '';
-            
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = 60; tempCanvas.height = 60;
-            const tCtx = tempCanvas.getContext('2d');
-
-            skins.forEach(skin => {
-                const isOwned = inventory.includes(skin.id);
-                const isActive = activeSkinId === skin.id;
-                const card = document.createElement('div');
-                card.className = `skin-card ${isActive ? 'active' : ''}`;
-                
-                tCtx.clearRect(0,0,60,60);
-                const oldCtx = window.ctx; window.ctx = tCtx; 
-                skin.render(30, 30, 25); window.ctx = oldCtx;
-                let dataURL = tempCanvas.toDataURL();
-
-                let btn = isActive ? `<button style="width:100%; padding:10px; background:#555; color:#fff; border:none; border-radius:10px; font-weight:bold;" disabled>НАДЕТО</button>` :
-                          isOwned ? `<button style="width:100%; padding:10px; background:#00ffcc; color:#000; font-weight:bold; border:none; border-radius:10px; cursor:pointer;" onclick="applySkin('${skin.id}')">НАДЕТЬ</button>` :
-                          `<button style="width:100%; padding:10px; background:#ffaa00; color:#000; font-weight:bold; border:none; border-radius:10px; cursor:pointer;" onclick="buySkin('${skin.id}')">1000 💰</button>`;
-
-                card.innerHTML = `<img src="${dataURL}" style="width:60px; height:60px; margin-bottom:10px;">
-                                  <div style="font-size:16px; font-weight:bold; color:#fff; margin-bottom:10px;">${skin.name}</div>${btn}`;
-                grid.appendChild(card);
-            });
-        }
-
-        function buySkin(id) { if(balance >= 1000) { balance -= 1000; inventory.push(id); updateUI(); renderShop(); } else alert("Мало монет!"); }
-        function applySkin(id) { activeSkinId = id; renderShop(); }
-
-        function saveAndExit() {
-            if(tg && tg.sendData) { tg.sendData(JSON.stringify({ game: 'helix', score: score, coins: balance, activeSkin: activeSkinId, inventory: inventory.join(',') })); tg.close(); } 
-            else alert(`Выход. Баланс: ${balance}`);
-        }
-
-        window.ctx = ctx; // Хак для рендера магазина
+    function resetGame() {
+        document.getElementById('gameOverScreen').classList.add('hidden');
         initGame();
-    </script>
+    }
+
+    // МЕНЮ И МАГАЗИН
+    document.getElementById('mainMenuBtn').onclick = () => {
+        if(gameState === 'playing') gameState = 'paused';
+        document.getElementById('smartModal').classList.remove('hidden');
+    }
+    function closeMenu() {
+        document.getElementById('smartModal').classList.add('hidden');
+        if(gameState === 'paused') gameState = 'playing';
+    }
+    
+    function openShop() {
+        document.getElementById('smartModal').classList.add('hidden');
+        document.getElementById('shopModal').classList.remove('hidden');
+        document.getElementById('shopCoins').innerText = localCoins;
+        let list = document.getElementById('shopList'); list.innerHTML = '';
+        
+        SKINS.forEach(s => {
+            let isUnl = unlocked.includes(s.id); let isAct = activeSkin === s.id;
+            let btn = isAct ? `<button class="buy-btn btn-selected">ВЫБРАН</button>` :
+                      isUnl ? `<button class="buy-btn btn-select" onclick="equipSkin('${s.id}')">НАДЕТЬ</button>` :
+                      `<button class="buy-btn btn-buy" onclick="buySkin('${s.id}', ${s.price})">КУПИТЬ (${s.price})</button>`;
+            list.innerHTML += `
+                <div class="skin-card ${isAct ? 'active' : ''}">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div style="width:30px; height:30px; background:${s.plat}; border-radius:5px; border:2px solid ${s.danger};"></div>
+                        <div style="font-weight:bold;">${s.name}</div>
+                    </div>
+                    ${btn}
+                </div>`;
+        });
+    }
+    function closeShop() { document.getElementById('shopModal').classList.add('hidden'); document.getElementById('smartModal').classList.remove('hidden'); }
+    
+    window.buySkin = function(id, price) {
+        if (localCoins >= price) { localCoins -= price; unlocked.push(id); equipSkin(id); saveData(); }
+        else tg.showAlert('Мало монет, бро! Разбивай платформы!');
+    }
+    window.equipSkin = function(id) { activeSkin = id; openShop(); saveData(); updateColors(); }
+    
+    function saveData() {
+        localStorage.setItem('helix_coins', localCoins);
+        localStorage.setItem('helix_unlocked', JSON.stringify(unlocked));
+        localStorage.setItem('helix_skin', activeSkin);
+    }
+
+    window.saveAndExit = function() {
+        tg.sendData(JSON.stringify({
+            game: "helix", coins: sessionCoins, score: score,
+            time_spent: Math.floor((Date.now() - startTime) / 1000), active_skin: activeSkin
+        }));
+    }
+
+    // Запуск стартового экрана
+    updateColors();
+    ctx.fillStyle = '#fff'; ctx.font = '24px Arial'; ctx.textAlign = 'center';
+    ctx.fillText("ТАПНИ, ЧТОБЫ УПАСТЬ", cw/2, ch/2);
+    requestAnimationFrame(loop);
+
+</script>
 </body>
 </html>
