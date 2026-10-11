@@ -3,274 +3,335 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Arcade Empire: Crypto Clicker</title>
+    <title>Crypto Clicker 3.0</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; touch-action: none; font-family: 'Arial', sans-serif; }
-        body { 
-            background: #000; 
-            background-image: radial-gradient(circle at 50% 30%, #1a1a2e 0%, #000000 100%);
-            color: #fff; height: 100vh; overflow: hidden; display: flex; flex-direction: column; 
-        }
+        /* БАЗА И ЗАЩИТА */
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background: radial-gradient(circle at center, #1a1a2e, #0f0f1a); overflow: hidden; touch-action: none; color: white; height: 100vh; display: flex; flex-direction: column; align-items: center; }
         
-        /* Верхняя панель (Баланс) */
-        .header { padding: 30px 20px 10px; text-align: center; z-index: 10; }
-        .balance-value { font-size: 55px; font-weight: 900; color: #fff; display: flex; align-items: center; justify-content: center; gap: 10px; text-shadow: 0 0 20px rgba(255,255,255,0.3); }
-        .balance-coin-icon { width: 45px; height: 45px; }
-
-        /* Монета (Кликер) */
-        .coin-container { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; width: 100%; }
-        .coin-btn { 
-            width: 280px; height: 280px; border-radius: 50%; border: none; outline: none;
-            background: radial-gradient(circle at 30% 30%, #ffd700, #b8860b);
-            box-shadow: 0 0 50px rgba(255, 215, 0, 0.2), inset 0 -15px 30px rgba(0,0,0,0.4), inset 0 15px 30px rgba(255,255,255,0.4);
-            display: flex; justify-content: center; align-items: center; font-size: 110px;
-            transition: transform 0.05s ease-out; cursor: pointer; z-index: 5;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .coin-btn:active { transform: scale(0.94); box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); }
+        /* ИНТЕРФЕЙС И БАЛАНС */
+        .header { width: 100%; padding: 20px; text-align: center; margin-top: 10px; }
+        .balance-box { font-size: 40px; font-weight: 900; text-shadow: 0 0 20px #0ff; color: #fff; display: flex; flex-direction: column; align-items: center; }
+        .miner-status { font-size: 14px; color: #00ff00; margin-top: 5px; text-shadow: 0 0 5px #00ff00; }
         
-        /* Всплывающие цифры */
-        .floating-text { position: absolute; font-size: 35px; font-weight: 900; color: #fff; pointer-events: none; animation: floatUp 0.8s ease-out forwards; z-index: 10; }
-        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-120px); } }
+        .smart-menu-btn { position: absolute; top: 15px; right: 15px; z-index: 1000; background: rgba(0, 0, 0, 0.7); color: #0ff; border: 2px solid #0ff; border-radius: 8px; padding: 10px 15px; font-weight: bold; cursor: pointer; }
 
-        /* Нижняя панель */
-        .footer { padding: 20px; background: rgba(0,0,0,0.8); border-top: 1px solid #333; display: flex; flex-direction: column; gap: 15px; z-index: 20; }
-        .miner-status { font-size: 14px; color: #00ffcc; text-align: center; font-weight: bold; }
+        /* ИГРОВАЯ ЗОНА (МОНЕТА) */
+        .coin-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; width: 100%; perspective: 1000px; }
+        .crypto-coin { width: 200px; height: 200px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 80px; font-weight: bold; transition: transform 0.05s, box-shadow 0.2s; box-shadow: 0 0 50px rgba(255, 215, 0, 0.5); border: 8px solid rgba(255,255,255,0.2); position: relative; cursor: pointer; }
+        .crypto-coin:active { transform: scale(0.95); box-shadow: 0 0 80px rgba(255, 215, 0, 0.8); }
+
+        /* ВСПЛЫВАЮЩИЕ ЦИФРЫ +1 */
+        .floating-text { position: absolute; font-size: 24px; font-weight: bold; color: #fff; text-shadow: 0 0 10px #0ff; pointer-events: none; animation: floatUp 1s ease-out forwards; z-index: 500; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-100px) scale(1.5); } }
+
+        /* МОДАЛЬНЫЕ ОКНА И МЕНЮ */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 2000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .hidden { display: none !important; }
+        .modal-content { background: #111; border: 2px solid #0ff; border-radius: 15px; width: 85%; max-height: 85vh; padding: 20px; display: flex; flex-direction: column; gap: 12px; text-align: center; box-shadow: 0 0 30px rgba(0, 255, 255, 0.2); }
         
-        .action-row { display: flex; gap: 10px; }
-        .btn { 
-            flex: 1; padding: 15px; border: none; border-radius: 15px; font-size: 16px; font-weight: bold; color: #fff; cursor: pointer; transition: transform 0.1s; display: flex; align-items: center; justify-content: center; gap: 5px;
-        }
-        .btn:active { transform: scale(0.95); }
-        .btn-miner { background: linear-gradient(45deg, #2b5876, #4e4376); box-shadow: 0 4px 15px rgba(78,67,118,0.4); }
-        .btn-shop { background: linear-gradient(45deg, #11998e, #38ef7d); box-shadow: 0 4px 15px rgba(56,239,125,0.4); }
-        .btn-save { background: #333; width: 100%; margin-top: 5px; }
+        .btn { padding: 15px; font-size: 16px; font-weight: bold; border-radius: 10px; color: white; border: none; text-transform: uppercase; }
+        .btn-green { background: linear-gradient(45deg, #00b09b, #96c93d); }
+        .btn-blue { background: linear-gradient(45deg, #2193b0, #6dd5ed); }
+        .btn-red { background: linear-gradient(45deg, #ff416c, #ff4b2b); }
+        .btn-gold { background: linear-gradient(45deg, #f12711, #f5af19); color: black; }
 
-        /* Магазин Скинов (Модальное окно) */
-        .shop-modal { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; flex-direction: column; padding: 20px; }
-        .shop-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .shop-title { font-size: 24px; font-weight: bold; color: #fff; }
-        .close-btn { background: none; border: none; color: #ff3333; font-size: 30px; cursor: pointer; }
-        .skins-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; overflow-y: auto; padding-bottom: 20px; }
-        .skin-card { background: #1a1a2e; border: 2px solid #333; border-radius: 15px; padding: 15px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-        .skin-card.active { border-color: #00ffcc; background: #162a35; }
-        .skin-preview { font-size: 50px; }
-        .skin-name { font-size: 14px; font-weight: bold; }
-        .buy-skin-btn { background: #ffaa00; border: none; padding: 8px 15px; border-radius: 10px; font-weight: bold; color: #000; width: 100%; cursor: pointer; }
-        .equip-skin-btn { background: #00ffcc; border: none; padding: 8px 15px; border-radius: 10px; font-weight: bold; color: #000; width: 100%; cursor: pointer; }
+        /* МАГАЗИН И СКРОЛЛ */
+        .shop-container { overflow-y: auto; max-height: 55vh; -webkit-overflow-scrolling: touch; touch-action: pan-y; display: flex; flex-direction: column; gap: 10px; padding: 5px; }
+        .skin-card { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 15px; border-radius: 10px; border: 1px solid #444; }
+        .skin-card.active { border-color: #0ff; box-shadow: 0 0 15px rgba(0,255,255,0.4); }
+        .buy-btn { padding: 8px 15px; border-radius: 5px; border: none; font-weight: bold; }
+        .btn-buy { background: #ffd700; color: #000; }
+        .btn-select { background: #0ff; color: #000; }
+        
+        /* ПРЕДУПРЕЖДЕНИЕ АНТИЧИТА */
+        #cheat-warning { position: absolute; top: 20%; left: 50%; transform: translateX(-50%); background: red; color: white; padding: 10px 20px; border-radius: 10px; font-weight: bold; z-index: 3000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
     </style>
 </head>
 <body>
 
-    <!-- БАЛАНС -->
+    <button id="mainMenuBtn" class="smart-menu-btn">⚙️ МЕНЮ</button>
+    <div id="cheat-warning">🚨 СЛИШКОМ БЫСТРО! (Автокликер?)</div>
+
     <div class="header">
-        <div class="balance-value">
-            <span id="balanceDisplay">0</span>
+        <div class="balance-box">
+            <span id="balance">0</span>
+            <div style="font-size: 16px; color: #aaa;">Монет 💰</div>
+        </div>
+        <div id="minerStatus" class="miner-status hidden">⛏ Ферма майнит: +30k / 24ч</div>
+    </div>
+
+    <!-- 3D Монета -->
+    <div class="coin-container" id="tapArea">
+        <div id="mainCoin" class="crypto-coin">₿</div>
+    </div>
+
+    <!-- Главное Меню -->
+    <div id="smartModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 style="color: white; margin-bottom: 5px;">ПАУЗА</h2>
+            <button class="btn btn-blue" onclick="openShop('skins')">🎨 СКИНЫ</button>
+            <button class="btn btn-gold" onclick="openShop('upgrades')">⛏ МАЙНИНГ ФЕРМА</button>
+            <button class="btn btn-red" onclick="saveAndExit()">💾 ВЫХОД В БОТА</button>
+            <button class="btn btn-green" onclick="closeMenu()">▶ ПРОДОЛЖИТЬ</button>
         </div>
     </div>
 
-    <!-- КЛИКЕР -->
-    <div class="coin-container" id="coinContainer">
-        <button class="coin-btn" id="mainCoin" onmousedown="tap(event)" ontouchstart="tap(event)">💰</button>
-    </div>
-
-    <!-- НИЖНЕЕ МЕНЮ -->
-    <div class="footer">
-        <div id="minerStatus" class="miner-status">Майнинг выключен</div>
-        <div class="action-row">
-            <button id="minerBtn" class="btn btn-miner" onclick="buyMiner()">⚡ Ферма (50,000)</button>
-            <button class="btn btn-shop" onclick="openShop()">🎨 Скины</button>
-        </div>
-        <button class="btn btn-save" onclick="saveAndExit()">💾 Сохранить и выйти</button>
-    </div>
-
-    <!-- МАГАЗИН СКИНОВ -->
-    <div class="shop-modal" id="shopModal">
-        <div class="shop-header">
-            <div class="shop-title">Магазин (1000 💰)</div>
-            <button class="close-btn" onclick="closeShop()">&times;</button>
-        </div>
-        <div class="skins-grid" id="skinsGrid">
-            <!-- Скины генерируются через JS -->
+    <!-- Универсальный Магазин (Скины / Улучшения) -->
+    <div id="shopModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 id="shopTitle" style="color: white;">МАГАЗИН</h2>
+            <div style="color: #ffd700;">Баланс: <span id="shopCoins">0</span> 💰</div>
+            <div class="shop-container" id="shopList">
+                <!-- Контент генерируется через JS -->
+            </div>
+            <button class="btn btn-green" onclick="closeShop()">НАЗАД</button>
         </div>
     </div>
 
-    <script>
-        // Инициализация Telegram
-        let tg;
-        try { tg = window.Telegram.WebApp; tg.expand(); } catch(e) {}
+    <!-- Окно прибыли оффлайн -->
+    <div id="offlineModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 style="color: #00ff00;">⛏ ФЕРМА РАБОТАЛА!</h2>
+            <p style="color: white; font-size: 18px;">Пока тебя не было, майнеры добыли:</p>
+            <h1 id="offlineProfit" style="color: #ffd700; margin: 15px 0;">+ 0 💰</h1>
+            <button class="btn btn-green" onclick="claimOffline()">ЗАБРАТЬ</button>
+        </div>
+    </div>
 
-        // --- ДАННЫЕ ИГРОКА (В будущем загружаются из Python) ---
-        let balance = 0; 
-        let hasMiner = false;
+<script>
+    // ==========================================
+    // 1. ИНИЦИАЛИЗАЦИЯ TG И БЛОКИРОВКИ
+    // ==========================================
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+    if (tg.isVersionAtLeast('7.7')) tg.disableVerticalSwipes();
+    if (tg.isVersionAtLeast('6.1')) tg.enableClosingConfirmation();
+
+    document.body.addEventListener('touchmove', function(e) {
+        if (!e.target.closest('.shop-container')) e.preventDefault();
+    }, { passive: false });
+
+    // ==========================================
+    // 2. БАЗА СКИНОФ И ЭКОНОМИКА
+    // ==========================================
+    const SKINS = [
+        { id: 'default', name: 'Bronze Coin', price: 0, bg: 'linear-gradient(45deg, #cd7f32, #8b4513)', shadow: '#cd7f32', sym: '¢' },
+        { id: 'silver', name: 'Silver Coin', price: 1000, bg: 'linear-gradient(45deg, #e5e4e2, #a9a9a9)', shadow: '#fff', sym: 'S' },
+        { id: 'gold', name: 'Gold Coin', price: 2000, bg: 'linear-gradient(45deg, #ffd700, #daa520)', shadow: '#ffd700', sym: 'G' },
+        { id: 'notcoin', name: 'Notcoin', price: 5000, bg: 'linear-gradient(45deg, #ffffff, #aaaaaa)', shadow: '#ffffff', sym: 'N' },
+        { id: 'ton', name: 'TON Crystal', price: 10000, bg: 'linear-gradient(45deg, #0088cc, #005580)', shadow: '#0088cc', sym: '💎' },
+        { id: 'bitcoin', name: 'Bitcoin', price: 15000, bg: 'linear-gradient(45deg, #f7931a, #d97b10)', shadow: '#f7931a', sym: '₿' },
+        { id: 'ethereum', name: 'Ethereum', price: 20000, bg: 'linear-gradient(45deg, #627eea, #3b4b8a)', shadow: '#627eea', sym: '♦' },
+        { id: 'solana', name: 'Solana', price: 25000, bg: 'linear-gradient(45deg, #14f195, #9945ff)', shadow: '#14f195', sym: 'S' },
+        { id: 'apple', name: 'Apple Coin', price: 30000, bg: 'linear-gradient(45deg, #dddddd, #333333)', shadow: '#aaaaaa', sym: '🍎' },
+        { id: 'black_hole', name: 'Black Hole (+20%)', price: 3000, bg: 'radial-gradient(circle, #000 40%, #800080 100%)', shadow: '#800080', sym: '🌀' }
+    ];
+
+    // Загрузка сохранений
+    let balance = parseFloat(localStorage.getItem('clicker_coins')) || 0;
+    let unlocked = JSON.parse(localStorage.getItem('clicker_unlocked')) || ['default'];
+    let activeSkin = localStorage.getItem('clicker_skin') || 'default';
+    
+    // Ферма
+    let minerOwned = localStorage.getItem('clicker_miner') === 'true';
+    let lastSavedTime = parseInt(localStorage.getItem('clicker_last_time')) || Date.now();
+    const MINER_PRICE = 50000;
+    const MINER_DAILY = 30000;
+    const COINS_PER_SEC = MINER_DAILY / 86400; // 0.347 монеты в секунду
+    
+    let sessionEarnedCoins = 0; // Для бота
+    
+    // Обновление визуала
+    const balanceEl = document.getElementById('balance');
+    const coinEl = document.getElementById('mainCoin');
+    
+    function updateUI() {
+        balanceEl.innerText = Math.floor(balance);
+        let skin = SKINS.find(s => s.id === activeSkin);
+        coinEl.style.background = skin.bg;
+        coinEl.style.boxShadow = `0 0 50px ${skin.shadow}`;
+        coinEl.style.color = (skin.id === 'black_hole' || skin.id === 'notcoin') ? '#000' : '#fff';
+        coinEl.innerText = skin.sym;
         
-        // 10 Легендарных скинов
-        const skins = [
-            { id: 'gold', name: 'Gold Coin', icon: '💰', bg: 'radial-gradient(circle at 30% 30%, #ffd700, #b8860b)', shadow: 'rgba(255, 215, 0, 0.3)' },
-            { id: 'notcoin', name: 'Notcoin', icon: '⚪', bg: 'radial-gradient(circle at 30% 30%, #ffffff, #aaaaaa)', shadow: 'rgba(255, 255, 255, 0.3)' },
-            { id: 'btc', name: 'Bitcoin', icon: '₿', bg: 'radial-gradient(circle at 30% 30%, #ffaa00, #cc7700)', shadow: 'rgba(255, 170, 0, 0.3)' },
-            { id: 'ton', name: 'TON', icon: '💎', bg: 'radial-gradient(circle at 30% 30%, #0088ff, #0044aa)', shadow: 'rgba(0, 136, 255, 0.3)' },
-            { id: 'tg', name: 'Telegram', icon: '✈️', bg: 'radial-gradient(circle at 30% 30%, #00ccff, #0088cc)', shadow: 'rgba(0, 204, 255, 0.3)' },
-            { id: 'eth', name: 'Ethereum', icon: '⧫', bg: 'radial-gradient(circle at 30% 30%, #a09fe6, #59588c)', shadow: 'rgba(160, 159, 230, 0.3)' },
-            { id: 'star', name: 'Star', icon: '⭐', bg: 'radial-gradient(circle at 30% 30%, #ffea00, #ccaa00)', shadow: 'rgba(255, 234, 0, 0.3)' },
-            { id: 'sol', name: 'Solana', icon: '🧬', bg: 'radial-gradient(circle at 30% 30%, #00ffa3, #03e1ff)', shadow: 'rgba(0, 255, 163, 0.3)' },
-            { id: 'doge', name: 'Doge', icon: '🐶', bg: 'radial-gradient(circle at 30% 30%, #ffcc66, #cc9933)', shadow: 'rgba(255, 204, 102, 0.3)' },
-            { id: 'fire', name: 'Fire', icon: '🔥', bg: 'radial-gradient(circle at 30% 30%, #ff3300, #990000)', shadow: 'rgba(255, 51, 0, 0.3)' }
-        ];
+        if(minerOwned) document.getElementById('minerStatus').classList.remove('hidden');
+    }
 
-        // Инвентарь (какие скины куплены). gold всегда куплен.
-        let inventory = ['gold'];
-        let activeSkinId = 'gold';
-
-        // Анти-чит
-        let clicksThisSecond = 0;
-        setInterval(() => { clicksThisSecond = 0; }, 1000);
-
-        const balanceDisplay = document.getElementById('balanceDisplay');
-        const mainCoin = document.getElementById('mainCoin');
-        const minerStatus = document.getElementById('minerStatus');
-        const minerBtn = document.getElementById('minerBtn');
-
-        // --- ОБНОВЛЕНИЕ ИНТЕРФЕЙСА ---
-        function updateUI() {
-            balanceDisplay.innerText = Math.floor(balance).toLocaleString('ru-RU');
-            
-            if (hasMiner) {
-                minerBtn.style.display = 'none';
-                minerStatus.innerText = "⚡ Ферма добывает 30,000 / день";
-            }
+    // ==========================================
+    // 3. АВТОМАЙНИНГ (ОФФЛАЙН И ОНЛАЙН)
+    // ==========================================
+    function checkOfflineProfit() {
+        if (!minerOwned) return;
+        let now = Date.now();
+        let secondsPassed = (now - lastSavedTime) / 1000;
+        
+        if (secondsPassed > 60) { // Если не было больше минуты
+            let profit = Math.floor(secondsPassed * COINS_PER_SEC);
+            document.getElementById('offlineProfit').innerText = `+ ${profit} 💰`;
+            document.getElementById('offlineModal').classList.remove('hidden');
+            balance += profit;
+            sessionEarnedCoins += profit;
         }
+        lastSavedTime = now;
+        saveData();
+    }
 
-        // --- ПРИМЕНЕНИЕ СКИНА ---
-        function applySkin(skinId) {
-            const skin = skins.find(s => s.id === skinId);
-            if (!skin) return;
-            activeSkinId = skin.id;
-            mainCoin.innerText = skin.icon;
-            mainCoin.style.background = skin.bg;
-            mainCoin.style.boxShadow = `0 0 50px ${skin.shadow}, inset 0 -15px 30px rgba(0,0,0,0.4), inset 0 15px 30px rgba(255,255,255,0.4)`;
-            renderShop();
-        }
-
-        // --- ЛОГИКА ТАПА (КЛИКА) ---
-        function tap(e) {
-            e.preventDefault(); 
-            if (clicksThisSecond > 15) return; // АНТИ-ЧИТ
-            clicksThisSecond++;
-
-            balance += 1;
-            
-            let x = (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
-            let y = (e.touches && e.touches.length > 0) ? e.touches[0].clientY : e.clientY;
-            
-            createFloatingText(x, y, "+1");
-            updateUI();
-        }
-
-        function createFloatingText(x, y, text) {
-            const container = document.getElementById('coinContainer');
-            const el = document.createElement('div');
-            el.className = 'floating-text';
-            el.innerText = text;
-            
-            const rect = container.getBoundingClientRect();
-            // Случайный разброс цифр вокруг пальца
-            let offsetX = (Math.random() - 0.5) * 40;
-            el.style.left = (x - rect.left - 20 + offsetX) + 'px';
-            el.style.top = (y - rect.top - 20) + 'px';
-            
-            container.appendChild(el);
-            setTimeout(() => { el.remove(); }, 800);
-        }
-
-        // --- МАЙНИНГ (30,000 монет в день) ---
-        function buyMiner() {
-            if (balance >= 50000) {
-                balance -= 50000;
-                hasMiner = true;
-                updateUI();
-                startMining();
-            } else {
-                alert("Не хватает монет! Нужно 50,000.");
-            }
-        }
-
-        function startMining() {
-            if (!hasMiner) return;
-            // 30,000 монет / 86400 секунд в сутках = 0.3472 монет/сек.
-            // Обновляем баланс каждые 100мс (10 раз в секунду) -> +0.03472 за тик
-            setInterval(() => {
-                balance += 0.03472;
-                balanceDisplay.innerText = Math.floor(balance).toLocaleString('ru-RU');
-            }, 100);
-        }
-
-        // --- МАГАЗИН СКИНОВ ---
-        function openShop() { document.getElementById('shopModal').style.display = 'flex'; renderShop(); }
-        function closeShop() { document.getElementById('shopModal').style.display = 'none'; }
-
-        function renderShop() {
-            const grid = document.getElementById('skinsGrid');
-            grid.innerHTML = '';
-            
-            skins.forEach(skin => {
-                const isOwned = inventory.includes(skin.id);
-                const isActive = activeSkinId === skin.id;
-                
-                const card = document.createElement('div');
-                card.className = `skin-card ${isActive ? 'active' : ''}`;
-                
-                let btnHTML = '';
-                if (isActive) {
-                    btnHTML = `<button class="equip-skin-btn" style="background:#555; color:#fff;" disabled>Надето</button>`;
-                } else if (isOwned) {
-                    btnHTML = `<button class="equip-skin-btn" onclick="applySkin('${skin.id}')">Надеть</button>`;
-                } else {
-                    btnHTML = `<button class="buy-skin-btn" onclick="buySkin('${skin.id}')">Купить (1000)</button>`;
-                }
-
-                card.innerHTML = `
-                    <div class="skin-preview" style="background: ${skin.bg}; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 -5px 10px rgba(0,0,0,0.5);">${skin.icon}</div>
-                    <div class="skin-name">${skin.name}</div>
-                    ${btnHTML}
-                `;
-                grid.appendChild(card);
-            });
-        }
-
-        function buySkin(skinId) {
-            if (balance >= 1000) {
-                balance -= 1000;
-                inventory.push(skinId);
-                updateUI();
-                renderShop();
-            } else {
-                alert("Не хватает монет! Нужно 1000.");
-            }
-        }
-
-        // --- СОХРАНЕНИЕ ---
-        function saveAndExit() {
-            if(tg && tg.sendData) {
-                let data = JSON.stringify({ 
-                    game: 'clicker', 
-                    score: Math.floor(balance),
-                    hasMiner: hasMiner,
-                    activeSkin: activeSkinId,
-                    inventory: inventory.join(',')
-                });
-                tg.sendData(data);
-                tg.close();
-            } else {
-                alert(`Сохранено локально. Баланс: ${Math.floor(balance)}`);
-            }
-        }
-
-        // Запуск
-        applySkin('gold');
+    function claimOffline() {
+        document.getElementById('offlineModal').classList.add('hidden');
         updateUI();
-        if (hasMiner) startMining();
-    </script>
+    }
+
+    // Онлайн майнинг (каждую секунду)
+    setInterval(() => {
+        if (minerOwned) {
+            balance += COINS_PER_SEC;
+            sessionEarnedCoins += COINS_PER_SEC;
+            updateUI();
+            saveData();
+        }
+    }, 1000);
+
+    // ==========================================
+    // 4. КЛИКЕР И АНТИЧИТ
+    // ==========================================
+    let clickTimestamps = [];
+    
+    document.getElementById('tapArea').addEventListener('pointerdown', function(e) {
+        let now = Date.now();
+        
+        // Очищаем старые клики (старше 1 секунды)
+        clickTimestamps = clickTimestamps.filter(t => now - t < 1000);
+        
+        // АНТИЧИТ: МАКС 15 кликов в секунду
+        if (clickTimestamps.length >= 15) {
+            let warn = document.getElementById('cheat-warning');
+            warn.style.opacity = 1;
+            setTimeout(() => warn.style.opacity = 0, 1000);
+            return; // Игнорируем клик
+        }
+        
+        clickTimestamps.push(now);
+        
+        // Даем монету
+        balance += 1;
+        sessionEarnedCoins += 1;
+        updateUI();
+        
+        // Физика монеты (наклон от клика)
+        const rect = coinEl.getBoundingClientRect();
+        const x = e.clientX - rect.left - rect.width / 2;
+        const y = e.clientY - rect.top - rect.height / 2;
+        coinEl.style.transform = `scale(0.9) rotateX(${-y/5}deg) rotateY(${x/5}deg)`;
+        setTimeout(() => { coinEl.style.transform = 'scale(1) rotateX(0) rotateY(0)'; }, 100);
+
+        // Плавающая цифра +1
+        createFloatingText(e.clientX, e.clientY);
+        saveData();
+    });
+
+    function createFloatingText(x, y) {
+        const el = document.createElement('div');
+        el.className = 'floating-text';
+        el.innerText = '+1';
+        el.style.left = (x - 10) + 'px';
+        el.style.top = (y - 20) + 'px';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1000);
+    }
+
+    // ==========================================
+    // 5. МЕНЮ И МАГАЗИН
+    // ==========================================
+    document.getElementById('mainMenuBtn').onclick = () => document.getElementById('smartModal').classList.remove('hidden');
+    function closeMenu() { document.getElementById('smartModal').classList.add('hidden'); }
+    
+    function openShop(type) {
+        document.getElementById('smartModal').classList.add('hidden');
+        document.getElementById('shopModal').classList.remove('hidden');
+        document.getElementById('shopCoins').innerText = Math.floor(balance);
+        
+        const list = document.getElementById('shopList');
+        list.innerHTML = '';
+        
+        if (type === 'skins') {
+            document.getElementById('shopTitle').innerText = 'АНГАР СКИНОВ';
+            SKINS.forEach(skin => {
+                let isUnlocked = unlocked.includes(skin.id);
+                let isActive = activeSkin === skin.id;
+                let btnHtml = isActive ? `<button class="buy-btn" style="background:#444; color:#888;">ВЫБРАН</button>` :
+                              isUnlocked ? `<button class="buy-btn btn-select" onclick="equipSkin('${skin.id}')">НАДЕТЬ</button>` :
+                              `<button class="buy-btn btn-buy" onclick="buySkin('${skin.id}', ${skin.price})">КУПИТЬ (${skin.price})</button>`;
+
+                list.innerHTML += `
+                    <div class="skin-card ${isActive ? 'active' : ''}">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div style="width:30px; height:30px; border-radius:50%; background:${skin.bg}; display:flex; justify-content:center; align-items:center; color:white; font-weight:bold;">${skin.sym}</div>
+                            <div style="font-weight:bold;">${skin.name}</div>
+                        </div>
+                        ${btnHtml}
+                    </div>`;
+            });
+        } else if (type === 'upgrades') {
+            document.getElementById('shopTitle').innerText = 'МАЙНИНГ ФЕРМА';
+            let btnHtml = minerOwned ? `<button class="buy-btn" style="background:#444; color:#0f0;">КУПЛЕНО</button>` :
+                                       `<button class="buy-btn btn-buy" onclick="buyMiner()">КУПИТЬ (${MINER_PRICE})</button>`;
+            list.innerHTML = `
+                <div class="skin-card">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div style="font-size: 30px;">⛏</div>
+                        <div>
+                            <div style="font-weight:bold;">Серверный Майнер</div>
+                            <div style="font-size:12px; color:#aaa;">+30 000 монет / день<br>(Работает оффлайн)</div>
+                        </div>
+                    </div>
+                    ${btnHtml}
+                </div>`;
+        }
+    }
+
+    function closeShop() {
+        document.getElementById('shopModal').classList.add('hidden');
+        document.getElementById('smartModal').classList.remove('hidden');
+    }
+
+    window.buySkin = function(id, price) {
+        if (balance >= price) { balance -= price; unlocked.push(id); equipSkin(id); saveData(); }
+        else tg.showAlert('Не хватает монет!');
+    }
+    
+    window.equipSkin = function(id) { activeSkin = id; updateUI(); openShop('skins'); saveData(); }
+    
+    window.buyMiner = function() {
+        if (balance >= MINER_PRICE) { balance -= MINER_PRICE; minerOwned = true; updateUI(); openShop('upgrades'); saveData(); }
+        else tg.showAlert('Не хватает монет на Ферму!');
+    }
+
+    // Сохранение
+    function saveData() {
+        localStorage.setItem('clicker_coins', balance);
+        localStorage.setItem('clicker_unlocked', JSON.stringify(unlocked));
+        localStorage.setItem('clicker_skin', activeSkin);
+        localStorage.setItem('clicker_miner', minerOwned);
+        localStorage.setItem('clicker_last_time', Date.now());
+    }
+
+    // ОТПРАВКА В БОТА
+    window.saveAndExit = function() {
+        let data = {
+            game: "crypto",
+            coins: Math.floor(sessionEarnedCoins), // Отправляем только то, что заработали за эту сессию
+            score: Math.floor(balance), // В качестве рекорда отправляем текущий баланс кликера
+            time_spent: 0,
+            active_skin: activeSkin
+        };
+        tg.sendData(JSON.stringify(data));
+    }
+
+    // СТАРТ ИГРЫ
+    updateUI();
+    checkOfflineProfit();
+</script>
 </body>
 </html>
