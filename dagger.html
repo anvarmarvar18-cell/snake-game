@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cyber Dagger</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; user-select: none; font-family: 'Arial', sans-serif; }
+        body { background-color: #050508; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
+        canvas { display: block; width: 100%; height: 100%; background: radial-gradient(circle at center, #1a1a2e 0%, #000 100%); }
+        
+        .hud { position: absolute; top: 0; left: 0; width: 100%; padding: 15px 20px; display: flex; justify-content: space-between; align-items: flex-start; z-index: 10; pointer-events: none; }
+        .level-box { font-size: 35px; font-weight: 900; color: #fff; text-shadow: 0 0 15px #00ffcc; }
+        .knives-left { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+        .knife-icon { width: 15px; height: 30px; background: #fff; clip-path: polygon(50% 0%, 100% 20%, 100% 100%, 0% 100%, 0% 20%); opacity: 0.8; box-shadow: 0 0 10px #fff; }
+        .knife-icon.used { opacity: 0.2; background: #555; box-shadow: none; }
+        
+        .balance-box { font-size: 24px; font-weight: bold; color: #ffd700; text-shadow: 0 0 10px rgba(255,215,0,0.6); background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 15px; }
+
+        .controls { position: absolute; bottom: 20px; left: 0; width: 100%; display: flex; justify-content: center; gap: 15px; z-index: 10; padding: 0 20px; }
+        .btn { padding: 15px 30px; border: none; border-radius: 20px; font-size: 16px; font-weight: bold; color: #fff; cursor: pointer; text-transform: uppercase; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .btn-shop { background: linear-gradient(45deg, #11998e, #38ef7d); }
+        .btn-exit { background: #333; }
+
+        .overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 20; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; }
+        h1 { color: #ff3333; font-size: 45px; margin-bottom: 10px; text-shadow: 0 0 20px #ff0000; text-transform: uppercase; }
+        
+        /* Магазин */
+        .skins-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; max-width: 400px; overflow-y: auto; max-height: 65vh; padding-bottom: 20px; margin-top: 10px; }
+        .skin-card { background: rgba(20,20,30,0.9); border: 2px solid #444; border-radius: 15px; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+        .skin-card.active { border-color: #00ffcc; box-shadow: 0 0 20px rgba(0,255,204,0.4); }
+    </style>
+</head>
+<body>
+
+    <div class="hud">
+        <div>
+            <div class="level-box">УРОВЕНЬ <span id="levelVal">1</span></div>
+            <div class="knives-left" id="knivesUI"></div>
+        </div>
+        <div class="balance-box" id="balanceVal">0 💰</div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="controls">
+        <button class="btn btn-shop" onclick="openShop()">🔪 Оружие</button>
+        <button class="btn btn-exit" onclick="saveAndExit()">💾 Выход</button>
+    </div>
+
+    <!-- Экран смерти -->
+    <div class="overlay" id="gameOverScreen">
+        <h1>ОСЕЧКА!</h1>
+        <p style="font-size: 20px; color: #ccc; margin-bottom: 10px;">Достигнут уровень: <span id="finalScore" style="color:#fff; font-weight:bold;">0</span></p>
+        <p style="font-size: 24px; color: #ffd700; margin-bottom: 30px;">Заработано: +<span id="earnedCoins">0</span> 💰</p>
+        <button class="btn" style="background: linear-gradient(45deg, #ff8800, #ff0055); width: 250px; margin-bottom: 15px;" onclick="restartGame()">НАЧАТЬ ЗАНОВО</button>
+        <button class="btn btn-exit" style="width: 250px;" onclick="saveAndExit()">В МЕНЮ</button>
+    </div>
+
+    <!-- Магазин -->
+    <div class="overlay" id="shopModal">
+        <div style="width:100%; max-width:400px; display:flex; justify-content:space-between; align-items:center;">
+            <h2 style="color:white; font-size: 26px;">Арсенал (1000💰)</h2>
+            <button style="background:none; border:none; color:#ff3333; font-size:40px; cursor:pointer;" onclick="closeShop()">&times;</button>
+        </div>
+        <div class="skins-grid" id="skinsGrid"></div>
+    </div>
+
+    <script>
+        let tg; try { tg = window.Telegram.WebApp; tg.expand(); } catch(e) {}
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let balance = 1500;
+        let inventory = ['knife'];
+        let activeSkinId = 'knife';
+
+        // --- 10 СКИНОВ ОРУЖИЯ (Рендеринг кодом) ---
+        const skins = [
+            { id: 'knife', name: 'Сталь', render: (x, y, isFlying) => {
+                ctx.fillStyle = '#ccc'; ctx.beginPath(); ctx.moveTo(x, y-20); ctx.lineTo(x-4, y+10); ctx.lineTo(x+4, y+10); ctx.fill();
+                ctx.fillStyle = '#555'; ctx.fillRect(x-2, y+10, 4, 15); ctx.fillStyle = '#333'; ctx.fillRect(x-6, y+10, 12, 4);
+            }},
+            { id: 'kunai', name: 'Кунай', render: (x, y, isFlying) => {
+                ctx.fillStyle = '#111'; ctx.beginPath(); ctx.moveTo(x, y-20); ctx.lineTo(x-6, y); ctx.lineTo(x, y+15); ctx.lineTo(x+6, y); ctx.fill();
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
+                ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y+20, 4, 0, Math.PI*2); ctx.stroke(); ctx.fill();
+            }},
+            { id: 'katana', name: 'Катана', render: (x, y, isFlying) => {
+                ctx.fillStyle = '#e0e0e0'; ctx.beginPath(); ctx.moveTo(x, y-25); ctx.quadraticCurveTo(x-3, y-10, x-2, y+15); ctx.lineTo(x+2, y+15); ctx.fill();
+                ctx.fillStyle = '#aa0000'; ctx.fillRect(x-3, y+15, 6, 12); ctx.fillStyle = '#daa520'; ctx.fillRect(x-6, y+13, 12, 3);
+            }},
+            { id: 'shuriken', name: 'Сюрикен', render: (x, y, isFlying) => {
+                ctx.save(); ctx.translate(x, y); if(isFlying) ctx.rotate(Date.now() / 50); // Вращается в полете!
+                ctx.fillStyle = '#999'; ctx.beginPath(); ctx.moveTo(0,-15); ctx.lineTo(-4,-4); ctx.lineTo(-15,0); ctx.lineTo(-4,4); ctx.lineTo(0,15); ctx.lineTo(4,4); ctx.lineTo(15,0); ctx.lineTo(4,-4); ctx.fill();
+                ctx.fillStyle = '#222'; ctx.beginPath(); ctx.arc(0,0,4,0,Math.PI*2); ctx.fill(); ctx.restore();
+            }},
+            { id: 'laser', name: 'Лазер', render: (x, y, isFlying) => {
+                ctx.shadowBlur = 15; ctx.shadowColor = '#00ffcc'; ctx.fillStyle = '#00ffcc'; ctx.fillRect(x-2, y-20, 4, 30); ctx.shadowBlur = 0;
+                ctx.fillStyle = '#fff'; ctx.fillRect(x-1, y-20, 2, 30);
+            }},
+            { id: 'ice', name: 'Ледяной шип', render: (x, y, isFlying) => {
+                ctx.fillStyle = '#00aaff'; ctx.beginPath(); ctx.moveTo(x, y-25); ctx.lineTo(x-6, y+15); ctx.lineTo(x+6, y+15); ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.moveTo(x, y-25); ctx.lineTo(x, y+15); ctx.lineTo(x+6, y+15); ctx.fill();
+            }},
+            { id: 'fire', name: 'Пламя', render: (x, y, isFlying) => {
+                ctx.shadowBlur = 15; ctx.shadowColor = '#ff3300'; ctx.fillStyle = '#ff3300';
+                ctx.beginPath(); ctx.moveTo(x, y-25); ctx.quadraticCurveTo(x-10, y, x-4, y+15); ctx.lineTo(x+4, y+15); ctx.quadraticCurveTo(x+10, y, x, y-25); ctx.fill();
+                ctx.fillStyle = '#ffcc00'; ctx.beginPath(); ctx.moveTo(x, y-15); ctx.lineTo(x-2, y+10); ctx.lineTo(x+2, y+10); ctx.fill(); ctx.shadowBlur = 0;
+            }},
+            { id: 'axe', name: 'Топор', render: (x, y, isFlying) => {
+                ctx.fillStyle = '#5c2e0b'; ctx.fillRect(x-3, y-15, 6, 35); // Рукоять
+                ctx.fillStyle = '#aaa'; ctx.beginPath(); ctx.moveTo(x+3, y-10); ctx.lineTo(x+15, y-15); ctx.lineTo(x+18, y-5); ctx.lineTo(x+15, y+5); ctx.lineTo(x+3, y); ctx.fill();
+            }},
+            { id: 'lightning', name: 'Молния', render: (x, y, isFlying) => {
+                ctx.shadowBlur = 10; ctx.shadowColor = '#ffff00'; ctx.fillStyle = '#ffff00';
+                ctx.beginPath(); ctx.moveTo(x, y-25); ctx.lineTo(x-8, y-5); ctx.lineTo(x, y-5); ctx.lineTo(x-6, y+15); ctx.lineTo(x+8, y-5); ctx.lineTo(x, y-5); ctx.fill(); ctx.shadowBlur = 0;
+            }},
+            { id: 'plasma', name: 'Плазма', render: (x, y, isFlying) => {
+                let g = ctx.createLinearGradient(x, y-20, x, y+10); g.addColorStop(0, '#ff00ff'); g.addColorStop(1, '#00ffff');
+                ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y-10, 8, Math.PI, 0); ctx.lineTo(x+4, y+15); ctx.lineTo(x-4, y+15); ctx.fill();
+            }}
+        ];
+
+        // --- 10 МИШЕНЕЙ (БОССОВ) ---
+        const targets = [
+            { id: 'wood', render: (x, y, r) => { ctx.fillStyle='#8B4513'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='#5c2e0b'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(x,y,r*0.7,0,Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.arc(x,y,r*0.4,0,Math.PI*2); ctx.stroke(); } },
+            { id: 'watermelon', render: (x, y, r) => { ctx.fillStyle='#00aa00'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='#005500'; ctx.lineWidth=8; ctx.beginPath(); ctx.moveTo(x-r,y); ctx.lineTo(x+r,y); ctx.stroke(); } },
+            { id: 'gear', render: (x, y, r) => { ctx.fillStyle='#777'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); for(let i=0; i<8; i++){ ctx.save(); ctx.translate(x,y); ctx.rotate((Math.PI/4)*i); ctx.fillRect(-10, -r-10, 20, 20); ctx.restore(); } ctx.fillStyle='#333'; ctx.beginPath(); ctx.arc(x,y,r*0.3,0,Math.PI*2); ctx.fill(); } },
+            { id: 'eye', render: (x, y, r) => { ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#00aaff'; ctx.beginPath(); ctx.arc(x,y,r*0.5,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(x,y,r*0.2,0,Math.PI*2); ctx.fill(); } },
+            { id: 'planet', render: (x, y, r) => { let g = ctx.createRadialGradient(x-r/3,y-r/3,r*0.1,x,y,r); g.addColorStop(0,'#00ffcc'); g.addColorStop(1,'#0033aa'); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); } },
+            { id: 'shield', render: (x, y, r) => { ctx.fillStyle='#ff0000'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x,y,r*0.7,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#0000ff'; ctx.beginPath(); ctx.arc(x,y,r*0.4,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#fff'; ctx.beginPath(); ctx.moveTo(x, y-r*0.2); ctx.lineTo(x+r*0.2, y+r*0.1); ctx.lineTo(x-r*0.2, y+r*0.1); ctx.fill(); } },
+            { id: 'hex', render: (x, y, r) => { ctx.fillStyle='#ffaa00'; ctx.beginPath(); for(let i=0; i<6; i++){ let a = (Math.PI/3)*i; ctx.lineTo(x+Math.cos(a)*r, y+Math.sin(a)*r); } ctx.closePath(); ctx.fill(); ctx.strokeStyle='#333'; ctx.lineWidth=5; ctx.stroke(); } },
+            { id: 'diamond', render: (x, y, r) => { ctx.fillStyle='#00ffff'; ctx.beginPath(); ctx.moveTo(x,y-r); ctx.lineTo(x+r,y); ctx.lineTo(x,y+r); ctx.lineTo(x-r,y); ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke(); } },
+            { id: 'reactor', render: (x, y, r) => { ctx.fillStyle='#222'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=20; ctx.shadowColor='#00ff00'; ctx.fillStyle='#00ff00'; ctx.beginPath(); ctx.arc(x,y,r*0.5,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; } },
+            { id: 'blackhole', render: (x, y, r) => { ctx.shadowBlur=30; ctx.shadowColor='#cc00ff'; ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; ctx.strokeStyle='#cc00ff'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(x,y,r+Math.sin(Date.now()/100)*10,0,Math.PI*2); ctx.stroke(); } }
+        ];
+
+        // Игровая логика
+        let level = 1;
+        let score = 0;
+        let earnedCoins = 0;
+        let gameOver = false;
+        
+        let targetX = canvas.width / 2;
+        let targetY = canvas.height * 0.3;
+        let targetRadius = 60;
+        let targetAngle = 0;
+        let targetSpeed = 0.02;
+        let targetPattern = 0; // Для сложного вращения
+
+        let knivesToHit = 5;
+        let stuckKnives = [];
+        let apples = [];
+        let currentKnife = null; // Тот, что летит
+        
+        let particles = [];
+        let screenShake = 0;
+
+        function initLevel() {
+            knivesToHit = 4 + Math.floor(level / 2); // С каждым уровнем ножей нужно больше
+            stuckKnives = [];
+            apples = [];
+            currentKnife = null;
+            
+            // Сложность вращения
+            targetPattern = level % 5;
+            targetSpeed = 0.02 + (level * 0.005);
+            if (Math.random() > 0.5) targetSpeed *= -1;
+
+            // Спавн яблок на мишени (1-2 штуки)
+            let appleCount = Math.random() > 0.5 ? 1 : 2;
+            for(let i=0; i<appleCount; i++) {
+                apples.push({ angle: Math.random() * Math.PI * 2, active: true });
+            }
+
+            renderKnivesUI();
+        }
+
+        function initGame() {
+            level = 1; score = 0; earnedCoins = 0; gameOver = false;
+            document.getElementById('levelVal').innerText = level;
+            document.getElementById('gameOverScreen').style.display = 'none';
+            updateUI();
+            initLevel();
+            gameLoop();
+        }
+
+        function renderKnivesUI() {
+            const ui = document.getElementById('knivesUI');
+            ui.innerHTML = '';
+            for(let i=0; i<knivesToHit; i++) {
+                ui.innerHTML += `<div class="knife-icon"></div>`;
+            }
+        }
+
+        function updateKnivesUI() {
+            const icons = document.getElementById('knivesUI').children;
+            let used = stuckKnives.length;
+            for(let i=0; i<icons.length; i++) {
+                if (i >= (icons.length - used)) icons[i].className = 'knife-icon used';
+            }
+        }
+
+        // --- ГЛАВНЫЙ ЦИКЛ ---
+        function gameLoop() {
+            if (gameOver) return;
+
+            ctx.fillStyle = '#050508'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Тряска экрана
+            if (screenShake > 0) {
+                ctx.save();
+                ctx.translate((Math.random()-0.5)*screenShake, (Math.random()-0.5)*screenShake);
+                screenShake *= 0.9;
+                if (screenShake < 0.5) screenShake = 0;
+            } else { ctx.save(); }
+
+            // Умное вращение мишени
+            if (targetPattern === 0) { targetAngle += targetSpeed; } // Обычное
+            else if (targetPattern === 1) { targetAngle += targetSpeed * (Math.sin(Date.now()/500) + 1); } // Пульсирующее
+            else if (targetPattern === 2) { targetAngle += targetSpeed; if (Math.random() < 0.02) targetSpeed *= -1; } // Рандомный реверс
+            else if (targetPattern === 3) { targetAngle += targetSpeed; if (Date.now() % 2000 < 200) targetAngle -= targetSpeed*2; } // Рывки
+            else { targetAngle += targetSpeed * (Math.cos(Date.now()/300)*2); } // Безумие
+
+            let targetSkinIndex = Math.min(Math.floor((level - 1) / 5), 9); // Каждые 5 уровней новая мишень
+            let targetRenderer = targets[targetSkinIndex];
+
+            // Отрисовка мишени и воткнутых ножей
+            ctx.save();
+            ctx.translate(targetX, targetY);
+            ctx.rotate(targetAngle);
+            
+            // Яблоки
+            apples.forEach(a => {
+                if (a.active) {
+                    let ax = Math.cos(a.angle) * (targetRadius + 15);
+                    let ay = Math.sin(a.angle) * (targetRadius + 15);
+                    ctx.shadowBlur = 10; ctx.shadowColor = '#ff0055'; ctx.fillStyle = '#ff0055';
+                    ctx.beginPath(); ctx.arc(ax, ay, 8, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+                    ctx.fillStyle = '#00ff00'; ctx.fillRect(ax-1, ay-12, 3, 5); // Листик
+                }
+            });
+
+            targetRenderer.render(0, 0, targetRadius);
+            
+            // Воткнутые ножи
+            let skinDef = skins.find(s => s.id === activeSkinId);
+            stuckKnives.forEach(k => {
+                ctx.save();
+                ctx.rotate(k.angle);
+                skinDef.render(0, targetRadius, false);
+                ctx.restore();
+            });
+            ctx.restore(); // Конец вращения мишени
+
+            // Отрисовка летящего ножа
+            if (currentKnife) {
+                currentKnife.y -= currentKnife.speed;
+                skinDef.render(currentKnife.x, currentKnife.y, true);
+
+                // ПРОВЕРКА ПОПАДАНИЯ
+                if (currentKnife.y <= targetY + targetRadius) {
+                    let hitAngle = (Math.PI/2 - targetAngle) % (Math.PI * 2);
+                    if (hitAngle < 0) hitAngle += Math.PI * 2;
+
+                    // 1. Проверка на столкновение с другим ножом!
+                    let hitOther = false;
+                    for (let sk of stuckKnives) {
+                        let diff = Math.abs(sk.angle - hitAngle);
+                        if (diff > Math.PI) diff = Math.PI * 2 - diff;
+                        if (diff < 0.25) { // Зона столкновения (радианы)
+                            hitOther = true; break;
+                        }
+                    }
+
+                    if (hitOther) {
+                        // Звон и проигрыш! Нож отлетает вниз
+                        createParticles(currentKnife.x, currentKnife.y, '#fff', 10);
+                        currentKnife = null;
+                        setTimeout(triggerGameOver, 500); // Небольшая пауза для эффекта
+                        ctx.restore();
+                        return;
+                    }
+
+                    // 2. Проверка яблок
+                    apples.forEach(a => {
+                        if (a.active) {
+                            let diff = Math.abs(a.angle - hitAngle);
+                            if (diff > Math.PI) diff = Math.PI * 2 - diff;
+                            if (diff < 0.3) {
+                                a.active = false;
+                                balance += 10; earnedCoins += 10;
+                                createParticles(targetX + Math.cos(a.angle - targetAngle)*(targetRadius+15), targetY + Math.sin(a.angle - targetAngle)*(targetRadius+15), '#ff0055', 20);
+                                updateUI();
+                            }
+                        }
+                    });
+
+                    // УСПЕШНОЕ ПОПАДАНИЕ
+                    stuckKnives.push({ angle: hitAngle });
+                    currentKnife = null;
+                    screenShake = 5; // Удар!
+                    createParticles(currentKnife ? currentKnife.x : canvas.width/2, targetY + targetRadius, '#fff', 5);
+                    updateKnivesUI();
+
+                    // Проверка прохождения уровня
+                    if (stuckKnives.length >= knivesToHit) {
+                        level++; score += 5; balance += 20; earnedCoins += 20;
+                        setTimeout(() => {
+                            createParticles(targetX, targetY, '#ffaa00', 50); // Взрыв мишени
+                            document.getElementById('levelVal').innerText = level;
+                            initLevel();
+                        }, 500);
+                    }
+                }
+            } else {
+                // Нож готов к броску
+                skinDef.render(canvas.width/2, canvas.height - 100, false);
+            }
+
+            // Частицы
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx; p.y += p.vy; p.life -= 0.05;
+                if (p.life <= 0) { particles.splice(i, 1); continue; }
+                ctx.fillStyle = p.color; ctx.globalAlpha = p.life;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+
+            ctx.restore(); // Конец тряски
+            requestAnimationFrame(gameLoop);
+        }
+
+        function createParticles(x, y, color, count) {
+            for(let i=0; i<count; i++) {
+                particles.push({ x: x, y: y, size: Math.random()*4+1, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10, color: color, life: 1.0 });
+            }
+        }
+
+        // --- УПРАВЛЕНИЕ ---
+        function throwKnife() {
+            if (gameOver || currentKnife || stuckKnives.length >= knivesToHit) return;
+            currentKnife = { x: canvas.width/2, y: canvas.height - 100, speed: 40 };
+        }
+
+        window.addEventListener('touchstart', throwKnife);
+        window.addEventListener('mousedown', throwKnife);
+        window.addEventListener('keydown', (e) => { if (e.code === 'Space') throwKnife(); });
+
+        function triggerGameOver() {
+            gameOver = true;
+            document.getElementById('finalScore').innerText = level;
+            document.getElementById('earnedCoins').innerText = earnedCoins;
+            document.getElementById('gameOverScreen').style.display = 'flex';
+        }
+
+        function restartGame() { initGame(); }
+        function updateUI() { document.getElementById('balanceVal').innerText = `${balance} 💰`; }
+
+        // --- МАГАЗИН СКИНОВ ---
+        function openShop() { document.getElementById('shopModal').style.display = 'flex'; renderShop(); }
+        function closeShop() { document.getElementById('shopModal').style.display = 'none'; }
+
+        function renderShop() {
+            const grid = document.getElementById('skinsGrid');
+            grid.innerHTML = '';
+            
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 60; tempCanvas.height = 60;
+            const tCtx = tempCanvas.getContext('2d');
+
+            skins.forEach(skin => {
+                const isOwned = inventory.includes(skin.id);
+                const isActive = activeSkinId === skin.id;
+                const card = document.createElement('div');
+                card.className = `skin-card ${isActive ? 'active' : ''}`;
+                
+                tCtx.clearRect(0,0,60,60);
+                const oldCtx = window.ctx; window.ctx = tCtx; 
+                skin.render(30, 45, false); window.ctx = oldCtx;
+                let dataURL = tempCanvas.toDataURL();
+
+                let btn = isActive ? `<button style="width:100%; padding:10px; background:#555; color:#fff; border:none; border-radius:10px; font-weight:bold;" disabled>НАДЕТО</button>` :
+                          isOwned ? `<button style="width:100%; padding:10px; background:#00ffcc; color:#000; font-weight:bold; border:none; border-radius:10px; cursor:pointer;" onclick="applySkin('${skin.id}')">НАДЕТЬ</button>` :
+                          `<button style="width:100%; padding:10px; background:#ffaa00; color:#000; font-weight:bold; border:none; border-radius:10px; cursor:pointer;" onclick="buySkin('${skin.id}')">1000 💰</button>`;
+
+                card.innerHTML = `<img src="${dataURL}" style="width:60px; height:60px; margin-bottom:10px; transform: scale(1.5);">
+                                  <div style="font-size:16px; font-weight:bold; color:#fff; margin-bottom:10px;">${skin.name}</div>${btn}`;
+                grid.appendChild(card);
+            });
+        }
+
+        function buySkin(id) { if(balance >= 1000) { balance -= 1000; inventory.push(id); updateUI(); renderShop(); } else alert("Мало монет!"); }
+        function applySkin(id) { activeSkinId = id; renderShop(); }
+
+        function saveAndExit() {
+            if(tg && tg.sendData) { tg.sendData(JSON.stringify({ game: 'dagger', score: level, coins: balance, activeSkin: activeSkinId, inventory: inventory.join(',') })); tg.close(); } 
+            else alert(`Выход. Баланс: ${balance}`);
+        }
+
+        window.ctx = ctx; // Для рендера магазина
+        initGame();
+    </script>
+</body>
+</html>
