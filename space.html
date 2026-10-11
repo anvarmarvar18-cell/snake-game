@@ -3,435 +3,453 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Space Shooter: Galactic Wars</title>
+    <title>Galactic Wars 4.0</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; font-family: 'Arial', sans-serif; user-select: none; }
-        body { background-color: #020205; color: #fff; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
+        /* БАЗА И ЗАЩИТА */
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background: #020205; overflow: hidden; touch-action: none; color: white; height: 100vh; }
+        canvas { display: block; width: 100vw; height: 100vh; }
         
-        .hud { position: absolute; top: 0; left: 0; width: 100%; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 10; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); pointer-events: none; }
-        .score-box { font-size: 24px; font-weight: bold; color: #00ffcc; text-shadow: 0 0 10px #00ffcc; }
-        .balance-box { font-size: 24px; font-weight: bold; color: #ffd700; text-shadow: 0 0 10px rgba(255,215,0,0.5); }
-        .multiplier { font-size: 16px; color: #ff0055; text-shadow: 0 0 10px #ff0055; margin-top: 5px; animation: pulse 1s infinite alternate; }
+        /* ИНТЕРФЕЙС ИГРЫ */
+        #ui-layer { position: absolute; top: 15px; left: 15px; z-index: 100; text-shadow: 0 0 10px #0ff; font-weight: bold; pointer-events: none; }
+        .score-text { color: #fff; font-size: 22px; margin-bottom: 5px; }
+        .coins-text { color: #ffd700; font-size: 20px; text-shadow: 0 0 10px rgba(255, 215, 0, 0.8); }
         
-        @keyframes pulse { from { opacity: 0.7; } to { opacity: 1; transform: scale(1.1); } }
+        .smart-menu-btn { position: absolute; top: 15px; right: 15px; z-index: 1000; background: rgba(0, 0, 0, 0.7); color: #0ff; border: 2px solid #0ff; border-radius: 8px; padding: 10px 15px; font-weight: bold; cursor: pointer; box-shadow: 0 0 10px #0ff; }
 
-        canvas { display: block; width: 100%; height: 100%; }
-
-        .controls { position: absolute; bottom: 20px; left: 0; width: 100%; display: flex; justify-content: center; gap: 15px; z-index: 10; padding: 0 20px; }
-        .btn { padding: 15px 30px; border: none; border-radius: 20px; font-size: 16px; font-weight: bold; color: #fff; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.5); text-transform: uppercase; }
-        .btn-shop { background: linear-gradient(45deg, #11998e, #38ef7d); }
-        .btn-exit { background: #333; }
-
-        .overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center; }
-        h1 { color: #ff3333; font-size: 45px; margin-bottom: 10px; text-shadow: 0 0 20px #ff0000; text-transform: uppercase; }
+        /* МОДАЛЬНЫЕ ОКНА */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 2000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .hidden { display: none !important; }
+        .modal-content { background: linear-gradient(135deg, #111, #1a1a2e); border: 2px solid #0ff; border-radius: 15px; width: 85%; max-height: 85vh; padding: 20px; display: flex; flex-direction: column; gap: 12px; text-align: center; box-shadow: 0 0 30px rgba(0, 255, 255, 0.2); }
         
-        /* Магазин */
-        .skins-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; max-width: 400px; overflow-y: auto; max-height: 70vh; padding-bottom: 20px; }
-        .skin-card { background: rgba(20,20,40,0.9); border: 2px solid #333; border-radius: 15px; padding: 15px; text-align: center; }
-        .skin-card.active { border-color: #00ffcc; box-shadow: 0 0 15px rgba(0,255,204,0.3); }
-        .skin-color-preview { width: 40px; height: 40px; margin: 0 auto 10px; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); }
+        .btn { padding: 15px; font-size: 16px; font-weight: bold; border-radius: 10px; color: white; border: none; text-transform: uppercase; cursor: pointer; transition: 0.1s; }
+        .btn:active { transform: scale(0.95); }
+        .btn-green { background: linear-gradient(45deg, #00b09b, #96c93d); }
+        .btn-blue { background: linear-gradient(45deg, #2193b0, #6dd5ed); }
+        .btn-red { background: linear-gradient(45deg, #ff416c, #ff4b2b); }
+
+        /* МАГАЗИН (С ИДЕАЛЬНЫМ СКРОЛЛОМ) */
+        .shop-container { overflow-y: auto; max-height: 50vh; -webkit-overflow-scrolling: touch; touch-action: pan-y; display: flex; flex-direction: column; gap: 10px; padding: 5px; }
+        .skin-card { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 15px; border-radius: 10px; border: 1px solid #444; }
+        .skin-card.active { border-color: #0ff; box-shadow: 0 0 15px rgba(0,255,255,0.4); }
+        .buy-btn { padding: 8px 15px; border-radius: 5px; border: none; font-weight: bold; }
+        .btn-buy { background: #ffd700; color: #000; }
+        .btn-select { background: #0ff; color: #000; }
+        .btn-selected { background: #444; color: #888; }
+        
+        /* BOSS ALERT */
+        #boss-alert { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; color: #ff0000; font-weight: 900; text-shadow: 0 0 30px #ff0000; z-index: 500; opacity: 0; pointer-events: none; transition: opacity 0.5s; }
     </style>
 </head>
 <body>
 
-    <div class="hud">
-        <div>
-            <div class="score-box">Киллы: <b id="scoreVal">0</b></div>
-            <div id="multiplier" class="multiplier" style="display:none;">ОЧКИ х2 (20 монет/килл)</div>
-        </div>
-        <div class="balance-box" id="balanceVal">0 💰</div>
+    <div id="ui-layer">
+        <div class="score-text">Уничтожено: <span id="score">0</span></div>
+        <div class="coins-text"><span id="coins">0</span> 💰</div>
     </div>
-
+    
+    <button id="mainMenuBtn" class="smart-menu-btn">⚙️ МЕНЮ</button>
+    <div id="boss-alert">ВНИМАНИЕ: БОСС!</div>
     <canvas id="gameCanvas"></canvas>
 
-    <div class="controls">
-        <button class="btn btn-shop" onclick="openShop()">🚀 Ангар (Скины)</button>
-        <button class="btn btn-exit" onclick="saveAndExit()">💾 Выход</button>
-    </div>
-
-    <!-- Экран проигрыша -->
-    <div class="overlay" id="gameOverScreen">
-        <h1>КОРАБЛЬ УНИЧТОЖЕН</h1>
-        <p style="font-size: 20px; color: #aaa; margin-bottom: 10px;">Уничтожено врагов: <span id="finalScore" style="color:#fff; font-weight:bold;">0</span></p>
-        <p style="font-size: 24px; color: #ffd700; margin-bottom: 30px;">Заработано монет: +<span id="earnedCoins">0</span></p>
-        <button class="btn" style="background: linear-gradient(45deg, #ff8800, #ff0055); width: 250px; margin-bottom: 15px;" onclick="restartGame()">НОВЫЙ ВЫЛЕТ</button>
-        <button class="btn btn-exit" style="width: 250px;" onclick="saveAndExit()">В ГЛАВНОЕ МЕНЮ</button>
-    </div>
-
-    <!-- Магазин -->
-    <div class="overlay" id="shopModal">
-        <div style="width:100%; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; max-width:400px;">
-            <h2 style="color:white;">Ангар (1000💰)</h2>
-            <button style="background:none; border:none; color:red; font-size:30px;" onclick="closeShop()">&times;</button>
+    <!-- Главное Меню -->
+    <div id="smartModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 style="color: white;">ПАУЗА</h2>
+            <button class="btn btn-blue" onclick="openShop()">🚀 АНГАР (СКИНЫ)</button>
+            <button class="btn btn-red" onclick="saveAndExit()">💾 ВЫХОД В БОТА</button>
+            <button class="btn btn-green" onclick="closeMenu()">▶ ПРОДОЛЖИТЬ</button>
         </div>
-        <div class="skins-grid" id="skinsGrid"></div>
     </div>
 
-    <script>
-        let tg; try { tg = window.Telegram.WebApp; tg.expand(); } catch(e) {}
+    <!-- Ангар -->
+    <div id="shopModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 style="color: #0ff;">АНГАР</h2>
+            <div style="color: #ffd700;">Баланс: <span id="shopCoins">0</span> 💰</div>
+            <div class="shop-container" id="shopList"></div>
+            <button class="btn btn-green" onclick="closeShop()">НАЗАД</button>
+        </div>
+    </div>
 
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+    <!-- Смерть -->
+    <div id="gameOverScreen" class="modal hidden">
+        <div class="modal-content" style="background: transparent; border: none; box-shadow: none;">
+            <h1 style="color: #ff416c; font-size: 45px; text-shadow: 0 0 20px red; margin-bottom: 20px;">КОРАБЛЬ УНИЧТОЖЕН</h1>
+            <button class="btn btn-blue" onclick="resetGame()" style="margin-bottom: 15px;">🔄 НОВЫЙ ВЫЛЕТ</button>
+            <button class="btn btn-red" onclick="saveAndExit()">💾 ЗАБРАТЬ МОНЕТЫ</button>
+        </div>
+    </div>
 
-        // Экономика
-        let balance = 1500; 
-        let inventory = ['fighter'];
-        let activeSkinId = 'fighter';
+<script>
+    // ==========================================
+    // 1. ИНИЦИАЛИЗАЦИЯ И БЛОКИРОВКА СВАЙПОВ
+    // ==========================================
+    const tg = window.Telegram.WebApp;
+    tg.ready(); tg.expand();
+    if (tg.isVersionAtLeast('7.7')) tg.disableVerticalSwipes();
+    if (tg.isVersionAtLeast('6.1')) tg.enableClosingConfirmation();
 
-        // 10 Скинов Кораблей
-        const skins = [
-            { id: 'fighter', name: 'Истребитель', c1: '#aaaaaa', c2: '#00ccff', engine: '#00ffff' },
-            { id: 'phoenix', name: 'Феникс', c1: '#ff4400', c2: '#ffcc00', engine: '#ff0000' },
-            { id: 'plasma', name: 'Плазма', c1: '#cc00ff', c2: '#ff00ff', engine: '#aa00ff' },
-            { id: 'neon', name: 'Неон', c1: '#00ffcc', c2: '#00ff55', engine: '#00ff00' },
-            { id: 'phantom', name: 'Фантом', c1: '#222222', c2: '#555555', engine: '#444444' },
-            { id: 'titan', name: 'Титан', c1: '#888888', c2: '#ffaa00', engine: '#ff5500' },
-            { id: 'comet', name: 'Комета', c1: '#ffffff', c2: '#aaddff', engine: '#ffffff' },
-            { id: 'pulse', name: 'Импульс', c1: '#0055ff', c2: '#00aaff', engine: '#0055ff' },
-            { id: 'gold', name: 'Золотой', c1: '#ffcc00', c2: '#ffffff', engine: '#ffcc00' },
-            { id: 'toxic', name: 'Ядовитый', c1: '#ccff00', c2: '#55aa00', engine: '#ccff00' }
-        ];
+    document.body.addEventListener('touchmove', e => {
+        if (!e.target.closest('.shop-container')) e.preventDefault();
+    }, { passive: false });
 
-        // Игровые переменные
-        let frames = 0;
-        let score = 0;
-        let earnedCoinsTotal = 0;
-        let gameOver = false;
-        
-        let player = { x: canvas.width/2, y: canvas.height - 100, size: 25, speed: 10, isDragging: false };
-        let bullets = [];
-        let enemies = [];
-        let particles = [];
-        let stars = [];
+    // ==========================================
+    // 2. БАЗА СКИНОВ (10 шт, влияют на цвет лазера и корабля)
+    // ==========================================
+    const SKINS = [
+        { id: 'default', name: 'Cyber Blue', price: 0, color: '#00ffff' },
+        { id: 'crimson', name: 'Crimson Fighter', price: 1000, color: '#ff003c' },
+        { id: 'toxic', name: 'Toxic Viper', price: 1500, color: '#39ff14' },
+        { id: 'gold', name: 'Golden Falcon', price: 2000, color: '#ffd700' },
+        { id: 'dark', name: 'Dark Matter', price: 2500, color: '#8a2be2' },
+        { id: 'stealth', name: 'Stealth Bomber', price: 3000, color: '#a9a9a9' },
+        { id: 'plasma', name: 'Plasma Ray', price: 3000, color: '#ff1493' },
+        { id: 'solar', name: 'Solar Flare', price: 3000, color: '#ff4500' },
+        { id: 'ice', name: 'Ice Ghost', price: 3000, color: '#e0ffff' },
+        { id: 'black_hole', name: 'Black Hole (+20%)', price: 3000, color: '#111111', glow: '#800080' }
+    ];
 
-        // Уровни и Боссы
-        let bossActive = false;
-        let boss = null;
-        let bossKills = 0;
+    let localCoins = parseInt(localStorage.getItem('galactic_coins')) || 0;
+    let unlocked = JSON.parse(localStorage.getItem('galactic_unlocked')) || ['default'];
+    let activeSkin = localStorage.getItem('galactic_skin') || 'default';
+    
+    let sessionCoins = 0;
+    let startTime = Date.now();
 
-        // Создаем параллакс звезды
-        for(let i=0; i<150; i++) {
-            stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: Math.random()*2, speed: Math.random()*3 + 0.5 });
-        }
+    // ==========================================
+    // 3. ДВИЖОК ИГРЫ (CANVAS)
+    // ==========================================
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    let cw = canvas.width = window.innerWidth;
+    let ch = canvas.height = window.innerHeight;
 
-        function spawnEnemy() {
-            if (bossActive) return; // Не спавним мелочь во время босса
+    let gameState = 'start'; // start, playing, paused, gameover
+    let score = 0;
+    let frames = 0;
+    
+    // Эффект звездного параллакса (3 слоя)
+    const stars = Array(100).fill().map(() => ({
+        x: Math.random() * cw, y: Math.random() * ch, 
+        r: Math.random() * 2, speed: Math.random() * 3 + 1
+    }));
+
+    const particles = [];
+    const bullets = [];
+    const enemies = [];
+    const enemyBullets = []; // Для босса
+
+    let bossActive = false;
+    let boss = null;
+
+    // Корабль игрока
+    const player = {
+        x: cw / 2, y: ch - 100, width: 40, height: 50, speed: 0, targetX: cw / 2,
+        draw() {
+            let s = SKINS.find(sk => sk.id === activeSkin);
+            ctx.save();
+            ctx.translate(this.x, this.y);
             
-            // Если убили кратно 20 врагам — спавним босса
-            if (score > 0 && score % 20 === 0 && !bossActive && enemies.length === 0) {
-                spawnBoss();
-                return;
-            }
-
-            // Чем больше очков, тем больше врагов (до предела)
-            let spawnRate = Math.max(30, 90 - (score * 2));
-            if (frames % spawnRate === 0) {
-                enemies.push({
-                    x: Math.random() * (canvas.width - 40) + 20,
-                    y: -30,
-                    size: 20,
-                    hp: 1,
-                    maxHp: 1,
-                    speedY: Math.random() * 2 + (score > 50 ? 3 : 1),
-                    speedX: (Math.random() - 0.5) * (score > 30 ? 2 : 0),
-                    isBoss: false
-                });
+            // Свечение двигателя
+            ctx.shadowBlur = 15; ctx.shadowColor = s.color;
+            ctx.fillStyle = s.glow || s.color;
+            ctx.beginPath(); ctx.moveTo(-10, 15); ctx.lineTo(10, 15); ctx.lineTo(0, 30 + Math.random()*10); ctx.fill();
+            
+            // Корпус корабля (3D градиент)
+            let grad = ctx.createLinearGradient(0, -25, 0, 25);
+            grad.addColorStop(0, '#fff'); grad.addColorStop(1, s.glow || s.color);
+            ctx.fillStyle = grad;
+            ctx.shadowBlur = 10; ctx.shadowColor = s.glow || s.color;
+            
+            ctx.beginPath();
+            ctx.moveTo(0, -25); // Нос
+            ctx.lineTo(20, 15); // Правое крыло
+            ctx.lineTo(10, 15);
+            ctx.lineTo(15, 25); // Правая пушка
+            ctx.lineTo(5, 20);
+            ctx.lineTo(-5, 20);
+            ctx.lineTo(-15, 25); // Левая пушка
+            ctx.lineTo(-10, 15);
+            ctx.lineTo(-20, 15); // Левое крыло
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        },
+        update() {
+            // Плавное следование за пальцем (Lerp)
+            this.x += (this.targetX - this.x) * 0.2;
+            // Ограничение по краям
+            if(this.x < 20) this.x = 20;
+            if(this.x > cw - 20) this.x = cw - 20;
+            
+            // Авто-стрельба
+            if (frames % 12 === 0) {
+                let s = SKINS.find(sk => sk.id === activeSkin);
+                if (score >= 50) {
+                    // Двойные лазеры
+                    bullets.push({x: this.x - 12, y: this.y - 20, speed: 12, color: s.color});
+                    bullets.push({x: this.x + 12, y: this.y - 20, speed: 12, color: s.color});
+                } else {
+                    // Одинарный лазер
+                    bullets.push({x: this.x, y: this.y - 25, speed: 12, color: s.color});
+                }
             }
         }
+    };
 
-        function spawnBoss() {
+    // Класс Босса
+    class Boss {
+        constructor() {
+            this.x = cw/2; this.y = -100; this.width = 100; this.height = 80;
+            this.hp = 100 + (score * 2); // Здоровье растет с каждым боссом
+            this.maxHp = this.hp;
+            this.speedX = 2; this.speedY = 1;
+        }
+        draw() {
+            ctx.save(); ctx.translate(this.x, this.y);
+            ctx.fillStyle = '#ff003c'; ctx.shadowBlur = 20; ctx.shadowColor = 'red';
+            ctx.beginPath(); ctx.moveTo(0, 40); ctx.lineTo(50, -20); ctx.lineTo(30, -40); ctx.lineTo(-30, -40); ctx.lineTo(-50, -20); ctx.closePath(); ctx.fill();
+            // Глаз босса
+            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI*2); ctx.fill();
+            ctx.restore();
+            
+            // Полоска ХП
+            ctx.fillStyle = 'red'; ctx.fillRect(this.x - 50, this.y - 60, 100, 10);
+            ctx.fillStyle = '#0f0'; ctx.fillRect(this.x - 50, this.y - 60, (this.hp/this.maxHp)*100, 10);
+        }
+        update() {
+            if (this.y < 100) this.y += this.speedY; // Выход на арену
+            else {
+                this.x += this.speedX;
+                if (this.x > cw - 60 || this.x < 60) this.speedX *= -1; // Движение влево-вправо
+                
+                // Стрельба босса
+                if (frames % 40 === 0) {
+                    enemyBullets.push({x: this.x, y: this.y + 40, vx: 0, vy: 6});
+                    enemyBullets.push({x: this.x - 20, y: this.y + 30, vx: -2, vy: 5});
+                    enemyBullets.push({x: this.x + 20, y: this.y + 30, vx: 2, vy: 5});
+                }
+            }
+        }
+    }
+
+    function spawnEnemy() {
+        if (bossActive) return;
+        enemies.push({
+            x: Math.random() * (cw - 40) + 20, y: -30, r: Math.random() * 10 + 15,
+            speed: Math.random() * 2 + 2, hp: 2, type: Math.random() > 0.5 ? 'asteroid' : 'alien'
+        });
+    }
+
+    function createExplosion(x, y, color) {
+        for (let i = 0; i < 15; i++) {
+            particles.push({ x: x, y: y, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10, life: 1, color: color });
+        }
+    }
+
+    function loop() {
+        requestAnimationFrame(loop);
+        if (gameState !== 'playing') return;
+        frames++;
+
+        // Очистка и фон
+        ctx.fillStyle = 'rgba(2, 2, 5, 0.5)'; // Эффект шлейфа (motion blur)
+        ctx.fillRect(0, 0, cw, ch);
+
+        // Звезды
+        ctx.fillStyle = '#fff';
+        stars.forEach(s => {
+            s.y += s.speed; if (s.y > ch) { s.y = 0; s.x = Math.random() * cw; }
+            ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+        });
+
+        player.update();
+        player.draw();
+
+        // Спавн обычных врагов
+        if (frames % 40 === 0 && !bossActive) spawnEnemy();
+        
+        // Появление БОССА каждые 20 очков
+        if (score > 0 && score % 20 === 0 && !bossActive && !boss) {
             bossActive = true;
-            bossKills++;
-            boss = {
-                x: canvas.width / 2,
-                y: -100,
-                size: 60,
-                hp: 15 + (bossKills * 10), // Здоровье растет с каждым боссом
-                maxHp: 15 + (bossKills * 10),
-                speedY: 1,
-                speedX: 2 + bossKills,
-                directionX: 1,
-                isBoss: true,
-                shootTimer: 0
-            };
-            enemies.push(boss);
+            boss = new Boss();
+            let alertEl = document.getElementById('boss-alert');
+            alertEl.style.opacity = 1;
+            setTimeout(() => alertEl.style.opacity = 0, 2000);
         }
 
-        // --- ВЕКТОРНАЯ ОТРИСОВКА ---
-        function drawPlayer() {
-            let skin = skins.find(s => s.id === activeSkinId);
-            ctx.save();
-            ctx.translate(player.x, player.y);
-            
-            // Турбина (Огонь)
-            ctx.shadowBlur = 15; ctx.shadowColor = skin.engine; ctx.fillStyle = skin.engine;
-            ctx.beginPath(); ctx.moveTo(-5, 10); ctx.lineTo(5, 10); ctx.lineTo(0, 30 + Math.random()*10); ctx.fill();
-            
-            // Крылья
-            ctx.shadowBlur = 0; ctx.fillStyle = skin.c2;
-            ctx.beginPath(); ctx.moveTo(0, -player.size); ctx.lineTo(-player.size, player.size); ctx.lineTo(player.size, player.size); ctx.fill();
-            
-            // Кабина (Фюзеляж)
-            ctx.fillStyle = skin.c1;
-            ctx.beginPath(); ctx.moveTo(0, -player.size - 5); ctx.lineTo(-player.size/2, player.size); ctx.lineTo(player.size/2, player.size); ctx.fill();
-            
-            // Стекло кабины
-            ctx.fillStyle = '#111';
-            ctx.beginPath(); ctx.moveTo(0, -player.size/2); ctx.lineTo(-4, 0); ctx.lineTo(4, 0); ctx.fill();
-            
-            ctx.restore();
+        // Обновление пуль игрока
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            let b = bullets[i]; b.y -= b.speed;
+            ctx.shadowBlur = 10; ctx.shadowColor = b.color; ctx.fillStyle = '#fff';
+            ctx.fillRect(b.x - 2, b.y, 4, 15);
+            if (b.y < 0) bullets.splice(i, 1);
         }
 
-        function drawEnemy(e) {
-            ctx.save();
-            ctx.translate(e.x, e.y);
+        // Обновление врагов
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            let e = enemies[i]; e.y += e.speed;
             
-            if (e.isBoss) {
-                // Отрисовка Босса
-                ctx.shadowBlur = 20; ctx.shadowColor = '#ff0055';
-                ctx.fillStyle = '#222'; ctx.strokeStyle = '#ff0055'; ctx.lineWidth = 3;
-                ctx.beginPath(); ctx.moveTo(0, e.size); ctx.lineTo(-e.size, -e.size/2); ctx.lineTo(-e.size/2, -e.size); ctx.lineTo(e.size/2, -e.size); ctx.lineTo(e.size, -e.size/2); ctx.closePath(); ctx.fill(); ctx.stroke();
-                
-                // Глаз босса
-                ctx.fillStyle = '#ff0055'; ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI*2); ctx.fill();
-
-                // Полоска ХП босса
-                ctx.shadowBlur = 0;
-                ctx.fillStyle = '#333'; ctx.fillRect(-e.size, -e.size - 15, e.size*2, 8);
-                ctx.fillStyle = '#00ffcc'; ctx.fillRect(-e.size, -e.size - 15, (e.size*2) * (e.hp / e.maxHp), 8);
+            ctx.save(); ctx.translate(e.x, e.y); ctx.shadowBlur = 0;
+            if(e.type === 'asteroid') {
+                ctx.fillStyle = '#555'; ctx.beginPath(); ctx.arc(0, 0, e.r, 0, Math.PI*2); ctx.fill();
             } else {
-                // Обычный дрон
-                ctx.fillStyle = '#aa0000'; ctx.beginPath(); ctx.moveTo(0, e.size); ctx.lineTo(-e.size, -e.size); ctx.lineTo(e.size, -e.size); ctx.fill();
-                ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.arc(0, 0, e.size/2, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#0f0'; ctx.beginPath(); ctx.moveTo(0, e.r); ctx.lineTo(e.r, -e.r); ctx.lineTo(-e.r, -e.r); ctx.closePath(); ctx.fill();
             }
-            
             ctx.restore();
-        }
 
-        function createExplosion(x, y, color, count) {
-            for(let i=0; i<count; i++) {
-                particles.push({
-                    x: x, y: y, size: Math.random()*4+1,
-                    speedX: (Math.random()-0.5)*8, speedY: (Math.random()-0.5)*8,
-                    color: color, life: 1.0
-                });
-            }
-        }
-
-        function updateUI() {
-            document.getElementById('balanceVal').innerText = `${balance} 💰`;
-            document.getElementById('scoreVal').innerText = score;
-            if (score >= 100) document.getElementById('multiplier').style.display = 'block';
-        }
-
-        function gameLoop() {
-            if (gameOver) return;
-
-            // Звезды параллакс
-            ctx.fillStyle = '#020205'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#fff';
-            stars.forEach(s => {
-                s.y += s.speed;
-                if (s.y > canvas.height) { s.y = 0; s.x = Math.random()*canvas.width; }
-                ctx.globalAlpha = s.size/2;
-                ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill();
-            });
-            ctx.globalAlpha = 1.0;
-
-            // Игрок
-            drawPlayer();
-
-            // Автострельба игрока (чем больше очков, тем выше скорострельность)
-            let shootRate = score > 100 ? 5 : 10;
-            if (frames % shootRate === 0) {
-                let skin = skins.find(s => s.id === activeSkinId);
-                bullets.push({ x: player.x, y: player.y - player.size, speed: 15, color: skin.c2, isEnemy: false });
-                // Если счет > 50, стреляем двойными!
-                if (score > 50) {
-                    bullets.push({ x: player.x-15, y: player.y - player.size, speed: 15, color: skin.c2, isEnemy: false });
-                    bullets.push({ x: player.x+15, y: player.y - player.size, speed: 15, color: skin.c2, isEnemy: false });
-                }
-            }
-
-            spawnEnemy();
-
-            // Пули (Игрока и Босса)
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                let b = bullets[i];
-                b.y += b.isEnemy ? b.speed : -b.speed;
-                
-                ctx.shadowBlur = 10; ctx.shadowColor = b.color; ctx.fillStyle = b.color;
-                ctx.fillRect(b.x - 3, b.y, 6, 15);
-                ctx.shadowBlur = 0;
-
-                if (b.y < 0 || b.y > canvas.height) { bullets.splice(i, 1); continue; }
-
-                // Если пуля вражеская -> бьет игрока
-                if (b.isEnemy) {
-                    if (Math.abs(b.x - player.x) < player.size && Math.abs(b.y - player.y) < player.size) {
-                        createExplosion(player.x, player.y, '#00ffff', 50);
-                        triggerGameOver();
-                    }
-                } else {
-                    // Пуля игрока -> бьет врагов
-                    for (let j = enemies.length - 1; j >= 0; j--) {
-                        let e = enemies[j];
-                        if (Math.abs(b.x - e.x) < e.size && Math.abs(b.y - e.y) < e.size) {
-                            bullets.splice(i, 1);
-                            e.hp--;
-                            createExplosion(b.x, b.y, '#ffcc00', 5);
-                            if (e.hp <= 0) {
-                                createExplosion(e.x, e.y, e.isBoss ? '#ff0055' : '#ffaa00', e.isBoss ? 50 : 15);
-                                enemies.splice(j, 1);
-                                
-                                score++;
-                                let coinsGained = score > 100 ? 20 : 10;
-                                if (e.isBoss) coinsGained = 200; // Награда за босса
-                                
-                                balance += coinsGained;
-                                earnedCoinsTotal += coinsGained;
-                                
-                                if (e.isBoss) bossActive = false;
-                                updateUI();
-                            }
-                            break;
-                        }
+            // Столкновение пули с врагом
+            for (let j = bullets.length - 1; j >= 0; j--) {
+                let b = bullets[j];
+                if (Math.abs(b.x - e.x) < e.r + 10 && Math.abs(b.y - e.y) < e.r + 10) {
+                    e.hp--; bullets.splice(j, 1);
+                    if (e.hp <= 0) {
+                        createExplosion(e.x, e.y, e.type === 'asteroid' ? '#888' : '#0f0');
+                        enemies.splice(i, 1);
+                        score++;
+                        let earned = score > 100 ? 20 : 10; // ЭКОНОМИКА
+                        sessionCoins += earned; localCoins += earned;
+                        document.getElementById('score').innerText = score;
+                        document.getElementById('coins').innerText = sessionCoins;
+                        break;
                     }
                 }
             }
-
-            // Враги
-            for (let i = enemies.length - 1; i >= 0; i--) {
-                let e = enemies[i];
-                
-                if (e.isBoss) {
-                    // Логика Босса (Выходит сверху и летает влево-вправо)
-                    if (e.y < 80) e.y += e.speedY;
-                    else {
-                        e.x += e.speedX * e.directionX;
-                        if (e.x < e.size || e.x > canvas.width - e.size) e.directionX *= -1;
-                        
-                        // Босс стреляет
-                        e.shootTimer++;
-                        let bossFireRate = Math.max(20, 50 - (bossKills * 5));
-                        if (e.shootTimer > bossFireRate) {
-                            e.shootTimer = 0;
-                            bullets.push({ x: e.x, y: e.y + e.size, speed: 8 + bossKills, color: '#ff0055', isEnemy: true });
-                            // Тройной выстрел для сложных боссов
-                            if (bossKills > 2) {
-                                bullets.push({ x: e.x-30, y: e.y + e.size, speed: 8 + bossKills, color: '#ff0055', isEnemy: true });
-                                bullets.push({ x: e.x+30, y: e.y + e.size, speed: 8 + bossKills, color: '#ff0055', isEnemy: true });
-                            }
-                        }
-                    }
-                } else {
-                    e.y += e.speedY;
-                    e.x += e.speedX;
-                    if (e.x < e.size || e.x > canvas.width - e.size) e.speedX *= -1;
-                }
-
-                drawEnemy(e);
-
-                // Столкновение кораблей
-                if (Math.abs(player.x - e.x) < (player.size + e.size)*0.7 && Math.abs(player.y - e.y) < (player.size + e.size)*0.7) {
-                    createExplosion(player.x, player.y, '#00ffff', 50);
-                    triggerGameOver();
-                }
-
-                if (e.y > canvas.height + 50) enemies.splice(i, 1);
+            // Столкновение врага с игроком
+            if (e && Math.abs(player.x - e.x) < e.r + 15 && Math.abs(player.y - e.y) < e.r + 15) {
+                gameOver();
             }
-
-            // Частицы
-            for (let i = particles.length - 1; i >= 0; i--) {
-                let p = particles[i];
-                p.x += p.speedX; p.y += p.speedY; p.life -= 0.05;
-                if (p.life <= 0) { particles.splice(i, 1); continue; }
-                ctx.fillStyle = p.color; ctx.globalAlpha = p.life;
-                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
-                ctx.globalAlpha = 1.0;
-            }
-
-            frames++;
-            requestAnimationFrame(gameLoop);
+            if (e && e.y > ch) enemies.splice(i, 1);
         }
 
-        // --- УПРАВЛЕНИЕ ---
-        window.addEventListener('touchstart', e => {
-            if (gameOver) return;
-            player.x = e.touches[0].clientX;
-            player.y = e.touches[0].clientY - 50; // Палец чуть ниже корабля
-        });
-        window.addEventListener('touchmove', e => {
-            if (gameOver) return;
-            player.x = e.touches[0].clientX;
-            player.y = e.touches[0].clientY - 50;
-        });
+        // Обновление Босса
+        if (bossActive && boss) {
+            boss.update(); boss.draw();
+            // Урон боссу от пуль
+            for (let j = bullets.length - 1; j >= 0; j--) {
+                let b = bullets[j];
+                if (Math.abs(b.x - boss.x) < 50 && Math.abs(b.y - boss.y) < 40) {
+                    boss.hp--; bullets.splice(j, 1); createExplosion(b.x, b.y, '#ff0');
+                    if (boss.hp <= 0) {
+                        createExplosion(boss.x, boss.y, '#f00'); createExplosion(boss.x-20, boss.y+20, '#ff0');
+                        bossActive = false; boss = null;
+                        score++; sessionCoins += 500; localCoins += 500; // Награда за босса
+                        document.getElementById('score').innerText = score; document.getElementById('coins').innerText = sessionCoins;
+                    }
+                }
+            }
+        }
+
+        // Пули босса
+        for (let i = enemyBullets.length - 1; i >= 0; i--) {
+            let b = enemyBullets[i]; b.x += b.vx; b.y += b.vy;
+            ctx.shadowBlur = 10; ctx.shadowColor = '#f00'; ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, Math.PI*2); ctx.fill();
+            if (b.y > ch || b.x < 0 || b.x > cw) enemyBullets.splice(i, 1);
+            // Попадание в игрока
+            if (Math.abs(b.x - player.x) < 20 && Math.abs(b.y - player.y) < 25) gameOver();
+        }
+
+        // Частицы взрывов
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i]; p.x += p.vx; p.y += p.vy; p.life -= 0.05;
+            ctx.globalAlpha = p.life > 0 ? p.life : 0;
+            ctx.fillStyle = p.color; ctx.shadowBlur = 0;
+            ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill();
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    // ==========================================
+    // 4. УПРАВЛЕНИЕ И UI
+    // ==========================================
+    canvas.addEventListener('touchmove', e => {
+        if(gameState === 'playing') player.targetX = e.touches[0].clientX;
+    }, {passive: false});
+
+    window.addEventListener('touchstart', e => {
+        if(gameState === 'start' && !e.target.closest('.smart-menu-btn')) {
+            gameState = 'playing';
+        }
+    });
+
+    function gameOver() {
+        gameState = 'gameover';
+        localStorage.setItem('galactic_coins', localCoins);
+        document.getElementById('gameOverScreen').classList.remove('hidden');
+    }
+
+    function resetGame() {
+        enemies.length = 0; bullets.length = 0; enemyBullets.length = 0; particles.length = 0;
+        score = 0; bossActive = false; boss = null; frames = 0;
+        player.x = cw/2; player.targetX = cw/2;
+        document.getElementById('score').innerText = score;
+        document.getElementById('gameOverScreen').classList.add('hidden');
+        gameState = 'start';
+    }
+
+    // МЕНЮ И МАГАЗИН
+    document.getElementById('mainMenuBtn').onclick = () => {
+        if(gameState === 'playing') gameState = 'paused';
+        document.getElementById('smartModal').classList.remove('hidden');
+    }
+    function closeMenu() {
+        document.getElementById('smartModal').classList.add('hidden');
+        if(gameState === 'paused') gameState = 'playing';
+    }
+    
+    function openShop() {
+        document.getElementById('smartModal').classList.add('hidden');
+        document.getElementById('shopModal').classList.remove('hidden');
+        document.getElementById('shopCoins').innerText = localCoins;
+        let list = document.getElementById('shopList'); list.innerHTML = '';
         
-        // Мышка для ПК
-        canvas.addEventListener('mousemove', e => {
-            if(gameOver) return;
-            player.x = e.clientX; player.y = e.clientY;
+        SKINS.forEach(s => {
+            let isUnl = unlocked.includes(s.id); let isAct = activeSkin === s.id;
+            let btn = isAct ? `<button class="buy-btn btn-selected">ВЫБРАН</button>` :
+                      isUnl ? `<button class="buy-btn btn-select" onclick="equipSkin('${s.id}')">НАДЕТЬ</button>` :
+                      `<button class="buy-btn btn-buy" onclick="buySkin('${s.id}', ${s.price})">КУПИТЬ (${s.price})</button>`;
+            list.innerHTML += `
+                <div class="skin-card ${isAct ? 'active' : ''}">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div style="width:30px; height:30px; background:${s.color}; border-radius:5px; box-shadow:0 0 10px ${s.color};"></div>
+                        <div style="font-weight:bold;">${s.name}</div>
+                    </div>
+                    ${btn}
+                </div>`;
         });
+    }
+    function closeShop() { document.getElementById('shopModal').classList.add('hidden'); document.getElementById('smartModal').classList.remove('hidden'); }
+    
+    window.buySkin = function(id, price) {
+        if (localCoins >= price) { localCoins -= price; unlocked.push(id); equipSkin(id); saveData(); }
+        else tg.showAlert('Мало монет, бро!');
+    }
+    window.equipSkin = function(id) { activeSkin = id; openShop(); saveData(); }
+    
+    function saveData() {
+        localStorage.setItem('galactic_coins', localCoins);
+        localStorage.setItem('galactic_unlocked', JSON.stringify(unlocked));
+        localStorage.setItem('galactic_skin', activeSkin);
+    }
 
-        function triggerGameOver() {
-            gameOver = true;
-            document.getElementById('finalScore').innerText = score;
-            document.getElementById('earnedCoins').innerText = earnedCoinsTotal;
-            document.getElementById('gameOverScreen').style.display = 'flex';
-        }
+    window.saveAndExit = function() {
+        tg.sendData(JSON.stringify({
+            game: "galactic", coins: sessionCoins, score: score,
+            time_spent: Math.floor((Date.now() - startTime) / 1000), active_skin: activeSkin
+        }));
+    }
 
-        function restartGame() {
-            gameOver = false; score = 0; earnedCoinsTotal = 0; frames = 0;
-            enemies = []; bullets = []; particles = []; bossActive = false; bossKills = 0;
-            player.x = canvas.width/2; player.y = canvas.height - 100;
-            document.getElementById('multiplier').style.display = 'none';
-            document.getElementById('gameOverScreen').style.display = 'none';
-            updateUI();
-            gameLoop();
-        }
+    // Запуск графики
+    ctx.fillStyle = '#020205'; ctx.fillRect(0, 0, cw, ch);
+    ctx.fillStyle = '#fff'; ctx.font = '24px Arial'; ctx.textAlign = 'center';
+    ctx.fillText("ТАПНИ, ЧТОБЫ ВЗЛЕТЕТЬ", cw/2, ch/2);
+    requestAnimationFrame(loop);
 
-        // --- МАГАЗИН ---
-        function openShop() { document.getElementById('shopModal').style.display = 'flex'; renderShop(); }
-        function closeShop() { document.getElementById('shopModal').style.display = 'none'; }
-        
-        function renderShop() {
-            const grid = document.getElementById('skinsGrid');
-            grid.innerHTML = '';
-            skins.forEach(skin => {
-                const isOwned = inventory.includes(skin.id);
-                const isActive = activeSkinId === skin.id;
-                const card = document.createElement('div');
-                card.className = `skin-card ${isActive ? 'active' : ''}`;
-                
-                let btn = isActive ? `<button style="width:100%; padding:8px; background:#555; color:#fff; border:none; border-radius:10px;" disabled>Надето</button>` :
-                          isOwned ? `<button style="width:100%; padding:8px; background:#00ffcc; color:#000; font-weight:bold; border:none; border-radius:10px; cursor:pointer;" onclick="applySkin('${skin.id}')">Надеть</button>` :
-                          `<button style="width:100%; padding:8px; background:#ffaa00; color:#000; font-weight:bold; border:none; border-radius:10px; cursor:pointer;" onclick="buySkin('${skin.id}')">Купить (1000)</button>`;
-
-                card.innerHTML = `<div class="skin-color-preview" style="background: ${skin.c1}; border: 3px solid ${skin.c2};"></div><div style="font-size:14px; font-weight:bold; margin-bottom:10px; color:white;">${skin.name}</div>${btn}`;
-                grid.appendChild(card);
-            });
-        }
-
-        function buySkin(id) {
-            if(balance >= 1000) { balance -= 1000; inventory.push(id); updateUI(); renderShop(); }
-            else alert("Не хватает монет!");
-        }
-        function applySkin(id) { activeSkinId = id; renderShop(); }
-
-        // --- СОХРАНЕНИЕ ---
-        function saveAndExit() {
-            if(tg && tg.sendData) {
-                tg.sendData(JSON.stringify({ game: 'space', score: score, coins: balance, activeSkin: activeSkinId, inventory: inventory.join(',') }));
-                tg.close();
-            } else alert(`Выход. Баланс: ${balance}`);
-        }
-
-        updateUI();
-        gameLoop();
-    </script>
+</script>
 </body>
 </html>
