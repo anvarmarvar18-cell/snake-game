@@ -6,393 +6,496 @@
     <title>Cyber 2048</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; touch-action: none; font-family: 'Arial', sans-serif; }
-        body { background-color: #050508; color: #fff; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: space-between; overflow: hidden; }
+        /* БАЗА И ЗАЩИТА ТЕЛЕГРАМА */
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background: #0b0c10; overflow: hidden; touch-action: none; color: white; height: 100vh; display: flex; flex-direction: column; align-items: center; transition: background 0.5s; }
         
-        .header { width: 100%; padding: 20px; display: flex; justify-content: space-between; align-items: flex-start; z-index: 10; }
-        .score-container { display: flex; flex-direction: column; gap: 10px; }
-        .score-box { background: rgba(0,255,204,0.1); border: 1px solid #00ffcc; padding: 10px 20px; border-radius: 10px; text-align: center; box-shadow: 0 0 10px rgba(0,255,204,0.2); }
-        .score-box span { display: block; font-size: 12px; color: #00ffcc; text-transform: uppercase; font-weight: bold; margin-bottom: 5px; }
-        .score-box strong { font-size: 24px; color: #fff; }
+        /* ИНТЕРФЕЙС ИГРЫ */
+        .header { width: 100%; padding: 20px 20px 0 20px; display: flex; justify-content: space-between; align-items: flex-start; z-index: 100; }
+        .score-box { background: rgba(255,255,255,0.1); padding: 10px 20px; border-radius: 10px; border: 1px solid #45a29e; text-align: center; }
+        .score-title { color: #66fcf1; font-size: 14px; font-weight: bold; text-transform: uppercase; }
+        .score-val { color: #fff; font-size: 24px; font-weight: 900; }
         
-        .balance-box { background: rgba(255,215,0,0.1); border: 1px solid #ffd700; padding: 10px 20px; border-radius: 10px; text-align: center; box-shadow: 0 0 10px rgba(255,215,0,0.2); }
-        .balance-box span { display: block; font-size: 12px; color: #ffd700; text-transform: uppercase; font-weight: bold; margin-bottom: 5px; }
-        .balance-box strong { font-size: 24px; color: #fff; }
+        .coins-box { background: rgba(255,215,0,0.1); padding: 10px 20px; border-radius: 10px; border: 1px solid #ffd700; text-align: center; margin-top: 10px; }
+        .coins-val { color: #ffd700; font-size: 20px; font-weight: bold; }
+        
+        .smart-menu-btn { background: rgba(0, 0, 0, 0.7); color: #0ff; border: 2px solid #0ff; border-radius: 8px; padding: 15px 20px; font-weight: bold; cursor: pointer; box-shadow: 0 0 10px #0ff; }
 
-        .game-container { position: relative; width: 90vw; max-width: 400px; height: 90vw; max-height: 400px; background: #1a1a2e; border-radius: 15px; padding: 10px; border: 2px solid #333; box-shadow: 0 0 20px rgba(0,0,0,0.8); display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); gap: 10px; }
-        
+        /* ИГРОВОЕ ПОЛЕ 2048 */
+        .game-container { position: relative; margin-top: 30px; width: 90vw; max-width: 400px; height: 90vw; max-height: 400px; background: #1f2833; border-radius: 15px; padding: 10px; box-shadow: 0 0 30px rgba(102, 252, 241, 0.2); border: 2px solid #45a29e; }
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); gap: 10px; width: 100%; height: 100%; }
         .grid-cell { background: rgba(255,255,255,0.05); border-radius: 10px; }
         
-        .tile { position: absolute; display: flex; justify-content: center; align-items: center; border-radius: 10px; font-weight: bold; font-size: 35px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.5); transition: 150ms ease-in-out; z-index: 5; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
-        .tile-new { animation: appear 200ms ease; }
-        .tile-merged { animation: pop 200ms ease; z-index: 6; }
+        .tile-container { position: absolute; top: 10px; left: 10px; right: 10px; bottom: 10px; pointer-events: none; }
+        .tile { position: absolute; display: flex; justify-content: center; align-items: center; border-radius: 10px; font-weight: 900; transition: transform 0.15s ease-in-out; }
+        .tile-inner { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; border-radius: 10px; animation: appear 0.2s; box-shadow: 0 4px 8px rgba(0,0,0,0.3); text-align: center; line-height: 1.1; }
         
         @keyframes appear { 0% { opacity: 0; transform: scale(0); } 100% { opacity: 1; transform: scale(1); } }
         @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+        .merged .tile-inner { animation: pop 0.2s; }
 
-        .controls { width: 100%; padding: 20px; display: flex; justify-content: center; gap: 15px; }
-        .btn { padding: 15px 30px; border: none; border-radius: 20px; font-size: 16px; font-weight: bold; color: #fff; cursor: pointer; text-transform: uppercase; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
-        .btn-shop { background: linear-gradient(45deg, #11998e, #38ef7d); }
-        .btn-exit { background: #333; }
+        /* МОДАЛЬНЫЕ ОКНА */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 2000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .hidden { display: none !important; }
+        .modal-content { background: linear-gradient(135deg, #111, #1a1a2e); border: 2px solid #0ff; border-radius: 15px; width: 85%; max-height: 85vh; padding: 20px; display: flex; flex-direction: column; gap: 12px; text-align: center; box-shadow: 0 0 30px rgba(0, 255, 255, 0.2); }
+        
+        .btn { padding: 15px; font-size: 16px; font-weight: bold; border-radius: 10px; color: white; border: none; text-transform: uppercase; cursor: pointer; transition: 0.1s; }
+        .btn:active { transform: scale(0.95); }
+        .btn-green { background: linear-gradient(45deg, #00b09b, #96c93d); }
+        .btn-blue { background: linear-gradient(45deg, #2193b0, #6dd5ed); }
+        .btn-red { background: linear-gradient(45deg, #ff416c, #ff4b2b); }
 
-        .overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; }
-        h1 { color: #ff3333; font-size: 45px; margin-bottom: 10px; text-shadow: 0 0 20px #ff0000; text-transform: uppercase; }
+        /* МАГАЗИН */
+        .shop-container { overflow-y: auto; max-height: 50vh; -webkit-overflow-scrolling: touch; touch-action: pan-y; display: flex; flex-direction: column; gap: 10px; padding: 5px; }
+        .skin-card { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 15px; border-radius: 10px; border: 1px solid #444; }
+        .skin-card.active { border-color: #0ff; box-shadow: 0 0 15px rgba(0,255,255,0.4); }
+        .buy-btn { padding: 8px 15px; border-radius: 5px; border: none; font-weight: bold; }
+        .btn-buy { background: #ffd700; color: #000; }
+        .btn-select { background: #0ff; color: #000; }
+        .btn-selected { background: #444; color: #888; }
         
-        /* Магазин */
-        .skins-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; max-width: 400px; overflow-y: auto; max-height: 65vh; padding-bottom: 20px; margin-top: 10px; }
-        .skin-card { background: rgba(20,20,30,0.9); border: 2px solid #444; border-radius: 15px; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .skin-card.active { border-color: #00ffcc; box-shadow: 0 0 20px rgba(0,255,204,0.4); }
-        
-        /* Бонусный текст при слиянии */
-        .bonus-text { position: absolute; color: #ffea00; font-weight: bold; font-size: 24px; text-shadow: 0 0 10px #ffea00; z-index: 30; pointer-events: none; animation: floatUp 1s forwards; }
-        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-50px); } }
+        .floating-text { position: absolute; font-size: 28px; font-weight: 900; color: #ffd700; text-shadow: 0 0 15px #ff0; pointer-events: none; animation: floatUp 1.2s ease-out forwards; z-index: 500; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-60px); } }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="score-container">
-            <div class="score-box"><span>Очки</span><strong id="scoreVal">0</strong></div>
+        <div>
+            <div class="score-box">
+                <div class="score-title">Счет</div>
+                <div class="score-val" id="score">0</div>
+            </div>
+            <div class="coins-box">
+                <div class="coins-val"><span id="coins">0</span> 💰</div>
+            </div>
         </div>
-        <div class="balance-box"><span>Монеты</span><strong id="balanceVal">0</strong></div>
+        <button id="mainMenuBtn" class="smart-menu-btn">⚙️ МЕНЮ</button>
     </div>
 
-    <div class="game-container" id="grid">
-        <!-- Ячейки фона 4x4 -->
-        <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
-        <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
-        <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
-        <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
-    </div>
-
-    <div class="controls">
-        <button class="btn btn-shop" onclick="openShop()">🎨 Скины</button>
-        <button class="btn btn-exit" onclick="saveAndExit()">💾 Выход</button>
-    </div>
-
-    <div class="overlay" id="gameOverScreen">
-        <h1>ХОДОВ НЕТ!</h1>
-        <p style="font-size: 20px; color: #ccc; margin-bottom: 10px;">Финальный счет: <span id="finalScore" style="color:#fff; font-weight:bold;">0</span></p>
-        <p style="font-size: 24px; color: #ffd700; margin-bottom: 30px;">Монет за игру: +<span id="earnedCoins">0</span> 💰</p>
-        <button class="btn" style="background: linear-gradient(45deg, #ff8800, #ff0055); width: 250px; margin-bottom: 15px;" onclick="restartGame()">ИГРАТЬ ЗАНОВО</button>
-        <button class="btn btn-exit" style="width: 250px;" onclick="saveAndExit()">В МЕНЮ</button>
-    </div>
-
-    <div class="overlay" id="shopModal">
-        <div style="width:100%; max-width:400px; display:flex; justify-content:space-between; align-items:center;">
-            <h2 style="color:white; font-size: 26px;">Скины (1000💰)</h2>
-            <button style="background:none; border:none; color:#ff3333; font-size:40px; cursor:pointer;" onclick="closeShop()">&times;</button>
+    <!-- Поле 2048 -->
+    <div class="game-container" id="game-container">
+        <div class="grid">
+            <!-- 16 ячеек фона -->
+            <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+            <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+            <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+            <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
         </div>
-        <div class="skins-grid" id="skinsGrid"></div>
+        <!-- Сюда JS будет добавлять плитки -->
+        <div class="tile-container" id="tile-container"></div>
     </div>
 
-    <script>
-        let tg; try { tg = window.Telegram.WebApp; tg.expand(); } catch(e) {}
+    <!-- Главное Меню -->
+    <div id="smartModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 style="color: white;">ПАУЗА</h2>
+            <button class="btn btn-blue" onclick="openShop()">🎨 ТЕМЫ (СКИНЫ)</button>
+            <button class="btn btn-blue" onclick="resetGame()">🔄 НАЧАТЬ ЗАНОВО</button>
+            <button class="btn btn-red" onclick="saveAndExit()">💾 ВЫХОД В БОТА</button>
+            <button class="btn btn-green" onclick="closeMenu()">▶ ПРОДОЛЖИТЬ</button>
+        </div>
+    </div>
 
-        let balance = 1500;
-        let inventory = ['neon'];
-        let activeSkinId = 'neon';
+    <!-- Ангар -->
+    <div id="shopModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 style="color: #0ff;">МАГАЗИН ТЕМ</h2>
+            <div style="color: #ffd700;">Баланс: <span id="shopCoins">0</span> 💰</div>
+            <div class="shop-container" id="shopList"></div>
+            <button class="btn btn-green" onclick="closeShop()">НАЗАД</button>
+        </div>
+    </div>
 
-        // --- 10 СКИНОВ ДЛЯ ПЛИТОК ---
-        const skins = [
-            { id: 'neon', name: 'Неон', getLabel: (val) => val, getBg: (val) => getNeonColor(val) },
-            { id: 'crypto', name: 'Крипта', getLabel: (val) => getCryptoIcon(val), getBg: (val) => getCryptoColor(val) },
-            { id: 'it', name: 'IT Гиганты', getLabel: (val) => getItIcon(val), getBg: (val) => getItColor(val) },
-            { id: 'gems', name: 'Камни', getLabel: (val) => getGemIcon(val), getBg: (val) => getNeonColor(val) },
-            { id: 'planets', name: 'Планеты', getLabel: (val) => getPlanetIcon(val), getBg: (val) => getNeonColor(val) },
-            { id: 'cars', name: 'Машины', getLabel: (val) => getCarIcon(val), getBg: (val) => getNeonColor(val) },
-            { id: 'army', name: 'Армия', getLabel: (val) => getArmyIcon(val), getBg: (val) => getNeonColor(val) },
-            { id: 'spectrum', name: 'Спектр', getLabel: (val) => val, getBg: (val) => getSpectrumColor(val) },
-            { id: 'hacker', name: 'Хакер', getLabel: (val) => val, getBg: (val) => '#0a0', color: '#0f0', font: 'Courier New' },
-            { id: 'cards', name: 'Масти', getLabel: (val) => getCardIcon(val), getBg: (val) => getCardColor(val) }
-        ];
+    <!-- Конец игры -->
+    <div id="gameOverScreen" class="modal hidden">
+        <div class="modal-content" style="background: transparent; border: none; box-shadow: none;">
+            <h1 style="color: #ff416c; font-size: 45px; text-shadow: 0 0 20px red; margin-bottom: 20px;">ХОДОВ НЕТ!</h1>
+            <button class="btn btn-blue" onclick="resetGame()" style="margin-bottom: 15px;">🔄 НОВАЯ ИГРА</button>
+            <button class="btn btn-red" onclick="saveAndExit()">💾 ЗАБРАТЬ МОНЕТЫ</button>
+        </div>
+    </div>
 
-        // Цветовые палитры для скинов
-        function getNeonColor(val) {
-            const colors = { 2:'#002244', 4:'#004488', 8:'#0088ff', 16:'#00ffcc', 32:'#00ff55', 64:'#88ff00', 128:'#ffea00', 256:'#ff8800', 512:'#ff0055', 1024:'#ff00ff', 2048:'#aa00ff' };
-            return colors[val] || '#fff';
+<script>
+    // ==========================================
+    // 1. ИНИЦИАЛИЗАЦИЯ И БЛОКИРОВКА СВАЙПОВ ТГ
+    // ==========================================
+    const tg = window.Telegram.WebApp;
+    tg.ready(); tg.expand();
+    if (tg.isVersionAtLeast('7.7')) tg.disableVerticalSwipes();
+    if (tg.isVersionAtLeast('6.1')) tg.enableClosingConfirmation();
+
+    // Жестко блокируем скролл всего документа, кроме магазина
+    document.body.addEventListener('touchmove', e => {
+        if (!e.target.closest('.shop-container')) e.preventDefault();
+    }, { passive: false });
+
+    // ==========================================
+    // 2. БАЗА СКИНОВ (Меняют текст и цвета плиток)
+    // ==========================================
+    const SKINS = [
+        { id: 'default', name: 'Classic Numbers', price: 0, 
+          style: 'classic', bg: '#0b0c10', txtColor: '#fff',
+          values: { 2:'2', 4:'4', 8:'8', 16:'16', 32:'32', 64:'64', 128:'128', 256:'256', 512:'512', 1024:'1024', 2048:'2048' }
+        },
+        { id: 'neon', name: 'Cyber Neon', price: 1000, 
+          style: 'neon', bg: '#000', txtColor: '#000',
+          values: { 2:'2', 4:'4', 8:'8', 16:'16', 32:'32', 64:'64', 128:'128', 256:'256', 512:'512', 1024:'1024', 2048:'2048' }
+        },
+        { id: 'crypto', name: 'Crypto Coins', price: 2000, 
+          style: 'crypto', bg: '#1a1a2e', txtColor: '#fff',
+          values: { 2:'USDT', 4:'DOGE', 8:'XRP', 16:'ADA', 32:'SOL', 64:'DOT', 128:'LTC', 256:'TON', 512:'ETH', 1024:'BTC', 2048:'WHALE' }
+        },
+        { id: 'it', name: 'IT Giants', price: 3000, 
+          style: 'it', bg: '#f4f4f9', txtColor: '#fff',
+          values: { 2:'HP', 4:'IBM', 8:'Intel', 16:'Oracle', 32:'Sony', 64:'Samsung', 128:'Meta', 256:'Amazon', 512:'Google', 1024:'Apple', 2048:'AI' }
+        },
+        { id: 'black_hole', name: 'Dark Matter (+20%)', price: 3000, 
+          style: 'dark', bg: '#050010', txtColor: '#fff',
+          values: { 2:'Dust', 4:'Meteor', 8:'Moon', 16:'Planet', 32:'Star', 64:'Sun', 128:'Pulsar', 256:'Quasar', 512:'Galaxy', 1024:'Nebula', 2048:'HOLE' }
         }
-        function getSpectrumColor(val) {
-            const hue = (Math.log2(val) * 30) % 360;
-            return `hsl(${hue}, 100%, 40%)`;
-        }
+    ];
+
+    // Цвета для разных значений
+    const tileColors = {
+        'classic': { 2:'#eee4da', 4:'#ede0c8', 8:'#f2b179', 16:'#f59563', 32:'#f67c5f', 64:'#f65e3b', 128:'#edcf72', 256:'#edcc61', 512:'#edc850', 1024:'#edc53f', 2048:'#edc22e' },
+        'neon': { 2:'#0ff', 4:'#0f0', 8:'#ff0', 16:'#f0f', 32:'#f00', 64:'#00f', 128:'#0ff', 256:'#0f0', 512:'#ff0', 1024:'#f0f', 2048:'#fff' },
+        'crypto': { 2:'#26a17b', 4:'#c2a633', 8:'#23292f', 16:'#0033ad', 32:'#14f195', 64:'#e6007a', 128:'#345d9d', 256:'#0088cc', 512:'#627eea', 1024:'#f7931a', 2048:'#ffd700' },
+        'it': { 2:'#0096d6', 4:'#0530ad', 8:'#0071c5', 16:'#f80000', 32:'#000', 64:'#1428a0', 128:'#0668e1', 256:'#ff9900', 512:'#db4437', 1024:'#555', 2048:'#0ff' },
+        'dark': { 2:'#333', 4:'#444', 8:'#555', 16:'#666', 32:'#777', 64:'#888', 128:'#9900ff', 256:'#aa00ff', 512:'#bb00ff', 1024:'#cc00ff', 2048:'#800080' }
+    };
+
+    let localCoins = parseInt(localStorage.getItem('c2048_coins')) || 0;
+    let unlocked = JSON.parse(localStorage.getItem('c2048_unlocked')) || ['default'];
+    let activeSkin = localStorage.getItem('c2048_skin') || 'default';
+    
+    let sessionCoins = 0;
+    let startTime = Date.now();
+
+    // ==========================================
+    // 3. МАТЕМАТИКА И ДВИЖОК 2048
+    // ==========================================
+    let board = [];
+    let score = 0;
+    let gameState = 'playing'; // playing, gameover
+    const size = 4;
+    const tileContainer = document.getElementById('tile-container');
+
+    function initGame() {
+        board = Array(size).fill().map(() => Array(size).fill(0));
+        score = 0; sessionCoins = 0;
+        document.getElementById('score').innerText = score;
+        document.getElementById('coins').innerText = sessionCoins;
+        tileContainer.innerHTML = '';
         
-        // Значения для скинов
-        function getCryptoIcon(val) { const d = {2:'SHIB', 4:'DOGE', 8:'TRX', 16:'ADA', 32:'XRP', 64:'SOL', 128:'BNB', 256:'TON', 512:'ETH', 1024:'BTC', 2048:'💎'}; return d[val] || val; }
-        function getCryptoColor(val) { const d = {2:'#8b0000', 4:'#c2a278', 8:'#ff0000', 16:'#0033aa', 32:'#23292f', 64:'#00ffa3', 128:'#f3ba2f', 256:'#0088cc', 512:'#627eea', 1024:'#f7931a', 2048:'#00ffff'}; return d[val] || '#fff'; }
+        let s = SKINS.find(sk => sk.id === activeSkin);
+        document.body.style.background = s.bg;
         
-        function getItIcon(val) { const d = {2:'Nokia', 4:'Yahoo', 8:'IBM', 16:'Intel', 32:'AMD', 64:'Meta', 128:'Amazon', 256:'Google', 512:'MSFT', 1024:'Apple', 2048:'AI'}; return d[val] || val; }
-        function getItColor(val) { const d = {2:'#124191', 4:'#410093', 8:'#0530ad', 16:'#0071c5', 32:'#ed1c24', 64:'#0668e1', 128:'#ff9900', 256:'#ea4335', 512:'#00a4ef', 1024:'#555555', 2048:'#00ffcc'}; return d[val] || '#fff'; }
+        addRandomTile();
+        addRandomTile();
+        renderBoard();
+        gameState = 'playing';
+    }
 
-        function getGemIcon(val) { const d = {2:'Уголь', 4:'Кварц', 8:'Опал', 16:'Топаз', 32:'Нефрит', 64:'Сапфир', 128:'Изумруд', 256:'Рубин', 512:'Алмаз', 1024:'Метеорит', 2048:'Антиматерия'}; return d[val] || val; }
-        function getPlanetIcon(val) { const d = {2:'Плутон', 4:'Меркурий', 8:'Марс', 16:'Венера', 32:'Земля', 64:'Нептун', 128:'Уран', 256:'Сатурн', 512:'Юпитер', 1024:'Солнце', 2048:'Черная Дыра'}; return d[val] || val; }
-        function getCarIcon(val) { const d = {2:'Lada', 4:'Kia', 8:'Toyota', 16:'Ford', 32:'BMW', 64:'Audi', 128:'Porsche', 256:'Ferrari', 512:'Lambo', 1024:'Bugatti', 2048:'F1'}; return d[val] || val; }
-        function getArmyIcon(val) { const d = {2:'Рядовой', 4:'Сержант', 8:'Лейтенант', 16:'Капитан', 32:'Майор', 64:'Полковник', 128:'Генерал', 256:'Маршал', 512:'Император', 1024:'Бог Войны', 2048:'Властелин'}; return d[val] || val; }
-        
-        function getCardIcon(val) { const d = {2:'6', 4:'7', 8:'8', 16:'9', 32:'10', 64:'Валет', 128:'Дама', 256:'Король', 512:'Туз ♠', 1024:'Джокер', 2048:'ROYAL'}; return d[val] || val; }
-        function getCardColor(val) { return val >= 512 ? '#ff0000' : '#111'; }
-
-        // Игровая логика
-        let board = [];
-        let score = 0;
-        let earnedCoinsGame = 0;
-        let gameOver = false;
-        const size = 4;
-        let tileElements = [];
-
-        function initGame() {
-            board = Array(size).fill().map(() => Array(size).fill(0));
-            score = 0; earnedCoinsGame = 0; gameOver = false;
-            document.getElementById('scoreVal').innerText = score;
-            document.getElementById('gameOverScreen').style.display = 'none';
-            
-            const grid = document.getElementById('grid');
-            // Удаляем старые плитки (оставляем только ячейки фона)
-            Array.from(grid.children).forEach(child => { if (child.className.includes('tile')) child.remove(); });
-            tileElements = [];
-
-            addRandomTile();
-            addRandomTile();
-            updateUI();
-        }
-
-        function addRandomTile() {
-            let emptyCells = [];
-            for (let r = 0; r < size; r++) {
-                for (let c = 0; c < size; c++) {
-                    if (board[r][c] === 0) emptyCells.push({r, c});
-                }
-            }
-            if (emptyCells.length > 0) {
-                let {r, c} = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-                board[r][c] = Math.random() < 0.9 ? 2 : 4;
-                createTileElement(r, c, board[r][c], true);
-            }
-        }
-
-        function createTileElement(r, c, value, isNew = false, isMerged = false) {
-            const grid = document.getElementById('grid');
-            const tile = document.createElement('div');
-            tile.className = `tile ${isNew ? 'tile-new' : ''} ${isMerged ? 'tile-merged' : ''}`;
-            tile.id = `tile-${r}-${c}`;
-            
-            updateTileAppearance(tile, value);
-            positionTile(tile, r, c);
-            
-            grid.appendChild(tile);
-            tileElements.push({r, c, el: tile});
-        }
-
-        function positionTile(tile, r, c) {
-            const spacing = 10;
-            // Вычисляем размер ячейки ( (100% - 3*gap) / 4 )
-            tile.style.width = `calc(25% - ${spacing * 3 / 4}px)`;
-            tile.style.height = `calc(25% - ${spacing * 3 / 4}px)`;
-            tile.style.top = `calc(${r * 25}% + ${r === 0 ? 0 : spacing * r - (spacing*r)/4}px)`;
-            tile.style.left = `calc(${c * 25}% + ${c === 0 ? 0 : spacing * c - (spacing*c)/4}px)`;
-        }
-
-        function updateTileAppearance(tile, value) {
-            let skinDef = skins.find(s => s.id === activeSkinId);
-            
-            let label = skinDef.getLabel(value);
-            tile.innerText = label;
-            
-            tile.style.background = skinDef.getBg(value);
-            tile.style.color = skinDef.color || '#fff';
-            tile.style.fontFamily = skinDef.font || 'Arial, sans-serif';
-            
-            // Динамический размер текста
-            if (String(label).length > 4) tile.style.fontSize = '16px';
-            else if (String(label).length > 3) tile.style.fontSize = '22px';
-            else tile.style.fontSize = '35px';
-        }
-
-        function renderBoard() {
-            const grid = document.getElementById('grid');
-            Array.from(grid.children).forEach(child => { if (child.className.includes('tile')) child.remove(); });
-            tileElements = [];
-            
-            for (let r = 0; r < size; r++) {
-                for (let c = 0; c < size; c++) {
-                    if (board[r][c] !== 0) {
-                        createTileElement(r, c, board[r][c]);
-                    }
-                }
+    function addRandomTile() {
+        let emptyCells = [];
+        for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size; c++) {
+                if (board[r][c] === 0) emptyCells.push({r, c});
             }
         }
-
-        function showBonusText(text, r, c) {
-            const grid = document.getElementById('grid');
-            const bonus = document.createElement('div');
-            bonus.className = 'bonus-text';
-            bonus.innerText = text;
-            
-            const spacing = 10;
-            bonus.style.top = `calc(${r * 25}% + ${r * spacing}px)`;
-            bonus.style.left = `calc(${c * 25}% + ${c * spacing}px)`;
-            
-            grid.appendChild(bonus);
-            setTimeout(() => bonus.remove(), 1000);
+        if (emptyCells.length > 0) {
+            let randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+            board[randomCell.r][randomCell.c] = Math.random() < 0.9 ? 2 : 4;
         }
+    }
 
-        // --- ЛОГИКА СДВИГА И СЛИЯНИЯ ---
-        function move(direction) {
-            if (gameOver) return;
-            let moved = false;
-            let newBoard = JSON.parse(JSON.stringify(board));
+    // Отрисовка с CSS позиционированием для анимаций
+    function renderBoard() {
+        tileContainer.innerHTML = '';
+        let s = SKINS.find(sk => sk.id === activeSkin);
+        let colors = tileColors[s.style];
+        
+        // Вычисляем размер ячейки на лету (ширина контейнера / 4 минус зазоры)
+        let containerWidth = document.getElementById('game-container').clientWidth - 20; // -20 padding
+        let tileSize = (containerWidth - 30) / 4; // -30 это 3 gap'а по 10px
 
-            const shiftAndMerge = (row) => {
-                let filteredRow = row.filter(val => val !== 0);
-                for (let i = 0; i < filteredRow.length - 1; i++) {
-                    if (filteredRow[i] !== 0 && filteredRow[i] === filteredRow[i + 1]) {
-                        filteredRow[i] *= 2;
-                        filteredRow[i + 1] = 0;
-                        score += filteredRow[i];
-                        
-                        // Экономика: 1 монета за каждые 50 очков
-                        let coinsToAdd = Math.floor(filteredRow[i] / 50);
-                        if (coinsToAdd > 0) {
-                            balance += coinsToAdd;
-                            earnedCoinsGame += coinsToAdd;
-                        }
-
-                        // Спец бонусы за сборку больших цифр
-                        if (filteredRow[i] === 512) { balance += 50; earnedCoinsGame += 50; showBonusText('+50💰', 2, 2); }
-                        if (filteredRow[i] === 1024) { balance += 100; earnedCoinsGame += 100; showBonusText('+100💰', 2, 2); }
-                        if (filteredRow[i] === 2048) { balance += 500; earnedCoinsGame += 500; showBonusText('ДЖЕКПОТ!', 2, 2); }
-                    }
-                }
-                let newRow = filteredRow.filter(val => val !== 0);
-                while (newRow.length < size) newRow.push(0);
-                return newRow;
-            };
-
-            if (direction === 'Left' || direction === 'Right') {
-                for (let r = 0; r < size; r++) {
-                    let row = newBoard[r];
-                    if (direction === 'Right') row.reverse();
-                    let newRow = shiftAndMerge(row);
-                    if (direction === 'Right') newRow.reverse();
-                    if (newBoard[r].join(',') !== newRow.join(',')) moved = true;
-                    newBoard[r] = newRow;
-                }
-            } else if (direction === 'Up' || direction === 'Down') {
-                for (let c = 0; c < size; c++) {
-                    let col = [newBoard[0][c], newBoard[1][c], newBoard[2][c], newBoard[3][c]];
-                    if (direction === 'Down') col.reverse();
-                    let newCol = shiftAndMerge(col);
-                    if (direction === 'Down') newCol.reverse();
+        for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size; c++) {
+                if (board[r][c] !== 0) {
+                    let val = board[r][c];
+                    let tile = document.createElement('div');
+                    tile.className = 'tile';
                     
-                    for (let r = 0; r < size; r++) {
-                        if (newBoard[r][c] !== newCol[r]) moved = true;
-                        newBoard[r][c] = newCol[r];
+                    // Позиция
+                    tile.style.width = tileSize + 'px';
+                    tile.style.height = tileSize + 'px';
+                    tile.style.transform = `translate(${c * (tileSize + 10)}px, ${r * (tileSize + 10)}px)`;
+                    
+                    let inner = document.createElement('div');
+                    inner.className = 'tile-inner';
+                    inner.style.background = colors[val] || colors[2048];
+                    
+                    if(s.style === 'neon') {
+                        inner.style.boxShadow = `0 0 15px ${colors[val] || colors[2048]}`;
+                    } else if (s.style === 'dark') {
+                        inner.style.boxShadow = `0 0 20px ${colors[val] || colors[2048]}`;
+                    }
+                    
+                    // Текст (Размер зависит от длины)
+                    let textVal = s.values[val] || s.values[2048];
+                    inner.innerText = textVal;
+                    if(s.style === 'classic') inner.style.color = val > 4 ? '#f9f6f2' : '#776e65';
+                    else inner.style.color = s.txtColor;
+                    
+                    if(textVal.length > 4) inner.style.fontSize = (tileSize * 0.25) + 'px';
+                    else if(textVal.length > 3) inner.style.fontSize = (tileSize * 0.35) + 'px';
+                    else inner.style.fontSize = (tileSize * 0.45) + 'px';
+
+                    tile.appendChild(inner);
+                    tileContainer.appendChild(tile);
+                }
+            }
+        }
+    }
+
+    // Идеальная логика сдвига (Core Math)
+    function move(dir) {
+        if (gameState !== 'playing') return;
+        let moved = false;
+        let mergedTiles = []; // Чтобы плитка не схлопывалась дважды за один ход
+
+        // Копируем доску
+        let newBoard = JSON.parse(JSON.stringify(board));
+
+        const traverse = (callback) => {
+            if (dir === 'up' || dir === 'left') {
+                for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) callback(r, c);
+            } else {
+                for (let r = size - 1; r >= 0; r--) for (let c = size - 1; c >= 0; c--) callback(r, c);
+            }
+        };
+
+        const getVector = () => {
+            if (dir === 'up') return { r: -1, c: 0 };
+            if (dir === 'down') return { r: 1, c: 0 };
+            if (dir === 'left') return { r: 0, c: -1 };
+            if (dir === 'right') return { r: 0, c: 1 };
+        };
+
+        let vector = getVector();
+
+        traverse((r, c) => {
+            if (newBoard[r][c] !== 0) {
+                let currR = r;
+                let currC = c;
+                let nextR = currR + vector.r;
+                let nextC = currC + vector.c;
+
+                // Двигаемся пока не упремся в стену или другую плитку
+                while (nextR >= 0 && nextR < size && nextC >= 0 && nextC < size && newBoard[nextR][nextC] === 0) {
+                    newBoard[nextR][nextC] = newBoard[currR][currC];
+                    newBoard[currR][currC] = 0;
+                    currR = nextR;
+                    currC = nextC;
+                    nextR = currR + vector.r;
+                    nextC = currC + vector.c;
+                    moved = true;
+                }
+
+                // Схлопывание
+                if (nextR >= 0 && nextR < size && nextC >= 0 && nextC < size &&
+                    newBoard[nextR][nextC] === newBoard[currR][currC] &&
+                    !mergedTiles.includes(`${nextR},${nextC}`)) {
+                    
+                    newBoard[nextR][nextC] *= 2;
+                    newBoard[currR][currC] = 0;
+                    mergedTiles.push(`${nextR},${nextC}`);
+                    moved = true;
+                    
+                    let val = newBoard[nextR][nextC];
+                    score += val;
+                    
+                    // ЭКОНОМИКА: 1 монета за каждые 50 очков
+                    let earned = Math.floor(val / 50);
+                    // БОНУСЫ ЗА РЕДКИЕ ПЛИТКИ!
+                    if (val === 512) earned += 50;
+                    if (val === 1024) earned += 100;
+                    if (val === 2048) {
+                        earned += 500;
+                        tg.showAlert('ПОБЕДА! Ты собрал 2048! +500 монет!');
+                    }
+                    
+                    if (earned > 0) {
+                        sessionCoins += earned; localCoins += earned;
+                        createFloatingText(`+${earned} 💰`);
                     }
                 }
             }
-
-            if (moved) {
-                board = newBoard;
-                document.getElementById('scoreVal').innerText = score;
-                updateUI();
-                renderBoard(); // Рендерим новое состояние
-                
-                setTimeout(() => {
-                    addRandomTile();
-                    if (checkGameOver()) triggerGameOver();
-                }, 50);
-            }
-        }
-
-        function checkGameOver() {
-            for (let r = 0; r < size; r++) {
-                for (let c = 0; c < size; c++) {
-                    if (board[r][c] === 0) return false;
-                    if (c < size - 1 && board[r][c] === board[r][c + 1]) return false;
-                    if (r < size - 1 && board[r][c] === board[r + 1][c]) return false;
-                }
-            }
-            return true;
-        }
-
-        // --- УПРАВЛЕНИЕ (СВАЙПЫ И КЛАВИАТУРА) ---
-        let touchStartX = 0; let touchStartY = 0;
-        window.addEventListener('touchstart', e => {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
-        }, {passive: false});
-
-        window.addEventListener('touchend', e => {
-            if (gameOver) return;
-            let touchEndX = e.changedTouches[0].screenX;
-            let touchEndY = e.changedTouches[0].screenY;
-            let diffX = touchEndX - touchStartX;
-            let diffY = touchEndY - touchStartY;
-            
-            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 30) {
-                if (diffX > 0) move('Right'); else move('Left');
-            } else if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 30) {
-                if (diffY > 0) move('Down'); else move('Up');
-            }
         });
 
-        window.addEventListener('keydown', e => {
-            if (gameOver) return;
-            if (['ArrowUp', 'w', 'W'].includes(e.key)) move('Up');
-            if (['ArrowDown', 's', 'S'].includes(e.key)) move('Down');
-            if (['ArrowLeft', 'a', 'A'].includes(e.key)) move('Left');
-            if (['ArrowRight', 'd', 'D'].includes(e.key)) move('Right');
-        });
-
-        function triggerGameOver() {
-            gameOver = true;
-            document.getElementById('finalScore').innerText = score;
-            document.getElementById('earnedCoins').innerText = earnedCoinsGame;
-            document.getElementById('gameOverScreen').style.display = 'flex';
-        }
-
-        function restartGame() { initGame(); }
-        function updateUI() { document.getElementById('balanceVal').innerText = `${balance}`; }
-
-        // --- МАГАЗИН СКИНОВ ---
-        function openShop() { document.getElementById('shopModal').style.display = 'flex'; renderShop(); }
-        function closeShop() { document.getElementById('shopModal').style.display = 'none'; }
-
-        function renderShop() {
-            const grid = document.getElementById('skinsGrid');
-            grid.innerHTML = '';
+        if (moved) {
+            board = newBoard;
+            addRandomTile();
+            document.getElementById('score').innerText = score;
+            document.getElementById('coins').innerText = sessionCoins;
+            renderBoard();
             
-            skins.forEach(skin => {
-                const isOwned = inventory.includes(skin.id);
-                const isActive = activeSkinId === skin.id;
-                const card = document.createElement('div');
-                card.className = `skin-card ${isActive ? 'active' : ''}`;
-                
-                let sampleVal = 2048; // Показываем лучшую плитку на превью
-                let label = skin.getLabel(sampleVal);
-                let bg = skin.getBg(sampleVal);
-                let color = skin.color || '#fff';
-                let fSize = String(label).length > 4 ? '12px' : '18px';
+            // Если плитки схлопнулись, добавляем класс для CSS анимации pop
+            setTimeout(() => {
+                let tiles = document.querySelectorAll('.tile');
+                mergedTiles.forEach(pos => {
+                    let [mr, mc] = pos.split(',');
+                    // Ищем нужную плитку и даем ей класс
+                    let expectedTransform = `translate(${mc * (tiles[0].offsetWidth + 10)}px, ${mr * (tiles[0].offsetHeight + 10)}px)`;
+                    tiles.forEach(t => { if(t.style.transform === expectedTransform) t.classList.add('merged'); });
+                });
+            }, 50);
 
-                let btn = isActive ? `<button style="width:100%; padding:10px; background:#555; color:#fff; border:none; border-radius:10px; font-weight:bold;" disabled>НАДЕТО</button>` :
-                          isOwned ? `<button style="width:100%; padding:10px; background:#00ffcc; color:#000; font-weight:bold; border:none; border-radius:10px; cursor:pointer;" onclick="applySkin('${skin.id}')">НАДЕТЬ</button>` :
-                          `<button style="width:100%; padding:10px; background:#ffaa00; color:#000; font-weight:bold; border:none; border-radius:10px; cursor:pointer;" onclick="buySkin('${skin.id}')">1000 💰</button>`;
-
-                card.innerHTML = `<div style="width:60px; height:60px; background:${bg}; color:${color}; border-radius:10px; display:flex; justify-content:center; align-items:center; font-weight:bold; font-size:${fSize}; margin-bottom:10px; font-family:${skin.font || 'Arial'};">${label}</div>
-                                  <div style="font-size:16px; font-weight:bold; color:#fff; margin-bottom:10px;">${skin.name}</div>${btn}`;
-                grid.appendChild(card);
-            });
+            if (isGameOver()) {
+                gameState = 'gameover';
+                localStorage.setItem('c2048_coins', localCoins);
+                setTimeout(() => document.getElementById('gameOverScreen').classList.remove('hidden'), 1000);
+            }
         }
+    }
 
-        function buySkin(id) { if(balance >= 1000) { balance -= 1000; inventory.push(id); updateUI(); renderShop(); } else alert("Мало монет!"); }
-        function applySkin(id) { activeSkinId = id; renderShop(); renderBoard(); }
-
-        function saveAndExit() {
-            if(tg && tg.sendData) { tg.sendData(JSON.stringify({ game: '2048', score: score, coins: balance, activeSkin: activeSkinId, inventory: inventory.join(',') })); tg.close(); } 
-            else alert(`Выход. Баланс: ${balance}`);
+    function isGameOver() {
+        // Проверяем есть ли пустые клетки
+        for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) if (board[r][c] === 0) return false;
+        // Проверяем можно ли что-то схлопнуть
+        for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size; c++) {
+                if (r < size - 1 && board[r][c] === board[r+1][c]) return false;
+                if (c < size - 1 && board[r][c] === board[r][c+1]) return false;
+            }
         }
+        return true;
+    }
 
+    function createFloatingText(txt) {
+        let el = document.createElement('div');
+        el.className = 'floating-text'; el.innerText = txt;
+        let rect = document.getElementById('game-container').getBoundingClientRect();
+        el.style.left = (rect.left + rect.width/2 - 30) + 'px'; 
+        el.style.top = (rect.top - 20) + 'px';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1200);
+    }
+
+    // ==========================================
+    // 4. СЛУШАТЕЛЬ СВАЙПОВ (Надежный как швейцарские часы)
+    // ==========================================
+    let touchStartX = 0; let touchStartY = 0;
+    const gameArea = document.getElementById('game-container');
+
+    gameArea.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, {passive: false});
+
+    gameArea.addEventListener('touchend', e => {
+        if(gameState !== 'playing') return;
+        let dx = e.changedTouches[0].screenX - touchStartX;
+        let dy = e.changedTouches[0].screenY - touchStartY;
+        
+        let absDx = Math.abs(dx);
+        let absDy = Math.abs(dy);
+        
+        // Порог срабатывания свайпа (защита от случайных тапов)
+        if (Math.max(absDx, absDy) > 30) {
+            if (absDx > absDy) {
+                if (dx > 0) move('right');
+                else move('left');
+            } else {
+                if (dy > 0) move('down');
+                else move('up');
+            }
+        }
+    });
+
+    // Обработка стрелочек на ПК
+    document.addEventListener('keydown', e => {
+        if(gameState !== 'playing') return;
+        if(e.key === 'ArrowUp') move('up');
+        if(e.key === 'ArrowDown') move('down');
+        if(e.key === 'ArrowLeft') move('left');
+        if(e.key === 'ArrowRight') move('right');
+    });
+
+    function resetGame() {
+        document.getElementById('gameOverScreen').classList.add('hidden');
+        document.getElementById('smartModal').classList.add('hidden');
         initGame();
-    </script>
+    }
+
+    // ==========================================
+    // 5. МЕНЮ И МАГАЗИН
+    // ==========================================
+    document.getElementById('mainMenuBtn').onclick = () => document.getElementById('smartModal').classList.remove('hidden');
+    function closeMenu() { document.getElementById('smartModal').classList.add('hidden'); }
+    
+    function openShop() {
+        document.getElementById('smartModal').classList.add('hidden');
+        document.getElementById('shopModal').classList.remove('hidden');
+        document.getElementById('shopCoins').innerText = localCoins;
+        let list = document.getElementById('shopList'); list.innerHTML = '';
+        
+        SKINS.forEach(s => {
+            let isUnl = unlocked.includes(s.id); let isAct = activeSkin === s.id;
+            let btn = isAct ? `<button class="buy-btn btn-selected">ВЫБРАН</button>` :
+                      isUnl ? `<button class="buy-btn btn-select" onclick="equipSkin('${s.id}')">НАДЕТЬ</button>` :
+                      `<button class="buy-btn btn-buy" onclick="buySkin('${s.id}', ${s.price})">КУПИТЬ (${s.price})</button>`;
+            
+            // Превью темы (показываем как будет выглядеть плитка 2048)
+            let colors = tileColors[s.style];
+            let previewBg = colors[2048] || '#fff';
+            let previewTxt = s.values[2048].substring(0, 3); // Первые 3 буквы, чтобы влезло
+            
+            list.innerHTML += `
+                <div class="skin-card ${isAct ? 'active' : ''}">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div style="width:40px; height:40px; background:${previewBg}; color:${s.txtColor === '#000' && s.style !== 'neon' ? '#000' : '#fff'}; border-radius:5px; display:flex; justify-content:center; align-items:center; font-weight:bold; font-size:12px;">${previewTxt}</div>
+                        <div style="font-weight:bold;">${s.name}</div>
+                    </div>
+                    ${btn}
+                </div>`;
+        });
+    }
+    function closeShop() { document.getElementById('shopModal').classList.add('hidden'); document.getElementById('smartModal').classList.remove('hidden'); }
+    
+    window.buySkin = function(id, price) {
+        if (localCoins >= price) { localCoins -= price; unlocked.push(id); equipSkin(id); saveData(); }
+        else tg.showAlert('Не хватает монет! Собирай большие плитки!');
+    }
+    
+    window.equipSkin = function(id) { 
+        activeSkin = id; 
+        openShop(); saveData(); 
+        let s = SKINS.find(sk => sk.id === activeSkin);
+        document.body.style.background = s.bg;
+        renderBoard(); // Перерисовываем доску с новым скином
+    }
+    
+    function saveData() {
+        localStorage.setItem('c2048_coins', localCoins);
+        localStorage.setItem('c2048_unlocked', JSON.stringify(unlocked));
+        localStorage.setItem('c2048_skin', activeSkin);
+    }
+
+    window.saveAndExit = function() {
+        tg.sendData(JSON.stringify({
+            game: "2048", coins: sessionCoins, score: score,
+            time_spent: Math.floor((Date.now() - startTime) / 1000), active_skin: activeSkin
+        }));
+    }
+
+    // При изменении размера экрана (или повороте телефона) пересчитываем размер плиток
+    window.addEventListener('resize', renderBoard);
+
+    // Запуск
+    initGame();
+
+</script>
 </body>
 </html>
