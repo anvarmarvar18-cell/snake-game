@@ -3,121 +3,156 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Clicker Empire AAA</title>
+    <title>Quantum Miner AAA</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        /* БАЗА И ЗАЩИТА */
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; font-family: 'SF Pro Display', -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background: radial-gradient(circle at top, #1a1a2e, #02010a); overflow: hidden; touch-action: none; color: white; height: 100vh; display: flex; flex-direction: column; align-items: center; }
-        
-        /* ИНТЕРФЕЙС (Глассморфизм) */
-        .header { width: 100%; padding: 25px 20px 10px; display: flex; flex-direction: column; align-items: center; z-index: 100; }
-        .balance-container { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 5px; }
-        .coin-icon { width: 40px; height: 40px; }
-        .balance-val { font-size: 52px; font-weight: 900; text-shadow: 0 0 20px rgba(255, 215, 0, 0.5); line-height: 1; }
-        .profit-info { font-size: 14px; color: #88ccff; font-weight: 600; display: flex; align-items: center; gap: 5px; background: rgba(0, 255, 255, 0.1); padding: 5px 15px; border-radius: 20px; border: 1px solid rgba(0, 255, 255, 0.2); }
-        
-        /* КНОПКА МЕНЮ */
-        .smart-menu-btn { position: absolute; top: 20px; right: 20px; z-index: 1000; background: rgba(10, 15, 30, 0.6); backdrop-filter: blur(10px); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; padding: 10px 15px; font-weight: 800; cursor: pointer; transition: 0.2s; }
-        .smart-menu-btn:active { transform: scale(0.9); }
+        /* CSS ПЕРЕМЕННЫЕ ДЛЯ ДИНАМИЧЕСКИХ СКИНОВ */
+        :root {
+            --core-main: #00f3ff;
+            --core-glow: rgba(0, 243, 255, 0.6);
+            --core-bg: #051020;
+        }
 
-        /* ИГРОВАЯ ЗОНА (3D МОНЕТА) */
-        .coin-area { flex-grow: 1; display: flex; justify-content: center; align-items: center; width: 100%; perspective: 1000px; position: relative; }
-        .main-coin { width: 260px; height: 260px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 100px; font-weight: 900; transition: transform 0.05s, box-shadow 0.1s; cursor: pointer; position: relative; z-index: 50; }
-        .main-coin::after { content: ''; position: absolute; top: 5px; left: 5px; right: 5px; bottom: 5px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2); pointer-events: none; }
+        /* БАЗА И ИДЕАЛЬНАЯ ЗАЩИТА */
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; font-family: 'SF Pro Display', -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: radial-gradient(circle at center, var(--core-bg), #010205); overflow: hidden; touch-action: none; color: white; width: 100vw; height: 100vh; display: flex; flex-direction: column; align-items: center; transition: background 0.5s; }
+        
+        /* АНИМИРОВАННЫЙ ФОН (СЕТКА) */
+        .bg-grid { position: absolute; width: 200vw; height: 200vh; top: -50vh; left: -50vw; background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 40px 40px; transform: perspective(500px) rotateX(60deg); animation: gridMove 20s linear infinite; z-index: 0; pointer-events: none; }
+        @keyframes gridMove { 0% { transform: perspective(500px) rotateX(60deg) translateY(0); } 100% { transform: perspective(500px) rotateX(60deg) translateY(40px); } }
+
+        /* ИНТЕРФЕЙС (Глассморфизм) */
+        .header { width: 100%; padding: 25px 20px 15px; display: flex; flex-direction: column; align-items: center; z-index: 100; position: relative; }
+        .balance-container { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 5px; }
+        .balance-val { font-size: 56px; font-weight: 900; text-shadow: 0 0 25px var(--core-glow); line-height: 1; color: #fff; transition: text-shadow 0.3s; }
+        .profit-info { font-size: 14px; color: var(--core-main); font-weight: 800; display: flex; align-items: center; gap: 5px; background: rgba(0, 0, 0, 0.4); padding: 6px 18px; border-radius: 20px; border: 1px solid var(--core-glow); box-shadow: 0 0 15px rgba(0,0,0,0.5); backdrop-filter: blur(5px); }
+        
+        /* КНОПКА ТЕРМИНАЛА */
+        .smart-menu-btn { position: absolute; top: 20px; right: 20px; z-index: 1000; background: rgba(5, 10, 20, 0.6); backdrop-filter: blur(15px); color: var(--core-main); border: 1px solid var(--core-glow); border-radius: 14px; padding: 12px 18px; font-weight: 900; cursor: pointer; transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .smart-menu-btn:active { transform: scale(0.92); }
+
+        /* 3D ЗОНА РЕАКТОРА */
+        .reactor-area { flex-grow: 1; display: flex; justify-content: center; align-items: center; width: 100%; perspective: 1200px; position: relative; z-index: 50; }
+        
+        /* КОНТЕЙНЕР ЯДРА */
+        .core-container { width: 280px; height: 280px; position: relative; transform-style: preserve-3d; transition: transform 0.08s ease-out; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+        
+        /* ВРАЩАЮЩИЕСЯ КОЛЬЦА (SVG) */
+        .ring { position: absolute; width: 100%; height: 100%; pointer-events: none; }
+        .ring-1 { animation: spinRight 12s linear infinite; }
+        .ring-2 { animation: spinLeft 8s linear infinite; width: 85%; height: 85%; }
+        @keyframes spinRight { 100% { transform: rotate(360deg); } }
+        @keyframes spinLeft { 100% { transform: rotate(-360deg); } }
+        
+        /* САМО ЯДРО */
+        .core-sphere { width: 60%; height: 60%; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #fff, var(--core-main) 40%, #000 90%); box-shadow: 0 0 50px var(--core-glow), inset 0 0 20px rgba(255,255,255,0.5); position: relative; z-index: 10; transition: background 0.5s, box-shadow 0.5s; }
         
         /* ЭНЕРГИЯ */
-        .energy-container { width: 90%; max-width: 400px; padding: 15px 0 30px; display: flex; flex-direction: column; gap: 8px; z-index: 100; }
-        .energy-text { display: flex; justify-content: space-between; font-weight: 800; font-size: 16px; color: #fff; }
-        .energy-bar-bg { width: 100%; height: 16px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); position: relative; }
-        .energy-bar-fill { height: 100%; background: linear-gradient(90deg, #ffaa00, #ff0055); width: 100%; transition: width 0.1s linear; box-shadow: 0 0 10px #ffaa00; }
+        .energy-container { width: 90%; max-width: 400px; padding: 10px 0 35px; display: flex; flex-direction: column; gap: 8px; z-index: 100; position: relative; }
+        .energy-text { display: flex; justify-content: space-between; font-weight: 900; font-size: 16px; color: #fff; letter-spacing: 1px; }
+        .energy-bar-bg { width: 100%; height: 18px; background: rgba(0,0,0,0.5); border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); position: relative; box-shadow: inset 0 0 10px rgba(0,0,0,0.8); }
+        .energy-bar-fill { height: 100%; background: linear-gradient(90deg, #0044ff, var(--core-main)); width: 100%; transition: width 0.1s linear, background 0.5s; box-shadow: 0 0 15px var(--core-glow); }
 
-        /* ВСПЛЫВАЮЩИЕ ЦИФРЫ И ЧАСТИЦЫ */
-        .float-text { position: absolute; font-size: 32px; font-weight: 900; color: #fff; pointer-events: none; animation: floatUp 1s cubic-bezier(0.25, 1, 0.5, 1) forwards; z-index: 500; text-shadow: 0 0 10px rgba(0,0,0,0.8); }
-        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-150px) scale(1.5); } }
+        /* ВСПЛЫВАЮЩИЕ ЦИФРЫ И ИСКРЫ */
+        .float-text { position: absolute; font-size: 38px; font-weight: 900; color: #fff; pointer-events: none; animation: floatUp 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards; z-index: 500; text-shadow: 0 0 15px var(--core-main); }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-120px) scale(1.5); } }
         
-        .particle { position: absolute; border-radius: 50%; pointer-events: none; z-index: 400; animation: fadeOut 0.8s forwards; }
+        .particle { position: absolute; border-radius: 50%; pointer-events: none; z-index: 400; background: #fff; box-shadow: 0 0 10px #fff; animation: fadeOut 0.6s cubic-bezier(0, .9, .5, 1) forwards; }
         @keyframes fadeOut { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0); } }
 
         /* МОДАЛЬНЫЕ ОКНА (ААА Дизайн) */
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 2000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(10px); opacity: 0; pointer-events: none; transition: 0.3s ease; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 2000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(15px); opacity: 0; pointer-events: none; transition: 0.3s ease; }
         .modal.active { opacity: 1; pointer-events: all; }
-        .modal-content { background: #111424; border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 24px; width: 90%; max-width: 420px; max-height: 85vh; padding: 25px; display: flex; flex-direction: column; gap: 15px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.8); transform: translateY(20px); transition: 0.3s; }
+        .modal-content { background: radial-gradient(circle at top left, #0e152e, #010205); border: 1px solid var(--core-glow); border-radius: 28px; width: 90%; max-width: 420px; max-height: 85vh; padding: 30px 25px; display: flex; flex-direction: column; gap: 15px; text-align: center; box-shadow: 0 25px 60px rgba(0,0,0,0.9), inset 0 0 30px var(--core-glow); transform: translateY(30px); transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         .modal.active .modal-content { transform: translateY(0); }
         
-        .modal-title { color: #fff; text-transform: uppercase; letter-spacing: 2px; font-size: 22px; font-weight: 900; margin-bottom: 5px; }
+        .modal-title { color: #fff; text-transform: uppercase; letter-spacing: 3px; font-size: 24px; font-weight: 900; margin-bottom: 5px; background: linear-gradient(90deg, #fff, var(--core-main)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
-        .btn { padding: 16px; font-size: 16px; font-weight: 900; border-radius: 16px; color: white; border: none; text-transform: uppercase; cursor: pointer; transition: 0.2s; }
-        .btn:active { transform: scale(0.96); }
+        .btn { padding: 18px; font-size: 16px; font-weight: 900; border-radius: 16px; color: white; border: none; text-transform: uppercase; cursor: pointer; transition: 0.2s; box-shadow: 0 10px 25px rgba(0,0,0,0.5); position: relative; overflow: hidden; }
+        .btn:active { transform: scale(0.96) translateY(2px); }
         .btn-green { background: linear-gradient(135deg, #00b09b, #96c93d); }
-        .btn-blue { background: linear-gradient(135deg, #2193b0, #6dd5ed); }
+        .btn-blue { background: linear-gradient(135deg, #0055ff, #00f3ff); }
         .btn-gold { background: linear-gradient(135deg, #f12711, #f5af19); color: #000; }
-        .btn-red { background: linear-gradient(135deg, #ff416c, #ff4b2b); }
+        .btn-red { background: linear-gradient(135deg, #ff0055, #880022); }
 
         /* МАГАЗИН И УЛУЧШЕНИЯ */
-        .shop-container { overflow-y: auto; max-height: 55vh; -webkit-overflow-scrolling: touch; touch-action: pan-y; display: flex; flex-direction: column; gap: 12px; padding: 5px; border-radius: 12px; }
+        .shop-container { overflow-y: auto; max-height: 50vh; display: flex; flex-direction: column; gap: 12px; padding: 5px; border-radius: 16px; }
         .shop-container::-webkit-scrollbar { width: 4px; }
-        .shop-container::-webkit-scrollbar-thumb { background: rgba(255, 215, 0, 0.5); border-radius: 4px; }
+        .shop-container::-webkit-scrollbar-thumb { background: var(--core-main); border-radius: 10px; }
         
-        .upgrade-card { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); text-align: left; transition: 0.2s; }
-        .upgrade-card.active { border-color: #ffd700; background: rgba(255, 215, 0, 0.05); box-shadow: 0 0 15px rgba(255, 215, 0, 0.1); }
-        .upg-icon { font-size: 30px; width: 45px; text-align: center; }
-        .upg-info { flex-grow: 1; margin-left: 10px; }
-        .upg-name { font-weight: 800; font-size: 16px; color: #fff; }
-        .upg-desc { font-size: 12px; color: #aaa; margin-top: 2px; }
+        .upgrade-card { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 16px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); text-align: left; transition: 0.2s; }
+        .upgrade-card.active { border-color: var(--core-main); background: rgba(0, 243, 255, 0.08); box-shadow: 0 0 20px var(--core-glow); }
+        .upg-icon { font-size: 30px; width: 48px; height: 48px; text-align: center; display: flex; justify-content: center; align-items: center; background: rgba(0,0,0,0.5); border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); }
+        .upg-info { flex-grow: 1; margin-left: 15px; }
+        .upg-name { font-weight: 900; font-size: 16px; color: #fff; }
+        .upg-desc { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 2px; line-height: 1.2; }
         
-        .buy-btn { padding: 10px 15px; border-radius: 12px; border: none; font-weight: 900; font-size: 14px; cursor: pointer; transition: 0.2s; }
-        .btn-buy { background: #ffd700; color: #000; }
-        .btn-max { background: #444; color: #888; pointer-events: none; }
+        .buy-btn { padding: 12px 16px; border-radius: 14px; border: none; font-weight: 900; font-size: 14px; cursor: pointer; transition: 0.2s; }
+        .btn-buy { background: #ffd700; color: #000; box-shadow: 0 5px 15px rgba(255, 215, 0, 0.2); }
+        .btn-select { background: var(--core-main); color: #000; box-shadow: 0 5px 15px var(--core-glow); }
+        .btn-max { background: rgba(255,255,255,0.1); color: #888; pointer-events: none; }
 
-        /* АНТИЧИТ */
-        #cheat-warning { position: fixed; top: 15%; left: 50%; transform: translateX(-50%); background: rgba(255,0,0,0.9); color: white; padding: 15px 25px; border-radius: 15px; font-weight: 900; font-size: 18px; z-index: 3000; opacity: 0; pointer-events: none; transition: 0.3s; box-shadow: 0 0 30px red; text-transform: uppercase; letter-spacing: 1px; }
+        /* АНТИЧИТ 2.0 */
+        #cheat-warning { position: fixed; top: 15%; left: 50%; transform: translateX(-50%); background: rgba(255,0,85,0.9); color: white; padding: 15px 30px; border-radius: 20px; font-weight: 900; font-size: 18px; z-index: 3000; opacity: 0; pointer-events: none; transition: 0.2s; box-shadow: 0 10px 40px rgba(255,0,85,0.8); text-transform: uppercase; letter-spacing: 2px; backdrop-filter: blur(10px); }
     </style>
 </head>
 <body>
 
-    <button id="mainMenuBtn" class="smart-menu-btn">⚙️ МЕНЮ</button>
-    <div id="cheat-warning">🚨 Замечен Автокликер!</div>
+    <div class="bg-grid"></div>
+    <div id="cheat-warning">⚠ ПЕРЕГРУЗКА ЯДРА ⚠</div>
 
     <div class="header">
         <div class="balance-container">
-            <img src="https://em-content.zobj.net/source/apple/354/coin_1fa99.png" class="coin-icon" alt="coin">
             <div class="balance-val" id="balance">0</div>
         </div>
-        <div class="profit-info" id="profitInfo">🤖 Бот: 0 / час</div>
+        <div class="profit-info" id="profitInfo">🤖 АВТО-МАЙНЕР: ОТКЛЮЧЕН</div>
     </div>
 
-    <!-- 3D Зона клика -->
-    <div class="coin-area" id="tapArea">
-        <div id="mainCoin" class="main-coin">₿</div>
+    <!-- 3D ЗОНА РЕАКТОРА -->
+    <div class="reactor-area" id="tapArea">
+        <div id="coreContainer" class="core-container">
+            <!-- Внешнее кольцо -->
+            <svg class="ring ring-1" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="48" fill="none" stroke="var(--core-main)" stroke-width="1" stroke-dasharray="10 5 30 10" opacity="0.8" filter="drop-shadow(0 0 2px var(--core-main))"/>
+                <circle cx="50" cy="50" r="42" fill="none" stroke="var(--core-main)" stroke-width="0.5" stroke-dasharray="5 15" opacity="0.5"/>
+            </svg>
+            <!-- Внутреннее кольцо -->
+            <svg class="ring ring-2" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="none" stroke="var(--core-main)" stroke-width="2" stroke-dasharray="40 20 10 20" opacity="0.9" filter="drop-shadow(0 0 3px var(--core-main))"/>
+            </svg>
+            <!-- Сфера -->
+            <div class="core-sphere" id="coreSphere"></div>
+        </div>
     </div>
 
-    <!-- Полоса энергии -->
+    <!-- ПОЛОСА ЭНЕРГИИ -->
     <div class="energy-container">
         <div class="energy-text">
-            <span>⚡ <span id="currentEnergy">1000</span> / <span id="maxEnergy">1000</span></span>
+            <span>⚡ МОЩНОСТЬ</span>
+            <span><span id="currentEnergy">1000</span> / <span id="maxEnergy">1000</span></span>
         </div>
         <div class="energy-bar-bg">
             <div class="energy-bar-fill" id="energyFill"></div>
         </div>
     </div>
 
-    <!-- МЕНЮ ПАУЗЫ -->
+    <!-- МЕНЮ ПАУЗЫ (ТЕРМИНАЛ) -->
+    <button id="mainMenuBtn" class="smart-menu-btn">СИСТЕМА</button>
     <div id="smartModal" class="modal">
         <div class="modal-content">
-            <div class="modal-title">ТЕРМИНАЛ</div>
-            <button class="btn btn-gold" onclick="openShop('boosts')">🚀 УЛУЧШЕНИЯ (BOOSTS)</button>
-            <button class="btn btn-blue" onclick="openShop('skins')">🎨 СКИНЫ (МОНЕТЫ)</button>
-            <button class="btn btn-red" onclick="saveAndExit()">💾 ВЫХОД В БОТ</button>
-            <button class="btn btn-green" onclick="closeMenu()">▶ ПРОДОЛЖИТЬ</button>
+            <div class="modal-title">ТЕРМИНАЛ ЯДРА</div>
+            <button class="btn btn-gold" onclick="openShop('boosts')">⚡ АПГРЕЙДЫ (МОЩНОСТЬ)</button>
+            <button class="btn btn-blue" onclick="openShop('skins')">🧬 МАТЕРИЯ (РЕАКТОРЫ)</button>
+            <button class="btn btn-red" onclick="saveAndExit()">💾 ВЫХОД В БАЗУ</button>
+            <button class="btn btn-green" onclick="closeMenu()">▶ ПРОДОЛЖИТЬ ДОБЫЧУ</button>
         </div>
     </div>
 
     <!-- УНИВЕРСАЛЬНЫЙ МАГАЗИН -->
     <div id="shopModal" class="modal">
         <div class="modal-content">
-            <div class="modal-title" id="shopTitle">МАГАЗИН</div>
-            <div style="color: #ffd700; font-weight: 900; font-size: 18px;">Баланс: <span id="shopCoins">0</span> 💰</div>
+            <div class="modal-title" id="shopTitle">БАЗА ДАННЫХ</div>
+            <div style="color: #ffd700; font-weight: 900; font-size: 20px; margin-bottom: 5px;">Баланс: <span id="shopCoins">0</span> 💰</div>
             <div class="shop-container" id="shopList"></div>
             <button class="btn btn-green" onclick="closeShop()">НАЗАД</button>
         </div>
@@ -126,67 +161,61 @@
     <!-- ОКНО ОФФЛАЙН ПРИБЫЛИ -->
     <div id="offlineModal" class="modal">
         <div class="modal-content" style="border-color: #0f0;">
-            <div class="modal-title" style="color: #0f0;">🤖 БОТ РАБОТАЛ!</div>
-            <p style="color: #aaa; font-size: 16px;">Пока тебя не было, торговый робот намайнил:</p>
-            <h1 id="offlineProfit" style="color: #ffd700; font-size: 40px; margin: 10px 0; text-shadow: 0 0 20px #ffaa00;">+0</h1>
-            <button class="btn btn-green" onclick="claimOffline()">💰 ЗАБРАТЬ</button>
+            <div class="modal-title" style="color: #0f0;">АВТО-МАЙНЕР</div>
+            <p style="color: #aaa; font-size: 16px; line-height: 1.4;">Пока терминал был в спящем режиме, ИИ добыл энергию:</p>
+            <h1 id="offlineProfit" style="color: #ffd700; font-size: 46px; margin: 15px 0; text-shadow: 0 0 25px rgba(255,215,0,0.6); font-weight: 900;">+0</h1>
+            <button class="btn btn-green" onclick="claimOffline()">ПОГЛОТИТЬ ЭНЕРГИЮ</button>
         </div>
     </div>
 
 <script>
     // ==========================================
-    // 1. ИНИЦИАЛИЗАЦИЯ И БЛОКИРОВКА СВАЙПОВ
+    // 1. ИНИЦИАЛИЗАЦИЯ И ЗАЩИТА
     // ==========================================
     const tg = window.Telegram.WebApp;
     tg.ready(); tg.expand();
     if (tg.isVersionAtLeast('7.7')) tg.disableVerticalSwipes();
     if (tg.isVersionAtLeast('6.1')) tg.enableClosingConfirmation();
-
-    document.body.addEventListener('touchmove', e => {
-        if (!e.target.closest('.shop-container')) e.preventDefault();
-    }, { passive: false });
+    document.body.addEventListener('touchmove', e => { if (!e.target.closest('.shop-container')) e.preventDefault(); }, { passive: false });
 
     // ==========================================
-    // 2. БАЗЫ ДАННЫХ (Скины и Прокачка)
+    // 2. БАЗА ДАННЫХ (УНИКАЛЬНЫЕ РЕАКТОРЫ)
     // ==========================================
     const SKINS = [
-        { id: 'default', name: 'Bronze Coin', price: 0, bg: 'linear-gradient(135deg, #cd7f32, #8b4513)', shadow: '#cd7f32', sym: '¢', color: '#fff' },
-        { id: 'silver', name: 'Silver Coin', price: 1000, bg: 'linear-gradient(135deg, #e5e4e2, #999)', shadow: '#fff', sym: 'S', color: '#000' },
-        { id: 'gold', name: 'Gold Coin', price: 2000, bg: 'linear-gradient(135deg, #ffd700, #daa520)', shadow: '#ffd700', sym: 'G', color: '#000' },
-        { id: 'notcoin', name: 'Notcoin', price: 5000, bg: 'linear-gradient(135deg, #ffffff, #aaaaaa)', shadow: '#ffffff', sym: 'N', color: '#000' },
-        { id: 'ton', name: 'TON Crystal', price: 10000, bg: 'linear-gradient(135deg, #0088cc, #0044aa)', shadow: '#0088cc', sym: '💎', color: '#fff' },
-        { id: 'bitcoin', name: 'Bitcoin', price: 15000, bg: 'linear-gradient(135deg, #f7931a, #c07000)', shadow: '#f7931a', sym: '₿', color: '#fff' },
-        { id: 'hamster', name: 'Hamster CEO', price: 25000, bg: 'linear-gradient(135deg, #ffb347, #ffcc33)', shadow: '#ffb347', sym: '🐹', color: '#000' },
-        { id: 'black_hole', name: 'Dark Matter (+20%)', price: 50000, bg: 'radial-gradient(circle, #000 30%, #800080 100%)', shadow: '#800080', sym: '🌀', color: '#fff' }
+        { id: 'proto', name: 'Proto-Core', price: 0, color: '#00f3ff', bg: '#051020', icon: '🌀' },
+        { id: 'fusion', name: 'Fusion Drive', price: 5000, color: '#ff4400', bg: '#1a0500', icon: '🔥' },
+        { id: 'plasma', name: 'Plasma Sphere', price: 10000, color: '#ff00ff', bg: '#10001a', icon: '⚛️' },
+        { id: 'neutron', name: 'Neutron Star', price: 25000, color: '#ffffff', bg: '#0a0a0f', icon: '⭐' },
+        { id: 'dark_matter', name: 'Dark Matter (+20%)', price: 50000, color: '#800080', bg: '#000000', icon: '🌌' }
     ];
 
-    // Конфиг улучшений
     const UPGRADES = {
-        multitap: { name: 'Multitap', desc: 'Увеличивает добычу за 1 тап', icon: '👆', baseCost: 1000, costMult: 2, maxLvl: 15, valMult: 1 },
-        energyLimit: { name: 'Energy Limit', desc: '+500 к максимальной энергии', icon: '🔋', baseCost: 1500, costMult: 1.5, maxLvl: 10, valMult: 500 },
-        regen: { name: 'Recharging Speed', desc: 'Ускоряет восстановление энергии', icon: '⚡', baseCost: 2000, costMult: 1.8, maxLvl: 10, valMult: 1 },
-        bot: { name: 'Trading Bot', desc: 'Добывает 30.000 монет в сутки оффлайн', icon: '🤖', baseCost: 50000, costMult: 1, maxLvl: 1, valMult: 30000 }
+        multitap: { name: 'Квантовый Удар', desc: 'Увеличивает добычу за 1 тап', icon: '👆', baseCost: 1000, costMult: 2, maxLvl: 15, valMult: 1 },
+        energyLimit: { name: 'Конденсатор', desc: '+500 к макс. емкости ядра', icon: '🔋', baseCost: 1500, costMult: 1.5, maxLvl: 10, valMult: 500 },
+        regen: { name: 'Система Охлаждения', desc: 'Ускоряет восстановление энергии', icon: '❄️', baseCost: 2000, costMult: 1.8, maxLvl: 10, valMult: 1 },
+        bot: { name: 'ИИ Харвестер', desc: 'Добывает 30.000 энергии в сутки', icon: '🤖', baseCost: 50000, costMult: 1, maxLvl: 1, valMult: 30000 }
     };
 
-    // Загрузка сохранений
+    // Сохранения
     let balance = parseFloat(localStorage.getItem('clicker_coins')) || 0;
-    let unlockedSkins = JSON.parse(localStorage.getItem('clicker_skins')) || ['default'];
-    let activeSkin = localStorage.getItem('clicker_active_skin') || 'default';
-    let levels = JSON.parse(localStorage.getItem('clicker_levels')) || { multitap: 1, energyLimit: 1, regen: 1, bot: 0 };
-    let lastTime = parseInt(localStorage.getItem('clicker_time')) || Date.now();
-    let currentEnergy = parseFloat(localStorage.getItem('clicker_energy'));
+    let unlockedSkins = JSON.parse(localStorage.getItem('clicker_skins_v2')) || ['proto'];
+    let activeSkin = localStorage.getItem('clicker_active_skin_v2') || 'proto';
+    let levels = JSON.parse(localStorage.getItem('clicker_levels_v2')) || { multitap: 1, energyLimit: 1, regen: 1, bot: 0 };
+    let lastTime = parseInt(localStorage.getItem('clicker_time_v2')) || Date.now();
+    let currentEnergy = parseFloat(localStorage.getItem('clicker_energy_v2'));
     if (isNaN(currentEnergy)) currentEnergy = 1000;
 
-    let sessionCoins = 0; // Для отправки в бэкенд
+    // ЧИСТАЯ ПРИБЫЛЬ СЕССИИ (Для идеальной синхронизации с Python сервером)
+    let sessionNetProfit = 0; 
+    let sessionEarnedOffline = 0;
 
-    // Вычисляемые параметры на основе уровней
     function getStats() {
         return {
             tapPower: 1 + (levels.multitap - 1) * UPGRADES.multitap.valMult,
             maxEnergy: 1000 + (levels.energyLimit - 1) * UPGRADES.energyLimit.valMult,
             regenRate: 1 + (levels.regen - 1) * UPGRADES.regen.valMult,
             botActive: levels.bot > 0,
-            botCoinsPerSec: levels.bot > 0 ? (30000 / 86400) : 0 // 0.347 в сек
+            botCoinsPerSec: levels.bot > 0 ? (30000 / 86400) : 0
         };
     }
 
@@ -194,175 +223,159 @@
     if (currentEnergy > stats.maxEnergy) currentEnergy = stats.maxEnergy;
 
     // ==========================================
-    // 3. ОФФЛАЙН АЛГОРИТМ И ИГРОВОЙ ЦИКЛ
+    // 3. ОФФЛАЙН АЛГОРИТМ И ЦИКЛ
     // ==========================================
     function processOfflineProgress() {
         let now = Date.now();
         let secondsPassed = (now - lastTime) / 1000;
         if (secondsPassed < 0) secondsPassed = 0;
 
-        // 1. Восстанавливаем энергию за время отсутствия
         currentEnergy += secondsPassed * stats.regenRate;
         if (currentEnergy > stats.maxEnergy) currentEnergy = stats.maxEnergy;
 
-        // 2. Считаем прибыль бота (Максимум за 24 часа = 86400 сек)
         if (stats.botActive && secondsPassed > 60) {
             let cappedSeconds = Math.min(secondsPassed, 86400); 
             let profit = Math.floor(cappedSeconds * stats.botCoinsPerSec);
             if (profit > 0) {
                 balance += profit;
-                sessionCoins += profit;
+                sessionEarnedOffline = profit; // Сохраняем для отправки в бот
+                sessionNetProfit += profit;
                 document.getElementById('offlineProfit').innerText = `+${profit.toLocaleString()}`;
                 document.getElementById('offlineModal').classList.add('active');
             }
         }
         lastTime = now;
-        updateUI();
-        saveData();
+        updateUI(); applySkinCSS(); saveData();
     }
 
-    function claimOffline() {
-        document.getElementById('offlineModal').classList.remove('active');
-    }
+    function claimOffline() { document.getElementById('offlineModal').classList.remove('active'); }
 
-    // Игровой цикл (60 раз в секунду для энергии, 1 раз в сек для бота)
     setInterval(() => {
         let now = Date.now();
         let delta = (now - lastTime) / 1000;
         lastTime = now;
 
-        // Реген энергии
         if (currentEnergy < stats.maxEnergy) {
             currentEnergy += stats.regenRate * delta;
             if (currentEnergy > stats.maxEnergy) currentEnergy = stats.maxEnergy;
             updateEnergyUI();
         }
 
-        // Онлайн бот майнинг
         if (stats.botActive) {
             let profit = stats.botCoinsPerSec * delta;
-            balance += profit;
-            sessionCoins += profit;
+            balance += profit; sessionNetProfit += profit;
             updateBalanceUI();
         }
-
-        // Авто-сохранение каждые 5 сек
-        if (Math.random() < 0.2) saveData();
+        if (Math.random() < 0.2) saveData(); // Легкое автосохранение
     }, 1000 / 60);
 
     // ==========================================
-    // 4. ДВИЖОК КЛИКЕРА (ФИЗИКА И АНТИЧИТ)
+    // 4. ДВИЖОК 3D КЛИКЕРА (МУЛЬТИТАЧ + АНТИЧИТ 2.0)
     // ==========================================
-    const coinEl = document.getElementById('mainCoin');
+    const coreContainer = document.getElementById('coreContainer');
     let clickTimestamps = [];
     let cheatBlocked = false;
 
-    document.getElementById('tapArea').addEventListener('pointerdown', function(e) {
+    // Обработка нескольких касаний одновременно (Мультитач)
+    document.getElementById('tapArea').addEventListener('touchstart', function(e) {
         if (cheatBlocked) return;
         
         let now = Date.now();
-        // АНТИЧИТ: Удаляем клики старше 1 секунды
         clickTimestamps = clickTimestamps.filter(t => now - t < 1000);
         
-        if (clickTimestamps.length >= 18) {
-            // Бан на 2 секунды
+        // Лимит 15 кликов в секунду
+        if (clickTimestamps.length >= 15) {
             cheatBlocked = true;
             let warn = document.getElementById('cheat-warning');
             warn.style.opacity = 1;
             setTimeout(() => { warn.style.opacity = 0; cheatBlocked = false; clickTimestamps = []; }, 2000);
+            if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
             return;
         }
-        clickTimestamps.push(now);
 
-        // Проверка энергии
-        if (currentEnergy >= stats.tapPower) {
-            currentEnergy -= stats.tapPower;
-            balance += stats.tapPower;
-            sessionCoins += stats.tapPower;
-            
-            updateBalanceUI();
-            updateEnergyUI();
-            
-            // 3D Анимация Монеты
-            const rect = coinEl.getBoundingClientRect();
-            const x = e.clientX - rect.left - rect.width / 2;
-            const y = e.clientY - rect.top - rect.height / 2;
-            coinEl.style.transform = `scale(0.92) rotateX(${-y/6}deg) rotateY(${x/6}deg)`;
-            setTimeout(() => coinEl.style.transform = 'scale(1) rotateX(0) rotateY(0)', 80);
+        const rect = coreContainer.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
 
-            // Визуальные Эффекты
-            createFloatText(e.clientX, e.clientY, `+${stats.tapPower}`);
-            createTapParticles(e.clientX, e.clientY);
-            
-            // Вибрация (если поддерживается)
-            if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        // Обрабатываем каждый новый палец
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            let touch = e.changedTouches[i];
+            clickTimestamps.push(now);
+
+            if (currentEnergy >= stats.tapPower) {
+                currentEnergy -= stats.tapPower;
+                balance += stats.tapPower;
+                sessionNetProfit += stats.tapPower; // Считаем чистую прибыль сессии
+                
+                updateBalanceUI(); updateEnergyUI();
+                
+                // Идеальный 3D наклон от точки касания
+                let dx = touch.clientX - centerX;
+                let dy = touch.clientY - centerY;
+                coreContainer.style.transform = `scale(0.92) rotateX(${-dy/5}deg) rotateY(${dx/5}deg)`;
+                
+                createFloatText(touch.clientX, touch.clientY, `+${stats.tapPower}`);
+                createTapParticles(touch.clientX, touch.clientY);
+                if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            }
         }
+    }, {passive: false});
+
+    document.getElementById('tapArea').addEventListener('touchend', () => {
+        coreContainer.style.transform = 'scale(1) rotateX(0) rotateY(0)';
     });
 
     function createFloatText(x, y, txt) {
         const el = document.createElement('div');
         el.className = 'float-text'; el.innerText = txt;
-        // Легкий рандом позиции
-        el.style.left = (x - 20 + (Math.random()-0.5)*20) + 'px';
-        el.style.top = (y - 30) + 'px';
-        document.body.appendChild(el);
-        setTimeout(() => el.remove(), 1000);
+        el.style.left = (x - 20 + (Math.random()-0.5)*20) + 'px'; el.style.top = (y - 30) + 'px';
+        document.body.appendChild(el); setTimeout(() => el.remove(), 800);
     }
 
     function createTapParticles(x, y) {
-        let s = SKINS.find(sk => sk.id === activeSkin);
+        let rootStyles = getComputedStyle(document.documentElement);
+        let color = rootStyles.getPropertyValue('--core-main').trim();
+        
         for(let i=0; i<6; i++) {
-            const el = document.createElement('div');
-            el.className = 'particle';
+            const el = document.createElement('div'); el.className = 'particle';
             let size = Math.random() * 6 + 4;
             el.style.width = size + 'px'; el.style.height = size + 'px';
-            el.style.background = s.color === '#000' ? '#fff' : s.color; // Искры контрастные
+            el.style.boxShadow = `0 0 10px ${color}`; el.style.background = '#fff';
             el.style.left = x + 'px'; el.style.top = y + 'px';
             
-            let angle = Math.random() * Math.PI * 2;
-            let velocity = Math.random() * 50 + 20;
-            let tx = Math.cos(angle) * velocity;
-            let ty = Math.sin(angle) * velocity;
+            let angle = Math.random() * Math.PI * 2; let velocity = Math.random() * 60 + 20;
+            let tx = Math.cos(angle) * velocity; let ty = Math.sin(angle) * velocity;
             
-            el.animate([
-                { transform: 'translate(0,0) scale(1)', opacity: 1 },
-                { transform: `translate(${tx}px, ${ty}px) scale(0)`, opacity: 0 }
-            ], { duration: 600, easing: 'cubic-bezier(0, .9, .5, 1)' });
-            
-            document.body.appendChild(el);
-            setTimeout(() => el.remove(), 600);
+            el.animate([ { transform: 'translate(0,0) scale(1)', opacity: 1 }, { transform: `translate(${tx}px, ${ty}px) scale(0)`, opacity: 0 } ], { duration: 600, easing: 'cubic-bezier(0, .9, .5, 1)' });
+            document.body.appendChild(el); setTimeout(() => el.remove(), 600);
         }
     }
 
     // ==========================================
-    // 5. ИНТЕРФЕЙС И МАГАЗИН (ААА UX)
+    // 5. ИНТЕРФЕЙС И CSS ПЕРЕМЕННЫЕ
     // ==========================================
-    function updateUI() {
-        updateBalanceUI();
-        updateEnergyUI();
-        
+    function applySkinCSS() {
         let s = SKINS.find(sk => sk.id === activeSkin);
-        coinEl.style.background = s.bg;
-        coinEl.style.boxShadow = `0 0 60px ${s.shadow}, inset 0 0 20px rgba(0,0,0,0.5)`;
-        coinEl.style.color = s.color;
-        coinEl.innerText = s.sym;
-        
+        document.documentElement.style.setProperty('--core-main', s.color);
+        // Вычисляем glow с прозрачностью через hexToRgb
+        let r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(s.color);
+        let rgb = r ? `${parseInt(r[1], 16)}, ${parseInt(r[2], 16)}, ${parseInt(r[3], 16)}` : '0, 243, 255';
+        document.documentElement.style.setProperty('--core-glow', `rgba(${rgb}, 0.6)`);
+        document.documentElement.style.setProperty('--core-bg', s.bg);
+    }
+
+    function updateUI() {
+        updateBalanceUI(); updateEnergyUI();
         let prof = document.getElementById('profitInfo');
-        if (stats.botActive) {
-            prof.innerText = `🤖 Бот: 30k / 24ч`;
-            prof.style.display = 'flex';
-        } else {
-            prof.style.display = 'none';
-        }
+        if (stats.botActive) { prof.innerHTML = `🤖 АВТО-МАЙНЕР: <span style="color:#fff;">30k / 24ч</span>`; prof.style.opacity = 1; } 
+        else { prof.style.opacity = 0.5; }
     }
 
     function updateBalanceUI() { document.getElementById('balance').innerText = Math.floor(balance).toLocaleString(); }
-    
     function updateEnergyUI() {
         document.getElementById('currentEnergy').innerText = Math.floor(currentEnergy);
         document.getElementById('maxEnergy').innerText = stats.maxEnergy;
-        let pct = (currentEnergy / stats.maxEnergy) * 100;
-        document.getElementById('energyFill').style.width = `${pct}%`;
+        document.getElementById('energyFill').style.width = `${(currentEnergy / stats.maxEnergy) * 100}%`;
     }
 
     document.getElementById('mainMenuBtn').onclick = () => document.getElementById('smartModal').classList.add('active');
@@ -373,47 +386,26 @@
         document.getElementById('shopModal').classList.add('active');
         document.getElementById('shopCoins').innerText = Math.floor(balance).toLocaleString();
         
-        const list = document.getElementById('shopList');
-        list.innerHTML = '';
+        const list = document.getElementById('shopList'); list.innerHTML = '';
         
         if (type === 'skins') {
-            document.getElementById('shopTitle').innerText = 'САЛОН МОНЕТ';
+            document.getElementById('shopTitle').innerText = 'РЕАКТОРЫ';
             SKINS.forEach(s => {
-                let isUnl = unlockedSkins.includes(s.id);
-                let isAct = activeSkin === s.id;
+                let isUnl = unlockedSkins.includes(s.id); let isAct = activeSkin === s.id;
                 let btn = isAct ? `<button class="buy-btn btn-max">АКТИВЕН</button>` :
-                          isUnl ? `<button class="buy-btn btn-select" onclick="equipSkin('${s.id}')">ВЫБРАТЬ</button>` :
+                          isUnl ? `<button class="buy-btn btn-select" onclick="equipSkin('${s.id}')">ИНТЕГРИРОВАТЬ</button>` :
                           `<button class="buy-btn btn-buy" onclick="buySkin('${s.id}', ${s.price})">${s.price.toLocaleString()} 💰</button>`;
 
-                list.innerHTML += `
-                    <div class="upgrade-card ${isAct ? 'active' : ''}">
-                        <div class="upg-icon" style="background:${s.bg}; border-radius:50%; width:45px; height:45px; display:flex; justify-content:center; align-items:center; color:${s.color}; font-size:24px; box-shadow:0 0 10px ${s.shadow};">${s.sym}</div>
-                        <div class="upg-info">
-                            <div class="upg-name">${s.name}</div>
-                        </div>
-                        ${btn}
-                    </div>`;
+                list.innerHTML += `<div class="upgrade-card ${isAct ? 'active' : ''}"><div class="upg-icon" style="color:${s.color}; text-shadow:0 0 10px ${s.color}; border-color:${s.color};">${s.icon}</div><div class="upg-info"><div class="upg-name" style="color:${s.color};">${s.name}</div></div>${btn}</div>`;
             });
         } else if (type === 'boosts') {
-            document.getElementById('shopTitle').innerText = 'УЛУЧШЕНИЯ';
+            document.getElementById('shopTitle').innerText = 'ИНЖЕНЕРИЯ';
             Object.keys(UPGRADES).forEach(key => {
-                let u = UPGRADES[key];
-                let lvl = levels[key];
-                let isMax = lvl >= u.maxLvl;
+                let u = UPGRADES[key]; let lvl = levels[key]; let isMax = lvl >= u.maxLvl;
                 let cost = Math.floor(u.baseCost * Math.pow(u.costMult, lvl));
-                
-                let btn = isMax ? `<button class="buy-btn btn-max">MAX LVL</button>` :
-                                  `<button class="buy-btn btn-buy" onclick="buyUpgrade('${key}', ${cost})">${cost.toLocaleString()} 💰</button>`;
+                let btn = isMax ? `<button class="buy-btn btn-max">MAX LVL</button>` : `<button class="buy-btn btn-buy" onclick="buyUpgrade('${key}', ${cost})">${cost.toLocaleString()} 💰</button>`;
 
-                list.innerHTML += `
-                    <div class="upgrade-card">
-                        <div class="upg-icon">${u.icon}</div>
-                        <div class="upg-info">
-                            <div class="upg-name">${u.name} <span style="color:#0ff; font-size:12px;">Lvl ${lvl}</span></div>
-                            <div class="upg-desc">${u.desc}</div>
-                        </div>
-                        ${btn}
-                    </div>`;
+                list.innerHTML += `<div class="upgrade-card"><div class="upg-icon">${u.icon}</div><div class="upg-info"><div class="upg-name">${u.name} <span style="color:var(--core-main); font-size:12px;">Lvl ${lvl}</span></div><div class="upg-desc">${u.desc}</div></div>${btn}</div>`;
             });
         }
     }
@@ -421,41 +413,38 @@
     function closeShop() { document.getElementById('shopModal').classList.remove('active'); document.getElementById('smartModal').classList.add('active'); }
 
     window.buySkin = function(id, price) {
-        if (balance >= price) { balance -= price; unlockedSkins.push(id); equipSkin(id); saveData(); }
-        else tg.showAlert('Не хватает монет!');
+        if (balance >= price) { 
+            balance -= price; sessionNetProfit -= price; // Вычитаем трату из чистой прибыли!
+            unlockedSkins.push(id); equipSkin(id); saveData(); 
+        } else tg.showAlert('Недостаточно энергии!');
     }
     
-    window.equipSkin = function(id) { activeSkin = id; updateUI(); openShop('skins'); saveData(); }
+    window.equipSkin = function(id) { activeSkin = id; applySkinCSS(); openShop('skins'); saveData(); }
 
     window.buyUpgrade = function(key, cost) {
         if (balance >= cost) {
-            balance -= cost;
-            levels[key]++;
-            stats = getStats(); // Пересчитываем статы
-            updateUI();
-            openShop('boosts');
-            saveData();
+            balance -= cost; sessionNetProfit -= cost; // Вычитаем трату из чистой прибыли!
+            levels[key]++; stats = getStats(); updateUI(); openShop('boosts'); saveData();
             if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        } else {
-            tg.showAlert('Нужно больше золота, милорд!');
-        }
+        } else tg.showAlert('Недостаточно энергии!');
     }
 
     function saveData() {
         localStorage.setItem('clicker_coins', balance);
-        localStorage.setItem('clicker_skins', JSON.stringify(unlockedSkins));
-        localStorage.setItem('clicker_active_skin', activeSkin);
-        localStorage.setItem('clicker_levels', JSON.stringify(levels));
-        localStorage.setItem('clicker_energy', currentEnergy);
-        localStorage.setItem('clicker_time', Date.now());
+        localStorage.setItem('clicker_skins_v2', JSON.stringify(unlockedSkins));
+        localStorage.setItem('clicker_active_skin_v2', activeSkin);
+        localStorage.setItem('clicker_levels_v2', JSON.stringify(levels));
+        localStorage.setItem('clicker_energy_v2', currentEnergy);
+        localStorage.setItem('clicker_time_v2', Date.now());
     }
 
     window.saveAndExit = function() {
         saveData();
+        // ВАЖНО: Отправляем sessionNetProfit (чистую прибыль). Бот прибавит ее к балансу в БД.
         let data = {
             game: "crypto",
-            coins: Math.floor(sessionCoins),
-            score: Math.floor(balance), // Рекорд - это общий капитал
+            coins: Math.floor(sessionNetProfit), 
+            score: Math.floor(balance), // Рекорд
             time_spent: 0,
             active_skin: activeSkin
         };
@@ -463,9 +452,7 @@
     }
 
     // Запуск
-    stats = getStats();
-    updateUI();
-    processOfflineProgress();
+    applySkinCSS(); updateUI(); processOfflineProgress();
 
 </script>
 </body>
