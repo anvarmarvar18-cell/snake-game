@@ -3,301 +3,531 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Wheel of Fortune</title>
+    <title>Fortune Terminal AAA</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        /* БАЗА И ЗАЩИТА ТЕЛЕГРАМА */
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        body { background: radial-gradient(circle at center, #2a0845, #050010); overflow: hidden; touch-action: none; color: white; height: 100vh; display: flex; flex-direction: column; align-items: center; }
+        /* БАЗА */
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; font-family: 'SF Pro Display', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: radial-gradient(circle at center, #0a1128, #010205); overflow: hidden; touch-action: none; color: white; width: 100vw; height: 100vh; display: flex; flex-direction: column; }
         
-        /* ИНТЕРФЕЙС ИГРЫ */
-        .header { width: 100%; padding: 20px; display: flex; justify-content: space-between; align-items: flex-start; z-index: 100; }
-        .score-box { background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 12px; border: 1px solid #ffd700; text-align: center; box-shadow: 0 0 15px rgba(255,215,0,0.2); }
-        .score-title { color: #ffd700; font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
-        .score-val { color: #fff; font-size: 24px; font-weight: 900; }
-        .session-profit { font-size: 14px; color: #0f0; margin-top: 5px; }
-        .session-loss { font-size: 14px; color: #ff0055; margin-top: 5px; }
+        /* ГЛАВНАЯ ПАНЕЛЬ (HEADER) */
+        .header { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 100; background: rgba(5, 10, 20, 0.5); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(0,255,255,0.1); }
+        .balance-box { display: flex; flex-direction: column; }
+        .balance-label { color: #88ccff; font-size: 12px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+        .balance-val { color: #ffd700; font-size: 24px; font-weight: 900; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+        .profit-val { font-size: 14px; font-weight: bold; transition: 0.3s; }
+        .profit-pos { color: #0f0; } .profit-neg { color: #f00; }
         
-        .smart-menu-btn { background: rgba(0, 0, 0, 0.7); color: #ffd700; border: 2px solid #ffd700; border-radius: 8px; padding: 12px 18px; font-weight: bold; cursor: pointer; box-shadow: 0 0 10px rgba(255,215,0,0.5); }
+        .exit-btn { background: linear-gradient(135deg, #ff416c, #ff4b2b); border: none; border-radius: 12px; padding: 10px 15px; color: white; font-weight: 900; font-size: 14px; box-shadow: 0 0 15px rgba(255, 0, 85, 0.4); cursor: pointer; }
+        .exit-btn:active { transform: scale(0.95); }
 
-        /* КОЛЕСО И УКАЗАТЕЛЬ */
-        .wheel-container { position: relative; margin-top: 30px; width: 90vw; max-width: 380px; height: 90vw; max-height: 380px; display: flex; justify-content: center; align-items: center; }
-        
-        /* Указатель (Золотой треугольник) */
-        .pointer { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-top: 40px solid #ffd700; z-index: 50; filter: drop-shadow(0 0 10px #ff0); }
-        
-        /* Само колесо */
-        canvas { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 0 50px rgba(255, 215, 0, 0.3), inset 0 0 20px rgba(0,0,0,0.8); border: 8px solid #331a00; border-color: #ffd700 #aa8800 #ffd700 #aa8800; transition: transform 5s cubic-bezier(0.1, 0.9, 0.2, 1); }
+        /* КОНТЕЙНЕРЫ ВИДОВ */
+        .view { flex-grow: 1; width: 100%; display: none; flex-direction: column; align-items: center; position: relative; }
+        .view.active { display: flex; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
-        /* КНОПКА КРУТИТЬ */
-        .spin-btn-container { margin-top: 40px; z-index: 100; }
-        .spin-btn { background: linear-gradient(45deg, #ff0055, #ffaa00); border: 3px solid #fff; border-radius: 20px; padding: 15px 40px; font-size: 28px; font-weight: 900; color: #fff; text-shadow: 0 2px 5px rgba(0,0,0,0.5); cursor: pointer; box-shadow: 0 0 20px #ff0055; transition: transform 0.1s, filter 0.3s; text-transform: uppercase; }
-        .spin-btn:active { transform: scale(0.95); }
-        .spin-btn:disabled { filter: grayscale(1); cursor: not-allowed; transform: scale(1); }
-        .cost-text { text-align: center; color: #ffd700; font-size: 16px; font-weight: bold; margin-top: 10px; }
-
-        /* МОДАЛЬНЫЕ ОКНА */
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 2000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
-        .hidden { display: none !important; }
-        .modal-content { background: linear-gradient(135deg, #111, #2a0845); border: 2px solid #ffd700; border-radius: 15px; width: 85%; padding: 25px; display: flex; flex-direction: column; gap: 15px; text-align: center; box-shadow: 0 0 30px rgba(255, 215, 0, 0.3); }
+        /* ХАБ (ВЫБОР ИГР) */
+        .hub-container { width: 90%; max-width: 400px; display: flex; flex-direction: column; gap: 15px; margin-top: 20px; overflow-y: auto; padding-bottom: 20px; }
+        .game-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(0,255,255,0.2); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 10px; position: relative; overflow: hidden; transition: 0.2s; cursor: pointer; }
+        .game-card:active { transform: scale(0.97); }
+        .gc-title { font-size: 24px; font-weight: 900; color: #fff; text-shadow: 0 0 10px #0ff; position: relative; z-index: 2; }
+        .gc-desc { font-size: 14px; color: #aaa; position: relative; z-index: 2; }
+        .gc-bg { position: absolute; top: 0; right: 0; width: 150px; height: 150px; opacity: 0.1; transform: translate(30%, -30%); z-index: 1; border-radius: 50%; }
         
-        .btn { padding: 15px; font-size: 16px; font-weight: bold; border-radius: 10px; color: white; border: none; text-transform: uppercase; cursor: pointer; }
-        .btn-green { background: linear-gradient(45deg, #00b09b, #96c93d); }
-        .btn-red { background: linear-gradient(45deg, #ff416c, #ff4b2b); }
+        .card-crash { border-color: rgba(255,0,255,0.5); } .card-crash .gc-title { text-shadow: 0 0 15px #f0f; } .card-crash .gc-bg { background: radial-gradient(#f0f, transparent); }
+        .card-wheel { border-color: rgba(0,255,255,0.5); } .card-wheel .gc-title { text-shadow: 0 0 15px #0ff; } .card-wheel .gc-bg { background: radial-gradient(#0ff, transparent); }
+        .card-flip { border-color: rgba(255,215,0,0.5); } .card-flip .gc-title { text-shadow: 0 0 15px #ffd700; color: #ffd700; } .card-flip .gc-bg { background: radial-gradient(#ffd700, transparent); }
 
-        /* ЧАСТИЦЫ КОНФЕТТИ */
+        /* ОБЩИЙ ИНТЕРФЕЙС ИГР */
+        .back-btn { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; padding: 8px 15px; color: #fff; font-weight: bold; cursor: pointer; z-index: 50; }
+        
+        /* ПАНЕЛЬ СТАВОК */
+        .bet-panel { width: 90%; max-width: 400px; background: rgba(0,0,0,0.5); border: 1px solid #333; border-radius: 16px; padding: 15px; margin-top: auto; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 50; }
+        .bet-input-box { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); border-radius: 10px; padding: 10px 15px; }
+        .bet-input-box span { color: #88ccff; font-weight: bold; }
+        .bet-input-box input { background: transparent; border: none; color: #ffd700; font-size: 20px; font-weight: 900; text-align: right; width: 100px; outline: none; }
+        .bet-fast-btns { display: flex; gap: 5px; justify-content: space-between; }
+        .bet-fast-btns button { flex: 1; background: rgba(255,255,255,0.1); border: none; border-radius: 8px; padding: 8px 0; color: #fff; font-weight: bold; cursor: pointer; }
+        .bet-fast-btns button:active { background: rgba(255,255,255,0.2); }
+        
+        .action-btn { width: 100%; padding: 15px; border-radius: 12px; border: none; font-size: 20px; font-weight: 900; text-transform: uppercase; cursor: pointer; color: #fff; transition: 0.2s; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
+        .action-btn:disabled { filter: grayscale(1); opacity: 0.5; pointer-events: none; }
+        .btn-start { background: linear-gradient(135deg, #00b09b, #96c93d); }
+        .btn-cashout { background: linear-gradient(135deg, #ff9900, #ff0055); box-shadow: 0 0 20px #ff0055; }
+
+        /* --- ИГРА 1: CRASH --- */
+        .crash-graph { flex-grow: 1; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; }
+        .crash-mult { font-size: 70px; font-weight: 900; text-shadow: 0 0 30px #0ff; color: #fff; transition: color 0.2s, text-shadow 0.2s; }
+        .crash-mult.crashed { color: #ff0055; text-shadow: 0 0 30px #ff0055; animation: shake 0.3s; }
+        .crash-mult.won { color: #0f0; text-shadow: 0 0 30px #0f0; }
+        .crash-status { font-size: 16px; color: #aaa; margin-top: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
+        .crash-history { position: absolute; top: 20px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; width: 90%; }
+        .hist-pill { background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 8px; font-size: 12px; font-weight: bold; }
+        .hist-pill.good { color: #0f0; border: 1px solid rgba(0,255,0,0.3); }
+        .hist-pill.bad { color: #ff0055; border: 1px solid rgba(255,0,85,0.3); }
+
+        /* --- ИГРА 2: WHEEL --- */
+        .wheel-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; position: relative; width: 100%; max-width: 350px; margin: 0 auto; }
+        .pointer { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 30px solid #fff; z-index: 50; filter: drop-shadow(0 0 10px #fff); }
+        canvas { width: 100%; aspect-ratio: 1/1; border-radius: 50%; box-shadow: 0 0 40px rgba(0, 255, 255, 0.2), inset 0 0 20px rgba(0,0,0,0.8); border: 6px solid #222; transition: transform 4s cubic-bezier(0.1, 0.9, 0.2, 1); }
+
+        /* --- ИГРА 3: COIN FLIP --- */
+        .flip-container { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; perspective: 1000px; gap: 30px; }
+        .coin-3d { width: 150px; height: 150px; position: relative; transform-style: preserve-3d; transition: transform 3s cubic-bezier(0.2, 0.8, 0.3, 1); }
+        .coin-face { position: absolute; width: 100%; height: 100%; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 60px; font-weight: 900; backface-visibility: hidden; border: 5px solid rgba(255,255,255,0.5); }
+        .coin-front { background: radial-gradient(circle, #0088ff, #002255); color: #fff; box-shadow: 0 0 30px #0088ff; transform: rotateY(0deg); } /* СИНИЙ */
+        .coin-back { background: radial-gradient(circle, #ff0055, #550011); color: #fff; box-shadow: 0 0 30px #ff0055; transform: rotateY(180deg); } /* КРАСНЫЙ */
+        
+        .flip-choices { display: flex; gap: 15px; width: 90%; max-width: 400px; }
+        .choice-btn { flex: 1; padding: 15px; border-radius: 12px; border: 2px solid transparent; font-weight: 900; font-size: 16px; color: white; cursor: pointer; transition: 0.2s; }
+        .choice-blue { background: rgba(0, 136, 255, 0.2); border-color: #0088ff; }
+        .choice-red { background: rgba(255, 0, 85, 0.2); border-color: #ff0055; }
+        .choice-btn.selected { background: rgba(255,255,255,0.2); box-shadow: inset 0 0 20px rgba(255,255,255,0.5); transform: scale(1.05); }
+
+        /* ЭФФЕКТЫ */
+        .shake { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake { 10%, 90% { transform: translate3d(-4px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-8px, 0, 0); } 40%, 60% { transform: translate3d(8px, 0, 0); } }
+        
         #confetti-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 1500; }
-        
-        .win-text { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 50px; font-weight: 900; color: #fff; text-shadow: 0 0 30px #ffd700; opacity: 0; pointer-events: none; z-index: 1600; text-align: center; width: 100%; }
-        @keyframes popIn { 0% { opacity: 0; transform: translate(-50%, -40%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -60%) scale(1); } }
     </style>
 </head>
 <body>
 
+    <!-- ГЛОБАЛЬНАЯ ШАПКА -->
     <div class="header">
-        <div class="score-box">
-            <div class="score-title">Твой Баланс</div>
-            <div class="score-val" id="displayBalance">0</div>
-            <div id="sessionProfit" class="session-profit">Прибыль: 0 💰</div>
+        <div class="balance-box">
+            <span class="balance-label">Баланс Кредитов</span>
+            <span class="balance-val"><span id="mainBalance">0</span> 💰</span>
+            <span class="profit-val profit-pos" id="mainProfit">Прибыль: 0</span>
         </div>
-        <button id="mainMenuBtn" class="smart-menu-btn">⚙️ МЕНЮ</button>
+        <button class="exit-btn" onclick="saveAndExit()">ВЫХОД В БОТ</button>
     </div>
 
-    <!-- КОЛЕСО -->
-    <div class="wheel-container">
-        <div class="pointer"></div>
-        <canvas id="wheelCanvas" width="400" height="400"></canvas>
+    <!-- ВИД: ХАБ (МЕНЮ) -->
+    <div class="view active" id="view-hub">
+        <div class="hub-container">
+            <div class="game-card card-crash" onclick="switchView('view-crash')">
+                <div class="gc-bg"></div>
+                <div class="gc-title">CYBER CRASH</div>
+                <div class="gc-desc">Ракета взлетает. Множитель растет. Успей забрать деньги до взрыва!</div>
+            </div>
+            
+            <div class="game-card card-flip" onclick="switchView('view-flip')">
+                <div class="gc-bg"></div>
+                <div class="gc-title">NEON MATCH</div>
+                <div class="gc-desc">Бросок монеты. Выбери Синюю или Красную сторону. Шанс 50/50. Выигрыш x2.</div>
+            </div>
+
+            <div class="game-card card-wheel" onclick="switchView('view-wheel')">
+                <div class="gc-bg"></div>
+                <div class="gc-title">FORTUNE WHEEL</div>
+                <div class="gc-desc">Крути колесо протоколов. От х0 до ДЖЕКПОТА. Проверь интуицию.</div>
+            </div>
+        </div>
     </div>
 
-    <!-- КНОПКА -->
-    <div class="spin-btn-container">
-        <button class="spin-btn" id="spinBtn">КРУТИТЬ</button>
-        <div class="cost-text">Цена: 500 💰</div>
+    <!-- ВИД: CRASH -->
+    <div class="view" id="view-crash">
+        <button class="back-btn" onclick="switchView('view-hub')" id="crashBackBtn">← НАЗАД</button>
+        <div class="crash-history" id="crashHistory"></div>
+        
+        <div class="crash-graph">
+            <div class="crash-mult" id="crashMultText">1.00x</div>
+            <div class="crash-status" id="crashStatusText">Ожидание ставки...</div>
+        </div>
+
+        <div class="bet-panel">
+            <div class="bet-input-box">
+                <span>СТАВКА:</span>
+                <input type="number" id="crashBetInput" value="100" min="10" readonly>
+            </div>
+            <div class="bet-fast-btns">
+                <button onclick="changeBet('crash', 10)">MIN</button>
+                <button onclick="changeBet('crash', 100)">+100</button>
+                <button onclick="changeBet('crash', 500)">+500</button>
+                <button onclick="changeBet('crash', 'MAX')">MAX</button>
+            </div>
+            <button class="action-btn btn-start" id="crashActionBtn" onclick="crashAction()">СТАВКА</button>
+        </div>
+    </div>
+
+    <!-- ВИД: FLIP -->
+    <div class="view" id="view-flip">
+        <button class="back-btn" onclick="switchView('view-hub')" id="flipBackBtn">← НАЗАД</button>
+        
+        <div class="flip-container">
+            <div class="coin-3d" id="flipCoin">
+                <div class="coin-face coin-front">B</div>
+                <div class="coin-face coin-back">R</div>
+            </div>
+            <div class="crash-status" id="flipStatusText" style="margin-top: -10px;">ВЫБЕРИ СТОРОНУ</div>
+        </div>
+
+        <div class="flip-choices">
+            <button class="choice-btn choice-blue selected" id="choiceBlue" onclick="selectChoice('blue')">СИНИЙ (x2)</button>
+            <button class="choice-btn choice-red" id="choiceRed" onclick="selectChoice('red')">КРАСНЫЙ (x2)</button>
+        </div>
+
+        <div class="bet-panel">
+            <div class="bet-input-box">
+                <span>СТАВКА:</span>
+                <input type="number" id="flipBetInput" value="100" min="10" readonly>
+            </div>
+            <div class="bet-fast-btns">
+                <button onclick="changeBet('flip', 10)">MIN</button>
+                <button onclick="changeBet('flip', 100)">+100</button>
+                <button onclick="changeBet('flip', 500)">+500</button>
+                <button onclick="changeBet('flip', 'MAX')">MAX</button>
+            </div>
+            <button class="action-btn btn-start" id="flipActionBtn" onclick="flipAction()">БРОСИТЬ МОНЕТУ</button>
+        </div>
+    </div>
+
+    <!-- ВИД: WHEEL -->
+    <div class="view" id="view-wheel">
+        <button class="back-btn" onclick="switchView('view-hub')" id="wheelBackBtn">← НАЗАД</button>
+        
+        <div style="flex-grow:1; display:flex; flex-direction:column; justify-content:center; width:100%; padding-top:20px;">
+            <div class="crash-status" id="wheelStatusText" style="text-align:center; margin-bottom:10px;">ДЖЕКПОТ: 100x</div>
+            <div class="wheel-container">
+                <div class="pointer"></div>
+                <canvas id="wheelCanvas" width="400" height="400"></canvas>
+            </div>
+        </div>
+
+        <div class="bet-panel">
+            <div class="bet-input-box">
+                <span>СТАВКА:</span>
+                <input type="number" id="wheelBetInput" value="100" min="10" readonly>
+            </div>
+            <div class="bet-fast-btns">
+                <button onclick="changeBet('wheel', 10)">MIN</button>
+                <button onclick="changeBet('wheel', 100)">+100</button>
+                <button onclick="changeBet('wheel', 500)">+500</button>
+                <button onclick="changeBet('wheel', 'MAX')">MAX</button>
+            </div>
+            <button class="action-btn btn-start" id="wheelActionBtn" onclick="wheelAction()">КРУТИТЬ КОЛЕСО</button>
+        </div>
     </div>
 
     <canvas id="confetti-canvas"></canvas>
-    <div id="winMsg" class="win-text"></div>
-
-    <!-- Главное Меню -->
-    <div id="smartModal" class="modal hidden">
-        <div class="modal-content">
-            <h2 style="color: #ffd700; margin-bottom: 10px;">ПАУЗА</h2>
-            <button class="btn btn-red" onclick="saveAndExit()">💾 ЗАБРАТЬ И ВЫЙТИ</button>
-            <button class="btn btn-green" onclick="closeMenu()">▶ ПРОДОЛЖИТЬ</button>
-        </div>
-    </div>
 
 <script>
     // ==========================================
-    // 1. БЛОКИРОВКИ ТЕЛЕГРАМА И ЗАЩИТА
+    // 1. БЛОКИРОВКИ ТЕЛЕГРАМА
     // ==========================================
     const tg = window.Telegram.WebApp;
     tg.ready(); tg.expand();
     if (tg.isVersionAtLeast('7.7')) tg.disableVerticalSwipes();
     if (tg.isVersionAtLeast('6.1')) tg.enableClosingConfirmation();
-
     document.body.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 
     // ==========================================
-    // 2. ДАННЫЕ И ЭКОНОМИКА
+    // 2. ГЛОБАЛЬНАЯ ЭКОНОМИКА (СИНХРОНИЗАЦИЯ С PYTHON)
     // ==========================================
-    // Чтобы колесо работало, дадим игроку тестовые 5000 монет локально, если он впервые. 
-    // На сервере Питона этот баланс сведется честно!
-    let localBalance = parseInt(localStorage.getItem('wheel_fake_balance')) || 5000; 
-    let sessionNetProfit = 0; // Главная цифра для Питона (может быть минусовой!)
-    let isSpinning = false;
+    // Локальный баланс для вида
+    let localBalance = parseInt(localStorage.getItem('wheel_fake_balance')) || 1000; 
+    // ЧИСТАЯ ПРИБЫЛЬ СЕССИИ (Для отправки в бота! Может быть минусом)
+    let sessionNetProfit = 0; 
     let startTime = Date.now();
-    let blackHoleUnlocked = localStorage.getItem('black_hole_unlocked') === 'true';
+
+    function updateBalanceUI() {
+        document.getElementById('mainBalance').innerText = Math.floor(localBalance).toLocaleString();
+        let pEl = document.getElementById('mainProfit');
+        if (sessionNetProfit >= 0) {
+            pEl.innerText = `Прибыль: +${sessionNetProfit}`;
+            pEl.className = 'profit-val profit-pos';
+        } else {
+            pEl.innerText = `Убыток: ${sessionNetProfit}`;
+            pEl.className = 'profit-val profit-neg';
+        }
+        localStorage.setItem('wheel_fake_balance', localBalance);
+    }
+    updateBalanceUI();
+
+    function changeBet(game, val) {
+        let input = document.getElementById(`${game}BetInput`);
+        if (val === 'MAX') {
+            input.value = localBalance > 0 ? localBalance : 10;
+        } else {
+            let newVal = (val === 10) ? 10 : parseInt(input.value) + val;
+            if (newVal > localBalance) newVal = localBalance;
+            input.value = newVal;
+        }
+    }
+
+    // ==========================================
+    // 3. НАВИГАЦИЯ (SPA)
+    // ==========================================
+    function switchView(viewId) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById(viewId).classList.add('active');
+        // Если открыли колесо, рендерим его
+        if(viewId === 'view-wheel') drawWheel();
+    }
+
+    // ==========================================
+    // 4. ИГРА 1: CYBER CRASH (АВИАТОР)
+    // ==========================================
+    let crashState = 'idle'; // idle, flying
+    let crashCurrentMult = 1.00;
+    let crashTargetMult = 1.00;
+    let crashBet = 0;
+    let crashTimer;
+
+    // ЧЕСТНАЯ МАТЕМАТИКА CRASH (Provably Fair Concept)
+    function getFairCrashPoint() {
+        let r = Math.random();
+        // 5% шанс моментального взрыва (1.00x)
+        if (r < 0.05) return 1.00;
+        // Распределение шансов (95% / случайное число)
+        let mult = 0.95 / r;
+        return Math.floor(mult * 100) / 100; // Округление до сотых
+    }
+
+    function crashAction() {
+        if (crashState === 'idle') {
+            crashBet = parseInt(document.getElementById('crashBetInput').value);
+            if (crashBet < 10 || crashBet > localBalance) { tg.showAlert('Неверная ставка!'); return; }
+            
+            // Списываем ставку
+            localBalance -= crashBet; sessionNetProfit -= crashBet; updateBalanceUI();
+            
+            crashState = 'flying';
+            crashTargetMult = getFairCrashPoint();
+            crashCurrentMult = 1.00;
+            
+            document.getElementById('crashActionBtn').innerText = `ЗАБРАТЬ (1.00x)`;
+            document.getElementById('crashActionBtn').className = 'action-btn btn-cashout';
+            document.getElementById('crashMultText').className = 'crash-mult';
+            document.getElementById('crashStatusText').innerText = 'ПОЛЕТ...';
+            document.getElementById('crashBackBtn').style.display = 'none';
+
+            // Имитация полета (ускоряющийся счетчик)
+            let tickSpeed = 50;
+            crashTimer = setInterval(() => {
+                // Плавный рост (чем больше, тем быстрее растут цифры)
+                crashCurrentMult += (0.01 + crashCurrentMult * 0.005);
+                
+                if (crashCurrentMult >= crashTargetMult) {
+                    crashCurrentMult = crashTargetMult;
+                    crashEnd('bust');
+                } else {
+                    document.getElementById('crashMultText').innerText = crashCurrentMult.toFixed(2) + 'x';
+                    document.getElementById('crashActionBtn').innerText = `ЗАБРАТЬ ${(crashBet * crashCurrentMult).toFixed(0)} 💰`;
+                }
+            }, tickSpeed);
+
+        } else if (crashState === 'flying') {
+            // УСПЕЛ ЗАБРАТЬ!
+            crashEnd('win');
+        }
+    }
+
+    function crashEnd(result) {
+        clearInterval(crashTimer);
+        crashState = 'idle';
+        document.getElementById('crashBackBtn').style.display = 'block';
+        
+        let mTxt = document.getElementById('crashMultText');
+        mTxt.innerText = crashCurrentMult.toFixed(2) + 'x';
+        
+        let hist = document.getElementById('crashHistory');
+        let pill = document.createElement('div');
+        pill.innerText = crashCurrentMult.toFixed(2) + 'x';
+        
+        if (result === 'win') {
+            let winAmount = Math.floor(crashBet * crashCurrentMult);
+            localBalance += winAmount; sessionNetProfit += winAmount; updateBalanceUI();
+            
+            mTxt.className = 'crash-mult won';
+            document.getElementById('crashStatusText').innerText = `ВЫВЕДЕНО +${winAmount} 💰`;
+            pill.className = 'hist-pill good';
+            if(crashCurrentMult >= 5) fireConfetti();
+            if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        } else {
+            mTxt.className = 'crash-mult crashed';
+            document.getElementById('crashStatusText').innerText = 'РАКЕТА ВЗОРВАЛАСЬ!';
+            pill.className = 'hist-pill bad';
+            if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        }
+        
+        if(hist.children.length >= 5) hist.removeChild(hist.firstChild);
+        hist.appendChild(pill);
+
+        let btn = document.getElementById('crashActionBtn');
+        btn.innerText = 'СТАВКА'; btn.className = 'action-btn btn-start';
+    }
+
+    // ==========================================
+    // 5. ИГРА 2: COIN FLIP (NEON MATCH)
+    // ==========================================
+    let flipState = 'idle';
+    let flipChoice = 'blue'; // blue или red
+
+    function selectChoice(choice) {
+        if(flipState !== 'idle') return;
+        flipChoice = choice;
+        document.getElementById('choiceBlue').classList.remove('selected');
+        document.getElementById('choiceRed').classList.remove('selected');
+        if(choice === 'blue') document.getElementById('choiceBlue').classList.add('selected');
+        else document.getElementById('choiceRed').classList.add('selected');
+    }
+
+    function flipAction() {
+        if (flipState !== 'idle') return;
+        let bet = parseInt(document.getElementById('flipBetInput').value);
+        if (bet < 10 || bet > localBalance) { tg.showAlert('Неверная ставка!'); return; }
+
+        localBalance -= bet; sessionNetProfit -= bet; updateBalanceUI();
+        flipState = 'flipping';
+        document.getElementById('flipActionBtn').disabled = true;
+        document.getElementById('flipBackBtn').style.display = 'none';
+        document.getElementById('flipStatusText').innerText = 'БРОСОК...';
+
+        // Логика броска
+        let isBlueWin = Math.random() >= 0.5;
+        let spins = 5 + Math.floor(Math.random() * 3); // Кол-во полных оборотов
+        let deg = spins * 360 + (isBlueWin ? 0 : 180); // 0 = blue, 180 = red
+
+        let coin = document.getElementById('flipCoin');
+        coin.style.transform = `rotateY(${deg}deg)`;
+
+        setTimeout(() => {
+            let won = (isBlueWin && flipChoice === 'blue') || (!isBlueWin && flipChoice === 'red');
+            if (won) {
+                let winAmount = bet * 2;
+                localBalance += winAmount; sessionNetProfit += winAmount; updateBalanceUI();
+                document.getElementById('flipStatusText').innerText = `ПОБЕДА! +${winAmount} 💰`;
+                document.getElementById('flipStatusText').style.color = '#0f0';
+                fireConfetti();
+                if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            } else {
+                document.getElementById('flipStatusText').innerText = `ПРОИГРЫШ!`;
+                document.getElementById('flipStatusText').style.color = '#ff0055';
+                if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+            }
+            
+            flipState = 'idle';
+            document.getElementById('flipActionBtn').disabled = false;
+            document.getElementById('flipBackBtn').style.display = 'block';
+            setTimeout(() => { document.getElementById('flipStatusText').style.color = '#aaa'; document.getElementById('flipStatusText').innerText = 'ВЫБЕРИ СТОРОНУ'; }, 2000);
+        }, 3000); // Время CSS анимации
+    }
+
+    // ==========================================
+    // 6. ИГРА 3: FORTUNE WHEEL
+    // ==========================================
+    let wheelState = 'idle';
+    let currentRotation = 0;
     
-    // Структура секторов (12 штук). Это визуал.
+    // Сектора (Честная экономика, ожидание выигрыша ~95% от ставки, казино всегда в плюсе на дистанции)
     const SLICES = [
-        { label: '0', val: 0, color: '#333', txt: '#fff' },
-        { label: '100', val: 100, color: '#cd7f32', txt: '#fff' },
-        { label: '250', val: 250, color: '#b87333', txt: '#fff' },
-        { label: '500', val: 500, color: '#c0c0c0', txt: '#000' }, // Окуп
-        { label: '1000', val: 1000, color: '#ffd700', txt: '#000' },
-        { label: '3000', val: 3000, color: '#ff8c00', txt: '#000' },
-        { label: '0', val: 0, color: '#333', txt: '#fff' },
-        { label: '100', val: 100, color: '#cd7f32', txt: '#fff' },
-        { label: '250', val: 250, color: '#b87333', txt: '#fff' },
-        { label: '500', val: 500, color: '#c0c0c0', txt: '#000' },
-        { label: '10k 💎', val: 10000, color: '#00ffff', txt: '#000' }, // Джекпот
-        { label: '🌀 SKIN', val: 'skin', color: '#800080', txt: '#fff' } // Черная дыра
+        { label: '0x', mult: 0, color: '#222' },
+        { label: '1.5x', mult: 1.5, color: '#0088ff' },
+        { label: '0.5x', mult: 0.5, color: '#ffaa00' },
+        { label: '1.2x', mult: 1.2, color: '#00ccff' },
+        { label: '0x', mult: 0, color: '#222' },
+        { label: '2.0x', mult: 2.0, color: '#0f0' },
+        { label: '0.5x', mult: 0.5, color: '#ffaa00' },
+        { label: '3.0x', mult: 3.0, color: '#00ffcc' },
+        { label: '0x', mult: 0, color: '#222' },
+        { label: '10x', mult: 10.0, color: '#ff00ff' },
     ];
 
-    const canvas = document.getElementById('wheelCanvas');
-    const ctx = canvas.getContext('2d');
-    const cx = canvas.width / 2;
-    const cy = canvas.height / 2;
-    const radius = canvas.width / 2;
+    const wCanvas = document.getElementById('wheelCanvas');
+    const wCtx = wCanvas.getContext('2d');
     
-    let currentRotation = 0; // В градусах
-
-    // ==========================================
-    // 3. ОТРИСОВКА КОЛЕСА (CASINO STYLE)
-    // ==========================================
     function drawWheel() {
+        let cx = wCanvas.width/2; let cy = wCanvas.height/2; let r = wCanvas.width/2;
         let sliceAngle = (2 * Math.PI) / SLICES.length;
-        for (let i = 0; i < SLICES.length; i++) {
-            let slice = SLICES[i];
-            let startAngle = i * sliceAngle - Math.PI / 2; // -90 градусов, чтобы сектор 0 был сверху
-            let endAngle = startAngle + sliceAngle;
-
-            // Сектор
-            ctx.beginPath();
-            ctx.moveTo(cx, cy);
-            ctx.arc(cx, cy, radius, startAngle, endAngle);
-            ctx.fillStyle = slice.color;
-            ctx.fill();
-            ctx.lineWidth = 4;
-            ctx.strokeStyle = '#ffd700'; // Золотые рамки
-            ctx.stroke();
-
-            // Текст
-            ctx.save();
-            ctx.translate(cx, cy);
-            // Поворачиваем текст в центр сектора
-            ctx.rotate(startAngle + sliceAngle / 2);
-            ctx.textAlign = 'right';
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = slice.txt;
-            ctx.font = 'bold 24px Arial';
-            ctx.shadowBlur = 4;
-            ctx.shadowColor = 'rgba(0,0,0,0.8)';
-            ctx.fillText(slice.label, radius - 20, 0);
-            ctx.restore();
-        }
         
-        // Центральная заглушка (Ось)
-        ctx.beginPath(); ctx.arc(cx, cy, 30, 0, 2*Math.PI);
-        ctx.fillStyle = '#111'; ctx.fill();
-        ctx.lineWidth = 3; ctx.strokeStyle = '#ffd700'; ctx.stroke();
-        ctx.fillStyle = '#ffd700'; ctx.beginPath(); ctx.arc(cx, cy, 10, 0, 2*Math.PI); ctx.fill();
+        wCtx.clearRect(0,0,wCanvas.width,wCanvas.height);
+        for (let i = 0; i < SLICES.length; i++) {
+            let s = SLICES[i];
+            let start = i * sliceAngle - Math.PI/2;
+            let end = start + sliceAngle;
+            
+            wCtx.beginPath(); wCtx.moveTo(cx, cy); wCtx.arc(cx, cy, r, start, end);
+            wCtx.fillStyle = s.color; wCtx.fill(); wCtx.lineWidth = 2; wCtx.strokeStyle = '#111'; wCtx.stroke();
+            
+            wCtx.save(); wCtx.translate(cx, cy); wCtx.rotate(start + sliceAngle/2);
+            wCtx.textAlign = 'right'; wCtx.textBaseline = 'middle'; wCtx.fillStyle = '#fff';
+            wCtx.font = 'bold 22px Arial'; wCtx.shadowBlur = 5; wCtx.shadowColor = '#000';
+            wCtx.fillText(s.label, r - 25, 0); wCtx.restore();
+        }
+        // Центр
+        wCtx.beginPath(); wCtx.arc(cx, cy, 25, 0, 2*Math.PI); wCtx.fillStyle = '#111'; wCtx.fill();
+        wCtx.lineWidth = 4; wCtx.strokeStyle = '#0ff'; wCtx.stroke();
     }
 
-    function updateUI() {
-        document.getElementById('displayBalance').innerText = localBalance;
-        let pEl = document.getElementById('sessionProfit');
-        if (sessionNetProfit >= 0) {
-            pEl.innerText = `Прибыль: +${sessionNetProfit} 💰`;
-            pEl.className = 'session-profit';
-        } else {
-            pEl.innerText = `Убыток: ${sessionNetProfit} 💰`;
-            pEl.className = 'session-loss';
-        }
-    }
+    function wheelAction() {
+        if (wheelState !== 'idle') return;
+        let bet = parseInt(document.getElementById('wheelBetInput').value);
+        if (bet < 10 || bet > localBalance) { tg.showAlert('Неверная ставка!'); return; }
 
-    // ==========================================
-    // 4. ИДЕАЛЬНАЯ МАТЕМАТИКА (ЧЕСТНЫЙ РАНДОМ)
-    // ==========================================
-    document.getElementById('spinBtn').addEventListener('click', () => {
-        if (isSpinning) return;
-        if (localBalance < 500) {
-            tg.showAlert('Мало монет! Иди играй в другие игры.');
-            return;
-        }
+        localBalance -= bet; sessionNetProfit -= bet; updateBalanceUI();
+        wheelState = 'spinning';
+        document.getElementById('wheelActionBtn').disabled = true;
+        document.getElementById('wheelBackBtn').style.display = 'none';
+        document.getElementById('wheelStatusText').innerText = 'КРУТИМ...';
+        document.getElementById('wheelStatusText').style.color = '#aaa';
 
-        // Списываем 500 монет
-        isSpinning = true;
-        localBalance -= 500;
-        sessionNetProfit -= 500;
-        updateUI();
-        document.getElementById('spinBtn').disabled = true;
+        // Генерируем честный результат
+        let rand = Math.random();
+        let targetIndex = 0;
+        // Математика шансов для колеса
+        if (rand < 0.4) targetIndex = SLICES.findIndex(s=>s.mult===0); // 40% на 0
+        else if (rand < 0.6) targetIndex = SLICES.findIndex(s=>s.mult===0.5); // 20% на 0.5x
+        else if (rand < 0.75) targetIndex = SLICES.findIndex(s=>s.mult===1.2); // 15% на 1.2x
+        else if (rand < 0.88) targetIndex = SLICES.findIndex(s=>s.mult===1.5); // 13% на 1.5x
+        else if (rand < 0.95) targetIndex = SLICES.findIndex(s=>s.mult===2.0); // 7% на 2x
+        else if (rand < 0.99) targetIndex = SLICES.findIndex(s=>s.mult===3.0); // 4% на 3x
+        else targetIndex = SLICES.findIndex(s=>s.mult===10.0); // 1% на 10x
 
-        // --- ГЕНЕРАЦИЯ ПРОЦЕНТОВ ---
-        let rand = Math.random() * 100;
-        let resultVal;
-        
-        if (rand < 15) resultVal = 0; // 15%
-        else if (rand < 35) resultVal = 100; // 20%
-        else if (rand < 55) resultVal = 250; // 20% (Суммарно 40% на 100 и 250)
-        else if (rand < 75) resultVal = 500; // 20% (Возврат)
-        else if (rand < 82.5) resultVal = 1000; // 7.5%
-        else if (rand < 90) resultVal = 3000; // 7.5% (Суммарно 15%)
-        else if (rand < 98) resultVal = 'skin'; // 8% (Черная Дыра)
-        else resultVal = 10000; // 2% (Джекпот)
-
-        // Ищем индекс сектора на колесе
-        let possibleIndices = [];
-        for (let i = 0; i < SLICES.length; i++) {
-            if (SLICES[i].val === resultVal) possibleIndices.push(i);
-        }
-        // Если секторов несколько (например, два нуля), выбираем случайный
-        let sliceIndex = possibleIndices[Math.floor(Math.random() * possibleIndices.length)];
-
-        // --- АНИМАЦИЯ КОЛЕСА ---
         let sliceAngle = 360 / SLICES.length;
-        // Угол, чтобы нужный сектор встал ровно под стрелку (стрелка на 0 градусов / сверху)
-        let targetAngle = 360 - (sliceIndex * sliceAngle + sliceAngle / 2);
+        // Угол, чтобы нужный сектор встал ровно под стрелку (сверху)
+        let targetAngle = 360 - (targetIndex * sliceAngle + sliceAngle / 2);
         
-        // Делаем 5-7 полных оборотов для эффекта + целевой угол
         let spins = 5 + Math.floor(Math.random() * 3); 
         let totalRotation = currentRotation + (360 * spins) + (targetAngle - (currentRotation % 360));
-        
-        // Чтобы стрелка не указывала ровно в линию, добавим легкий сдвиг внутри сектора
-        totalRotation += (Math.random() * (sliceAngle - 4) - (sliceAngle / 2 - 2));
+        totalRotation += (Math.random() * (sliceAngle - 10) - (sliceAngle / 2 - 5)); // Рандом внутри сектора
 
-        canvas.style.transform = `rotate(${totalRotation}deg)`;
+        wCanvas.style.transform = `rotate(${totalRotation}deg)`;
         currentRotation = totalRotation;
 
-        // Ждем завершения анимации (5 секунд)
-        setTimeout(() => processWin(resultVal), 5000);
-    });
-
-    function processWin(val) {
-        isSpinning = false;
-        document.getElementById('spinBtn').disabled = false;
-
-        let msg = '';
-        let color = '#fff';
-
-        if (val === 'skin') {
-            blackHoleUnlocked = true;
-            localStorage.setItem('black_hole_unlocked', 'true');
-            msg = 'СЕКРЕТНЫЙ СКИН:\nЧЕРНАЯ ДЫРА!';
-            color = '#800080';
-            fireConfetti();
-        } 
-        else if (val === 10000) {
-            localBalance += 10000; sessionNetProfit += 10000;
-            msg = 'ДЖЕКПОТ!!!\n+10 000 💰';
-            color = '#00ffff';
-            fireConfetti();
-        } 
-        else if (val > 0) {
-            localBalance += val; sessionNetProfit += val;
-            msg = `+${val} 💰`;
-            color = val >= 1000 ? '#ffd700' : '#0f0';
-            if (val >= 1000) fireConfetti();
-        } 
-        else {
-            msg = 'ПУСТО!';
-            color = '#ff0055';
-        }
-
-        updateUI();
-        localStorage.setItem('wheel_fake_balance', localBalance);
-
-        // Всплывающее сообщение
-        let winEl = document.getElementById('winMsg');
-        winEl.innerText = msg;
-        winEl.style.color = color;
-        winEl.style.textShadow = `0 0 20px ${color}`;
-        winEl.style.animation = 'none';
-        setTimeout(() => winEl.style.animation = 'popIn 2.5s forwards', 50);
+        setTimeout(() => {
+            let mult = SLICES[targetIndex].mult;
+            if (mult > 0) {
+                let winAmount = Math.floor(bet * mult);
+                localBalance += winAmount; sessionNetProfit += winAmount; updateBalanceUI();
+                document.getElementById('wheelStatusText').innerText = `ПОБЕДА: ${mult}x (+${winAmount})`;
+                document.getElementById('wheelStatusText').style.color = '#0f0';
+                if(mult >= 2) fireConfetti();
+                if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            } else {
+                document.getElementById('wheelStatusText').innerText = 'ПУСТО!';
+                document.getElementById('wheelStatusText').style.color = '#ff0055';
+                if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+            }
+            
+            wheelState = 'idle';
+            document.getElementById('wheelActionBtn').disabled = false;
+            document.getElementById('wheelBackBtn').style.display = 'block';
+        }, 4000); // 4 сек - время анимации CSS
     }
 
     // ==========================================
-    // 5. ЭФФЕКТЫ КОНФЕТТИ (ДЛЯ ДЖЕКПОТА)
+    // 7. ЭФФЕКТЫ (КОНФЕТТИ) И ВЫХОД
     // ==========================================
     const confCanvas = document.getElementById('confetti-canvas');
     const cCtx = confCanvas.getContext('2d');
     confCanvas.width = window.innerWidth; confCanvas.height = window.innerHeight;
-    let particles = [];
+    let cParticles = [];
 
     function fireConfetti() {
-        for(let i=0; i<100; i++) {
-            particles.push({
+        for(let i=0; i<80; i++) {
+            cParticles.push({
                 x: window.innerWidth / 2, y: window.innerHeight / 2,
                 vx: (Math.random()-0.5)*20, vy: (Math.random()-0.5)*20 - 5,
                 c: ['#ffd700', '#00ffff', '#ff0055', '#0f0'][Math.floor(Math.random()*4)],
@@ -309,44 +539,31 @@
     function loopConfetti() {
         requestAnimationFrame(loopConfetti);
         cCtx.clearRect(0, 0, confCanvas.width, confCanvas.height);
-        for(let i = particles.length - 1; i >= 0; i--) {
-            let p = particles[i];
-            p.vy += 0.3; p.x += p.vx; p.y += p.vy; p.life -= 0.01;
-            cCtx.globalAlpha = Math.max(0, p.life);
-            cCtx.fillStyle = p.c;
-            cCtx.fillRect(p.x, p.y, p.s, p.s);
-            if(p.life <= 0 || p.y > confCanvas.height) particles.splice(i, 1);
+        for(let i = cParticles.length - 1; i >= 0; i--) {
+            let p = cParticles[i];
+            p.vy += 0.3; p.x += p.vx; p.y += p.vy; p.life -= 0.015;
+            cCtx.globalAlpha = Math.max(0, p.life); cCtx.fillStyle = p.c; cCtx.fillRect(p.x, p.y, p.s, p.s);
+            if(p.life <= 0 || p.y > confCanvas.height) cParticles.splice(i, 1);
         }
+        cCtx.globalAlpha = 1;
     }
+    loopConfetti();
 
-    // ==========================================
-    // 6. МЕНЮ И СВЯЗЬ С ПИТОНОМ (ФИНАЛ)
-    // ==========================================
-    document.getElementById('mainMenuBtn').onclick = () => document.getElementById('smartModal').classList.remove('hidden');
-    function closeMenu() { document.getElementById('smartModal').classList.add('hidden'); }
-    
+    // СОХРАНЕНИЕ ДЛЯ ПИТОН-БОТА
     window.saveAndExit = function() {
-        // САМОЕ ВАЖНОЕ: Мы отправляем ЧИСТУЮ ПРИБЫЛЬ (Она может быть минусовой!)
-        // Python код: balance = balance + earned_coins. Математика сойдется идеально.
+        if(crashState !== 'idle' || flipState !== 'idle' || wheelState !== 'idle') {
+            tg.showAlert('Дождитесь окончания игры!'); return;
+        }
         
-        // Если игрок выбил скин, мы передаем этот флаг, чтобы Питон дал ему +20% во всех играх!
-        let activeSkinCode = blackHoleUnlocked ? 'black_hole' : 'default';
-
         let data = {
-            game: "wheel",
-            coins: sessionNetProfit, 
-            score: 0, // У рулетки нет рекордов
+            game: "wheel", // Используем ID wheel для совместимости с ботом
+            coins: sessionNetProfit, // ОТПРАВЛЯЕМ ЧИСТУЮ ПРИБЫЛЬ (МОЖЕТ БЫТЬ МИНУСОМ!)
+            score: 0, 
             time_spent: Math.floor((Date.now() - startTime) / 1000),
-            active_skin: activeSkinCode
+            active_skin: 'default'
         };
-        
         tg.sendData(JSON.stringify(data));
     }
-
-    // Запуск
-    drawWheel();
-    updateUI();
-    loopConfetti();
 
 </script>
 </body>
