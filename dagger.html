@@ -3,89 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cyber Dagger 7.0</title>
+    <title>Cyber Hacker AAA</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        body { background: radial-gradient(circle at center, #1a1a2e, #050510); overflow: hidden; touch-action: none; color: white; height: 100vh; }
-        canvas { display: block; width: 100vw; height: 100vh; }
+        /* БАЗА И ИДЕАЛЬНАЯ ЗАЩИТА */
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; font-family: 'Courier New', Courier, monospace; -webkit-tap-highlight-color: transparent; }
+        body { background: #010400; overflow: hidden; touch-action: none; color: white; width: 100vw; height: 100vh; }
+        canvas { display: block; width: 100%; height: 100%; position: absolute; z-index: 10; }
         
-        #ui-layer { position: absolute; top: 15px; left: 15px; z-index: 100; text-shadow: 0 0 10px #000; font-weight: bold; pointer-events: none; }
-        .score-text { color: #fff; font-size: 26px; font-weight: 900; margin-bottom: 5px; text-shadow: 0 0 10px #0ff; }
-        .coins-text { color: #ffd700; font-size: 22px; text-shadow: 0 0 10px rgba(255, 215, 0, 0.8); }
-        .level-text { color: #ff00ff; font-size: 18px; margin-top: 5px; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 10px #ff00ff; }
+        /* ГЛАССМОРФИЗМ UI (Стиль Терминала) */
+        #ui-layer { position: absolute; top: 20px; left: 20px; z-index: 100; pointer-events: none; }
+        .hud-panel { background: rgba(0, 15, 0, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(0, 255, 0, 0.4); padding: 15px 25px; border-radius: 12px; box-shadow: 0 0 20px rgba(0,255,0,0.2); }
+        .score-label { color: #0f0; font-size: 14px; letter-spacing: 2px; font-weight: bold; text-shadow: 0 0 5px #0f0; }
+        .score-val { color: #fff; font-size: 36px; font-weight: 900; text-shadow: 0 0 15px #0f0; line-height: 1; margin: 5px 0; }
+        .coins-val { color: #ffd700; font-size: 18px; font-weight: bold; text-shadow: 0 0 10px rgba(255, 215, 0, 0.8); display: flex; align-items: center; gap: 8px; }
         
-        .smart-menu-btn { position: absolute; top: 15px; right: 15px; z-index: 1000; background: rgba(0, 0, 0, 0.7); color: #0ff; border: 2px solid #0ff; border-radius: 8px; padding: 10px 15px; font-weight: bold; cursor: pointer; box-shadow: 0 0 10px #0ff; }
+        .smart-menu-btn { position: absolute; top: 20px; right: 20px; z-index: 1000; background: rgba(0, 15, 0, 0.8); backdrop-filter: blur(10px); color: #0f0; border: 1px solid rgba(0,255,0,0.5); border-radius: 10px; padding: 12px 20px; font-weight: 900; letter-spacing: 1px; cursor: pointer; box-shadow: 0 0 15px rgba(0, 255, 0, 0.3); transition: 0.2s; pointer-events: auto; }
+        .smart-menu-btn:active { transform: scale(0.92); }
 
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 2000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
-        .hidden { display: none !important; }
-        .modal-content { background: linear-gradient(135deg, #111, #1a1a2e); border: 2px solid #0ff; border-radius: 15px; width: 85%; max-height: 85vh; padding: 20px; display: flex; flex-direction: column; gap: 12px; text-align: center; box-shadow: 0 0 30px rgba(0, 255, 255, 0.2); }
+        /* ЭЛИТНЫЕ МОДАЛЬНЫЕ ОКНА */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 5, 0, 0.9); z-index: 2000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(8px); opacity: 0; pointer-events: none; transition: 0.3s ease; }
+        .modal.active { opacity: 1; pointer-events: all; }
+        .modal-content { background: radial-gradient(circle at top, #002200, #000); border: 2px solid #0f0; border-radius: 16px; width: 88%; max-width: 420px; padding: 30px; display: flex; flex-direction: column; gap: 15px; text-align: center; box-shadow: 0 0 50px rgba(0, 255, 0, 0.2); transform: scale(0.95); transition: 0.3s; }
+        .modal.active .modal-content { transform: scale(1); }
         
-        .btn { padding: 15px; font-size: 16px; font-weight: bold; border-radius: 10px; color: white; border: none; text-transform: uppercase; cursor: pointer; transition: 0.1s; }
+        .modal-title { color: #0f0; text-transform: uppercase; letter-spacing: 4px; font-size: 26px; font-weight: 900; text-shadow: 0 0 10px #0f0; margin-bottom: 10px; }
+        
+        .btn { padding: 15px; font-size: 16px; font-weight: 900; border-radius: 10px; color: #000; border: none; text-transform: uppercase; cursor: pointer; transition: 0.2s; font-family: 'Courier New', Courier, monospace; }
         .btn:active { transform: scale(0.95); }
-        .btn-green { background: linear-gradient(45deg, #00b09b, #96c93d); }
-        .btn-blue { background: linear-gradient(45deg, #2193b0, #6dd5ed); }
-        .btn-red { background: linear-gradient(45deg, #ff416c, #ff4b2b); }
+        .btn-green { background: #0f0; box-shadow: 0 0 15px #0f0; }
+        .btn-blue { background: #0ff; box-shadow: 0 0 15px #0ff; }
+        .btn-red { background: #f00; box-shadow: 0 0 15px #f00; color: white; }
+        .btn-gold { background: #ffd700; box-shadow: 0 0 15px #ffd700; }
 
-        .shop-container { overflow-y: auto; max-height: 50vh; -webkit-overflow-scrolling: touch; touch-action: pan-y; display: flex; flex-direction: column; gap: 10px; padding: 5px; }
-        .skin-card { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 15px; border-radius: 10px; border: 1px solid #444; }
-        .skin-card.active { border-color: #0ff; box-shadow: 0 0 15px rgba(0,255,255,0.4); }
-        .buy-btn { padding: 8px 15px; border-radius: 5px; border: none; font-weight: bold; }
-        .btn-buy { background: #ffd700; color: #000; }
-        .btn-select { background: #0ff; color: #000; }
-        .btn-selected { background: #444; color: #888; }
+        /* МАГАЗИН (ДАРКНЕТ) */
+        .shop-container { overflow-y: auto; max-height: 50vh; display: flex; flex-direction: column; gap: 12px; padding: 5px; border-radius: 10px; }
+        .shop-container::-webkit-scrollbar { width: 4px; }
+        .shop-container::-webkit-scrollbar-thumb { background: #0f0; border-radius: 5px; }
         
-        .floating-text { position: absolute; font-size: 32px; font-weight: 900; color: #fff; text-shadow: 0 0 15px #0f0; pointer-events: none; animation: floatUp 1s ease-out forwards; z-index: 500; }
-        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-80px) scale(1.5); } }
+        .card { display: flex; justify-content: space-between; align-items: center; background: rgba(0,255,0,0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(0,255,0,0.2); transition: 0.2s; text-align: left; }
+        .card.active { background: rgba(0, 255, 0, 0.15); border-color: #0f0; box-shadow: 0 0 15px rgba(0,255,0,0.3); }
+        .card-icon { font-size: 26px; width: 45px; height: 45px; display: flex; justify-content: center; align-items: center; background: #000; border: 1px solid #0f0; border-radius: 8px; color: #0f0; }
+        
+        .buy-btn { padding: 10px 15px; border-radius: 8px; border: none; font-weight: bold; font-size: 14px; cursor: pointer; font-family: 'Courier New'; }
+        .btn-buy { background: #ffd700; color: #000; }
+        .btn-select { background: #0f0; color: #000; }
+        .btn-max { background: #333; color: #777; pointer-events: none; }
+
+        /* Анимации текста и эффектов */
+        .float-text { position: absolute; font-size: 24px; font-weight: bold; pointer-events: none; animation: floatUp 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards; z-index: 500; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-60px) scale(1.5); } }
+
+        .glitch { animation: glitch 0.2s cubic-bezier(.25, .46, .45, .94) both; }
+        @keyframes glitch { 0% { transform: translate(0) } 20% { transform: translate(-5px, 5px) } 40% { transform: translate(-5px, -5px) } 60% { transform: translate(5px, 5px) } 80% { transform: translate(5px, -5px) } 100% { transform: translate(0) } }
+
+        .flash { position: fixed; top:0; left:0; width:100%; height:100%; background: #0f0; z-index: 1500; pointer-events: none; opacity: 0; transition: 0.3s; mix-blend-mode: overlay; }
+        .flash.active { opacity: 0.5; transition: 0s; }
+        .flash.error { background: #f00; opacity: 0.5; transition: 0s; }
     </style>
 </head>
 <body>
 
+    <div class="flash" id="flashScreen"></div>
+
     <div id="ui-layer">
-        <div class="score-text">Очки: <span id="score">0</span></div>
-        <div class="coins-text"><span id="coins">0</span> 💰</div>
-        <div class="level-text" id="levelText">УРОВЕНЬ 1</div>
+        <div class="hud-panel">
+            <div class="score-label">СЕРВЕРОВ ВЗЛОМАНО</div>
+            <div class="score-val" id="score">0</div>
+            <div class="coins-val">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffd700"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.64-2.25 1.64-1.74 0-2.24-1.06-2.28-1.92H7.9c.04 1.46 1.06 2.67 2.97 3.03V19h1.76v-1.67c1.76-.3 2.94-1.42 2.94-2.93 0-2.36-1.98-3.07-3.26-3.36z"/></svg>
+                <span id="coins">0</span>
+            </div>
+            <div id="levelTxt" style="color: #fff; font-size: 14px; margin-top: 5px; opacity: 0.7;">УРОВЕНЬ БЕЗОПАСНОСТИ: 1</div>
+        </div>
     </div>
     
-    <button id="mainMenuBtn" class="smart-menu-btn">⚙️ МЕНЮ</button>
-    
-    <!-- Индикатор оставшихся ножей -->
-    <div id="daggers-left" style="position: absolute; bottom: 20px; left: 20px; z-index: 50; display: flex; flex-direction: column-reverse; gap: 5px;"></div>
-
+    <button id="mainMenuBtn" class="smart-menu-btn">/ROOT</button>
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Главное Меню -->
-    <div id="smartModal" class="modal hidden">
+    <!-- МЕНЮ ПАУЗЫ -->
+    <div id="smartModal" class="modal">
         <div class="modal-content">
-            <h2 style="color: white;">ПАУЗА</h2>
-            <button class="btn btn-blue" onclick="openShop()">🗡 АРСЕНАЛ (НОЖИ)</button>
-            <button class="btn btn-red" onclick="saveAndExit()">💾 ВЫХОД В БОТА</button>
-            <button class="btn btn-green" onclick="closeMenu()">▶ ПРОДОЛЖИТЬ</button>
+            <div class="modal-title">ДАРКНЕТ</div>
+            <button class="btn btn-gold" onclick="openShop('boosts')">💾 СОФТ (АПГРЕЙДЫ)</button>
+            <button class="btn btn-blue" onclick="openShop('skins')">👁 ИНТЕРФЕЙС (СКИНЫ)</button>
+            <button class="btn btn-red" onclick="saveAndExit()">🔌 ОТКЛЮЧИТЬСЯ</button>
+            <button class="btn btn-green" onclick="closeMenu()">▶ ПРОДОЛЖИТЬ ВЗЛОМ</button>
         </div>
     </div>
 
-    <!-- Ангар -->
-    <div id="shopModal" class="modal hidden">
+    <!-- МАГАЗИН -->
+    <div id="shopModal" class="modal">
         <div class="modal-content">
-            <h2 style="color: #0ff;">АРСЕНАЛ</h2>
-            <div style="color: #ffd700;">Баланс: <span id="shopCoins">0</span> 💰</div>
+            <div class="modal-title" id="shopTitle">СОФТ</div>
+            <div style="color: #ffd700; font-weight: 900; font-size: 18px; margin-bottom: 5px;">Баланс: <span id="shopCoins">0</span> 💰</div>
             <div class="shop-container" id="shopList"></div>
             <button class="btn btn-green" onclick="closeShop()">НАЗАД</button>
         </div>
     </div>
 
-    <!-- Смерть -->
-    <div id="gameOverScreen" class="modal hidden">
-        <div class="modal-content" style="background: transparent; border: none; box-shadow: none;">
-            <h1 style="color: #ff416c; font-size: 45px; text-shadow: 0 0 20px red; margin-bottom: 20px;">КЛИНОК СЛОМАН!</h1>
-            <button class="btn btn-blue" onclick="resetGame()" style="margin-bottom: 15px;">🔄 НАЧАТЬ ЗАНОВО</button>
-            <button class="btn btn-red" onclick="saveAndExit()">💾 ЗАБРАТЬ МОНЕТЫ</button>
+    <!-- СМЕРТЬ -->
+    <div id="gameOverScreen" class="modal">
+        <div class="modal-content" style="background: rgba(20,0,0,0.95); border-color: #f00;">
+            <h1 style="color: #f00; font-size: 40px; text-shadow: 0 0 30px #f00; font-weight: 900;">СИСТЕМА ЗАБЛОКИРОВАНА</h1>
+            <p style="color: #aaa; font-size: 16px; margin-bottom: 20px;">Вас вычислили. Соединение сброшено.</p>
+            <button class="btn btn-blue" onclick="resetGame()" style="margin-bottom: 12px;">🔄 ПОВТОРИТЬ ВЗЛОМ</button>
+            <button class="btn btn-red" onclick="saveAndExit()">💾 СОХРАНИТЬ ДАННЫЕ</button>
         </div>
     </div>
 
 <script>
     // ==========================================
-    // 1. ИНИЦИАЛИЗАЦИЯ И БЛОКИРОВКИ ТЕЛЕГРАМА
+    // 1. ИНИЦИАЛИЗАЦИЯ TELEGRAM
     // ==========================================
     const tg = window.Telegram.WebApp;
     tg.ready(); tg.expand();
@@ -97,388 +126,391 @@
     }, { passive: false });
 
     // ==========================================
-    // 2. БАЗА СКИНОВ НОЖЕЙ (10 ШТУК)
+    // 2. БАЗЫ ДАННЫХ (СКИНЫ И СОФТ)
     // ==========================================
     const SKINS = [
-        { id: 'default', name: 'Cyber Kunai', price: 0, c1: '#ccc', c2: '#0ff' },
-        { id: 'katana', name: 'Mini Katana', price: 1000, c1: '#fff', c2: '#ff0055' },
-        { id: 'gold', name: 'Golden Dagger', price: 1500, c1: '#ffd700', c2: '#fff' },
-        { id: 'emerald', name: 'Emerald Blade', price: 2000, c1: '#00ff00', c2: '#005500' },
-        { id: 'blood', name: 'Blood Spike', price: 2500, c1: '#ff0000', c2: '#550000' },
-        { id: 'shuriken', name: 'Ninja Shuriken', price: 3000, c1: '#777', c2: '#0ff' },
-        { id: 'laser_blue', name: 'Laser Sword', price: 3000, c1: '#fff', c2: '#0055ff', isLaser: true },
-        { id: 'laser_red', name: 'Sith Laser', price: 3000, c1: '#fff', c2: '#ff0000', isLaser: true },
-        { id: 'amethyst', name: 'Amethyst Shiv', price: 3000, c1: '#d400ff', c2: '#5500ff' },
-        { id: 'black_hole', name: 'Dark Matter (+20%)', price: 3000, c1: '#222', c2: '#800080' }
+        { id: 'default', name: 'Matrix Green', price: 0, bg: '#010400', c1: '#00ff00', c2: '#004400', matrix: '#0f0', icon: '💻' },
+        { id: 'neon', name: 'Cyber Neon', price: 1000, bg: '#050010', c1: '#00ffff', c2: '#ff00ff', matrix: '#0ff', icon: '🌐' },
+        { id: 'firewall', name: 'Firewall', price: 1500, bg: '#1a0000', c1: '#ff0000', c2: '#ff8800', matrix: '#f00', icon: '🔥' },
+        { id: 'gold', name: 'Billionaire', price: 2000, bg: '#0a0a00', c1: '#ffd700', c2: '#aa8800', matrix: '#ffd700', icon: '👑' },
+        { id: 'quantum', name: 'Quantum CPU', price: 2500, bg: '#00001a', c1: '#aaaaff', c2: '#0000ff', matrix: '#00f', icon: '⚛' },
+        { id: 'black_hole', name: 'Dark Web (+20%)', price: 5000, bg: '#000000', c1: '#800080', c2: '#440044', matrix: '#800080', icon: '🕷' }
     ];
 
-    let localCoins = parseInt(localStorage.getItem('dagger_coins')) || 0;
-    let unlocked = JSON.parse(localStorage.getItem('dagger_unlocked')) || ['default'];
-    let activeSkin = localStorage.getItem('dagger_skin') || 'default';
+    const UPGRADES = {
+        decoder: { name: 'Дешифратор зон', desc: 'Расширяет зеленую зону взлома', icon: '🔓', baseCost: 1500, costMult: 1.5, maxLvl: 5, val: 0.1 }, // Увеличивает угол
+        slowmo: { name: 'Замедлитель CPU', desc: 'Кольца крутятся чуть медленнее', icon: '⏱', baseCost: 2000, costMult: 1.6, maxLvl: 5, val: 0.05 } // Уменьшает скорость
+    };
+
+    // Используем dagger_keys для сохранения совместимости с ботом
+    let localCoins = parseInt(localStorage.getItem('dagger_coins')) || 0; 
+    let unlockedSkins = JSON.parse(localStorage.getItem('hacker_skins')) || ['default'];
+    let activeSkin = localStorage.getItem('hacker_active_skin') || 'default';
+    let levels = JSON.parse(localStorage.getItem('hacker_levels')) || { decoder: 1, slowmo: 1 };
     
-    let sessionCoins = 0;
-    let startTime = Date.now();
+    let sessionCoins = 0; let startTime = Date.now();
 
     // ==========================================
-    // 3. МАТЕМАТИКА И ДВИЖОК ИГРЫ
+    // 3. АРХИТЕКТУРА ИГРЫ (HACK ENGINE)
     // ==========================================
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     let cw = canvas.width = window.innerWidth;
     let ch = canvas.height = window.innerHeight;
+    let cx = cw / 2; let cy = ch / 2;
 
     let gameState = 'start'; 
-    let score = 0;
-    let level = 1;
+    let score = 0; // Взломанные сервера
+    let currentLevel = 1; // Уровень сложности текущего сервера
+    let frames = 0;
+
+    // МАТРИЦА (Дождь из цифр на фоне)
+    const columns = Math.floor(cw / 20);
+    const drops = [];
+    for(let x = 0; x < columns; x++) drops[x] = Math.random() * ch;
+
+    let rings = [];
+    let activeRingIndex = 0;
     let particles = [];
 
-    // Мишень
-    let target = {
-        x: cw / 2,
-        y: ch * 0.35,
-        r: 70,
-        angle: 0,
-        speed: 0.03,
-        stuckDaggers: [], // Углы уже воткнутых ножей (в радианах)
-        type: 'wood' // wood, melon, gear, reactor
-    };
-
-    // Активный нож (который летит)
-    let activeDagger = null;
-    let daggersToThrow = 5;
-    let daggersLeft = 5;
-
-    // Отрисовка ножа
-    function drawDagger(ctx, skin, isStuck = false) {
-        ctx.shadowBlur = skin.isLaser ? 15 : 5;
-        ctx.shadowColor = skin.c2;
-        
-        if (skin.id === 'shuriken') {
-            // Сюрикен (если летит - крутится, если воткнут - стоит)
-            ctx.fillStyle = skin.c1;
-            ctx.beginPath();
-            ctx.moveTo(0, -20); ctx.lineTo(5, -5); ctx.lineTo(20, 0); ctx.lineTo(5, 5);
-            ctx.lineTo(0, 20); ctx.lineTo(-5, 5); ctx.lineTo(-20, 0); ctx.lineTo(-5, -5);
-            ctx.closePath(); ctx.fill();
-            ctx.fillStyle = skin.c2;
-            ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI*2); ctx.fill();
-        } 
-        else if (skin.isLaser) {
-            // Лазерный меч
-            ctx.fillStyle = skin.c1;
-            ctx.beginPath(); ctx.roundRect(-4, -30, 8, 40, 5); ctx.fill(); // Лезвие
-            ctx.fillStyle = '#555';
-            ctx.fillRect(-6, 10, 12, 15); // Рукоять
-        }
-        else {
-            // Классический Кунай / Клинок
-            ctx.fillStyle = skin.c1;
-            ctx.beginPath();
-            ctx.moveTo(0, -30); // Острие
-            ctx.lineTo(8, -5); // Правый край
-            ctx.lineTo(3, 5); // Начало рукояти
-            ctx.lineTo(3, 20); // Конец рукояти
-            ctx.arc(0, 23, 3, 0, Math.PI*2); // Кольцо
-            ctx.lineTo(-3, 20);
-            ctx.lineTo(-3, 5);
-            ctx.lineTo(-8, -5);
-            ctx.closePath(); ctx.fill();
-            // Кровосток/Свечение в центре
-            ctx.fillStyle = skin.c2;
-            ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(2, -5); ctx.lineTo(-2, -5); ctx.closePath(); ctx.fill();
-        }
-    }
-
-    // Отрисовка Мишени (Босса)
-    function drawTarget() {
-        ctx.save();
-        ctx.translate(target.x, target.y);
-        ctx.rotate(target.angle);
-
-        ctx.shadowBlur = 10;
-        
-        if (target.type === 'wood') {
-            ctx.shadowColor = '#5c4033'; ctx.fillStyle = '#8b5a2b';
-            ctx.beginPath(); ctx.arc(0, 0, target.r, 0, Math.PI*2); ctx.fill();
-            ctx.strokeStyle = '#5c4033'; ctx.lineWidth = 4;
-            ctx.beginPath(); ctx.arc(0, 0, target.r * 0.7, 0, Math.PI*2); ctx.stroke();
-            ctx.beginPath(); ctx.arc(0, 0, target.r * 0.4, 0, Math.PI*2); ctx.stroke();
-        } 
-        else if (target.type === 'melon') {
-            ctx.shadowColor = '#00ff00';
-            let grad = ctx.createRadialGradient(0,0,10, 0,0,target.r);
-            grad.addColorStop(0, '#ff4b2b'); grad.addColorStop(0.8, '#ff416c'); grad.addColorStop(1, '#00b09b');
-            ctx.fillStyle = grad;
-            ctx.beginPath(); ctx.arc(0, 0, target.r, 0, Math.PI*2); ctx.fill();
-            // Семечки
-            ctx.fillStyle = '#000';
-            for(let i=0; i<6; i++) {
-                ctx.beginPath(); ctx.ellipse(Math.cos(i)*20, Math.sin(i)*20, 3, 6, i, 0, Math.PI*2); ctx.fill();
-            }
-        }
-        else if (target.type === 'gear') {
-            ctx.shadowColor = '#888'; ctx.fillStyle = '#444';
-            ctx.beginPath();
-            for (let i = 0; i < 12; i++) {
-                let a = (Math.PI*2 / 12) * i;
-                ctx.lineTo(Math.cos(a)*target.r, Math.sin(a)*target.r);
-                ctx.lineTo(Math.cos(a+0.1)*(target.r+10), Math.sin(a+0.1)*(target.r+10));
-                ctx.lineTo(Math.cos(a+0.4)*(target.r+10), Math.sin(a+0.4)*(target.r+10));
-            }
-            ctx.closePath(); ctx.fill();
-            ctx.fillStyle = '#222'; ctx.beginPath(); ctx.arc(0, 0, target.r*0.5, 0, Math.PI*2); ctx.fill();
-        }
-        else if (target.type === 'reactor') {
-            ctx.shadowColor = '#0ff'; ctx.shadowBlur = 20;
-            ctx.fillStyle = '#111';
-            ctx.beginPath(); ctx.arc(0, 0, target.r, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = '#0ff';
-            ctx.beginPath(); ctx.arc(0, 0, target.r*0.6, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = '#fff';
-            ctx.beginPath(); ctx.arc(0, 0, target.r*0.3, 0, Math.PI*2); ctx.fill();
-        }
-
-        // Рисуем воткнутые ножи
-        let skin = SKINS.find(s => s.id === activeSkin);
-        for (let a of target.stuckDaggers) {
-            ctx.save();
-            ctx.rotate(a);
-            ctx.translate(0, target.r); // Сдвигаем на край мишени
-            drawDagger(ctx, skin, true);
-            ctx.restore();
-        }
-        ctx.restore();
-    }
-
-    function initLevel() {
-        target.stuckDaggers = [];
-        target.angle = 0;
-        
-        // Усложнение и смена боссов
-        if (level % 20 === 0) target.type = 'reactor';
-        else if (level % 10 === 0) target.type = 'gear';
-        else if (level % 5 === 0) target.type = 'melon';
-        else target.type = 'wood';
-
-        // Скорость и количество ножей
-        daggersToThrow = 5 + Math.floor(level / 3);
-        if (daggersToThrow > 12) daggersToThrow = 12; // Максимум ножей
-        daggersLeft = daggersToThrow;
-        
-        target.speed = 0.02 + (level * 0.002);
-        
-        activeDagger = null;
-        updateDaggerUI();
-        document.getElementById('levelText').innerText = 'УРОВЕНЬ ' + level;
-    }
-
-    function spawnDagger() {
-        if (daggersLeft <= 0) return;
-        activeDagger = {
-            x: cw / 2, y: ch - 100, isFlying: false, speed: 25, spinAngle: 0
+    function getStats() {
+        return {
+            zoneBonus: (levels.decoder - 1) * UPGRADES.decoder.val,
+            speedSlow: (levels.slowmo - 1) * UPGRADES.slowmo.val
         };
     }
 
-    function updateDaggerUI() {
-        let container = document.getElementById('daggers-left');
-        container.innerHTML = '';
-        let skin = SKINS.find(s => s.id === activeSkin);
-        for (let i = 0; i < daggersLeft; i++) {
-            container.innerHTML += `<div style="width:10px; height:25px; background:${skin.c1}; border-radius:3px; box-shadow:0 0 5px ${skin.c2};"></div>`;
+    // ГЕНЕРАЦИЯ СЕРВЕРА (ЗАМКА)
+    function generateServer() {
+        rings = [];
+        activeRingIndex = 0;
+        let numRings = Math.min(3 + Math.floor(currentLevel / 3), 7); // От 3 до 7 колец
+        let baseRadius = Math.min(cw, ch) * 0.4;
+        let ringThickness = baseRadius / (numRings + 1);
+
+        let stats = getStats();
+
+        for (let i = 0; i < numRings; i++) {
+            // Чем ближе к центру (i больше), тем сложнее
+            let speed = (0.02 + (currentLevel * 0.002) + (i * 0.005)) * (1 - stats.speedSlow);
+            let dir = Math.random() > 0.5 ? 1 : -1;
+            
+            // Базовая ширина зоны (уменьшается к центру)
+            let targetWidth = Math.max(0.2, (0.8 - i * 0.1)) + stats.zoneBonus;
+
+            rings.push({
+                radius: baseRadius - i * ringThickness,
+                thickness: ringThickness * 0.8,
+                angle: Math.random() * Math.PI * 2,
+                speed: speed * dir,
+                targetAngle: Math.random() * Math.PI * 2,
+                targetWidth: targetWidth, // В радианах
+                isLocked: false
+            });
         }
     }
 
-    function throwDagger() {
-        if (activeDagger && !activeDagger.isFlying) {
-            activeDagger.isFlying = true;
+    function createParticles(x, y, color, count=20) {
+        for(let i=0; i<count; i++) {
+            particles.push({
+                x: x, y: y, vx: (Math.random()-0.5)*12, vy: (Math.random()-0.5)*12,
+                life: 1, color: color, size: Math.random()*3 + 1
+            });
         }
     }
 
-    function createExplosion(x, y, color) {
-        for(let i=0; i<30; i++) particles.push({x: x, y: y, vx: (Math.random()-0.5)*15, vy: (Math.random()-0.5)*15, life: 1, c: color});
-    }
-    
-    function createFloatingText(txt, color) {
-        let el = document.createElement('div');
-        el.className = 'floating-text'; el.innerText = txt;
-        el.style.left = (cw/2 - 40) + 'px'; el.style.top = (ch/2) + 'px';
-        if(color) el.style.color = color; el.style.textShadow = `0 0 15px ${color}`;
+    function createFloatText(x, y, txt, color) {
+        const el = document.createElement('div');
+        el.className = 'float-text'; el.innerText = txt; el.style.color = color;
+        el.style.textShadow = `0 0 10px ${color}`;
+        el.style.left = x + 'px'; el.style.top = y + 'px';
         document.body.appendChild(el);
-        setTimeout(() => el.remove(), 1000);
+        setTimeout(() => el.remove(), 800);
     }
 
+    function initGame() {
+        score = 0; sessionCoins = 0; currentLevel = 1;
+        document.getElementById('score').innerText = score;
+        document.getElementById('coins').innerText = sessionCoins;
+        document.getElementById('levelTxt').innerText = `УРОВЕНЬ БЕЗОПАСНОСТИ: ${currentLevel}`;
+        
+        generateServer();
+        particles = [];
+        gameState = 'playing';
+        updateColors();
+    }
+
+    function updateColors() {
+        let s = SKINS.find(sk => sk.id === activeSkin);
+        document.body.style.background = s.bg;
+    }
+
+    // --- ГЛАВНЫЙ ИГРОВОЙ ЦИКЛ ---
     function loop() {
         requestAnimationFrame(loop);
-        if (gameState !== 'playing') return;
+        if (gameState !== 'playing' && gameState !== 'start') return;
 
-        ctx.clearRect(0, 0, cw, ch);
         let skin = SKINS.find(s => s.id === activeSkin);
 
-        // Хардкор: меняем направление мишени на высоких уровнях
-        if (level > 3 && Math.random() < 0.01) target.speed *= -1;
-        target.angle += target.speed;
+        // 1. ОТРИСОВКА МАТРИЦЫ (ФОН)
+        ctx.fillStyle = `rgba(${hexToRgb(skin.bg)}, 0.2)`; // Полупрозрачный фон для шлейфа
+        ctx.fillRect(0, 0, cw, ch);
 
-        drawTarget();
+        ctx.fillStyle = skin.matrix; ctx.font = "16px Courier";
+        for (let i = 0; i < drops.length; i++) {
+            let text = Math.random() > 0.5 ? "1" : "0";
+            if(Math.random() > 0.95) text = String.fromCharCode(0x30A0 + Math.random() * 96); // Японские символы для стиля
+            ctx.fillText(text, i * 20, drops[i] * 20);
+            if (drops[i] * 20 > ch && Math.random() > 0.975) drops[i] = 0;
+            drops[i]++;
+        }
 
-        // Полет ножа и ИДЕАЛЬНАЯ МАТЕМАТИКА СТОЛКНОВЕНИЙ
-        if (activeDagger) {
-            if (activeDagger.isFlying) {
-                activeDagger.y -= activeDagger.speed;
-                if (skin.id === 'shuriken') activeDagger.spinAngle += 0.5;
+        // 2. ОТРИСОВКА ЗАМКА (СЕРВЕРА)
+        if (gameState === 'playing') {
+            for (let i = 0; i < rings.length; i++) {
+                let r = rings[i];
+                
+                // Движение (только если не заблокировано)
+                if (!r.isLocked && i === activeRingIndex) r.angle += r.speed;
 
-                // Если нож достиг мишени
-                if (activeDagger.y <= target.y + target.r) {
-                    
-                    // Вычисляем угол втыкания (относительно повернутой мишени)
-                    // Нож летит снизу (Math.PI/2), мишень повернута на target.angle
-                    let hitAngle = (Math.PI / 2 - target.angle) % (Math.PI * 2);
-                    if (hitAngle < 0) hitAngle += Math.PI * 2;
+                // Базовое кольцо (фон)
+                ctx.beginPath(); ctx.arc(cx, cy, r.radius, 0, Math.PI*2);
+                ctx.lineWidth = r.thickness;
+                ctx.strokeStyle = `rgba(${hexToRgb(skin.c2)}, 0.3)`;
+                ctx.stroke();
 
-                    // Проверяем столкновение с ДРУГИМИ ножами
-                    let crashed = false;
-                    const hitBoxRadius = 0.25; // Радианы (Ширина ножа)
+                // ЦЕЛЕВАЯ ЗОНА (Уязвимость)
+                ctx.beginPath();
+                ctx.arc(cx, cy, r.radius, r.targetAngle - r.targetWidth/2, r.targetAngle + r.targetWidth/2);
+                ctx.strokeStyle = r.isLocked ? skin.c1 : 'rgba(255, 255, 255, 0.5)';
+                if (i === activeRingIndex && !r.isLocked) {
+                    ctx.shadowBlur = 10; ctx.shadowColor = '#fff';
+                }
+                ctx.stroke(); ctx.shadowBlur = 0;
 
-                    for (let a of target.stuckDaggers) {
-                        let diff = Math.abs(a - hitAngle);
-                        // Нормализация разницы (чтобы 0 и 359 градусов считались рядом)
-                        if (diff > Math.PI) diff = Math.PI * 2 - diff;
-                        if (diff < hitBoxRadius) { crashed = true; break; }
-                    }
+                // СКАНЕР (Указатель игрока)
+                ctx.beginPath();
+                // Делаем сканер как точку/короткую дугу
+                ctx.arc(cx, cy, r.radius, r.angle - 0.05, r.angle + 0.05);
+                ctx.strokeStyle = r.isLocked ? skin.c1 : skin.matrix;
+                ctx.lineWidth = r.thickness * 1.2;
+                if (i === activeRingIndex) {
+                    ctx.shadowBlur = 15; ctx.shadowColor = skin.matrix;
+                }
+                ctx.stroke(); ctx.shadowBlur = 0;
 
-                    if (crashed) {
-                        createExplosion(activeDagger.x, activeDagger.y, '#f00');
-                        activeDagger = null;
-                        gameOver();
-                        return;
-                    } else {
-                        // УСПЕШНОЕ ВТЫКАНИЕ
-                        target.stuckDaggers.push(hitAngle);
-                        createExplosion(activeDagger.x, activeDagger.y, '#fff');
-                        
-                        score++;
-                        document.getElementById('score').innerText = score;
-                        
-                        daggersLeft--;
-                        updateDaggerUI();
-                        activeDagger = null;
-
-                        // Если ножи кончились - УРОВЕНЬ ПРОЙДЕН
-                        if (daggersLeft === 0) {
-                            createExplosion(target.x, target.y, skin.c2);
-                            let reward = (level % 5 === 0) ? 100 : 10; // Босс дает 100 монет!
-                            sessionCoins += reward; localCoins += reward;
-                            document.getElementById('coins').innerText = sessionCoins;
-                            createFloatingText(`+${reward} 💰`, '#0f0');
-                            
-                            level++;
-                            setTimeout(initLevel, 1000);
-                        } else {
-                            setTimeout(spawnDagger, 200);
-                        }
-                    }
+                // Если кольцо пройдено, рисуем линии соединения
+                if (r.isLocked && i < rings.length - 1 && rings[i+1].isLocked) {
+                    ctx.beginPath();
+                    ctx.moveTo(cx + Math.cos(r.targetAngle)*r.radius, cy + Math.sin(r.targetAngle)*r.radius);
+                    ctx.lineTo(cx + Math.cos(rings[i+1].targetAngle)*rings[i+1].radius, cy + Math.sin(rings[i+1].targetAngle)*rings[i+1].radius);
+                    ctx.strokeStyle = skin.c1; ctx.lineWidth = 2; ctx.stroke();
                 }
             }
             
-            // Отрисовка летящего/ожидающего ножа
-            if (activeDagger) {
-                ctx.save();
-                ctx.translate(activeDagger.x, activeDagger.y);
-                if (skin.id === 'shuriken' && activeDagger.isFlying) ctx.rotate(activeDagger.spinAngle);
-                drawDagger(ctx, skin, false);
-                ctx.restore();
-            }
-        } else if (daggersLeft > 0 && target.stuckDaggers.length < daggersToThrow) {
-            spawnDagger();
+            // Центр сервера (Ядро)
+            ctx.beginPath(); ctx.arc(cx, cy, rings[rings.length-1].radius - 20, 0, Math.PI*2);
+            ctx.fillStyle = activeRingIndex >= rings.length ? skin.c1 : skin.c2;
+            ctx.shadowBlur = 30; ctx.shadowColor = activeRingIndex >= rings.length ? skin.c1 : 'transparent';
+            ctx.fill(); ctx.shadowBlur = 0;
+            ctx.fillStyle = '#000'; ctx.font = 'bold 20px Courier'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(activeRingIndex >= rings.length ? "ACCESS" : "LOCKED", cx, cy);
+        } else if (gameState === 'start') {
+            ctx.fillStyle = skin.matrix; ctx.font = 'bold 24px Courier'; ctx.textAlign = 'center';
+            ctx.shadowBlur = 15; ctx.shadowColor = skin.matrix;
+            ctx.fillText("> ТАПНИ ДЛЯ ВЗЛОМА <", cw/2, ch/2);
+            ctx.shadowBlur = 0;
         }
 
         // Частицы
         for (let i = particles.length - 1; i >= 0; i--) {
-            let p = particles[i]; p.x += p.vx; p.y += p.vy; p.life -= 0.05;
-            ctx.globalAlpha = p.life > 0 ? p.life : 0;
-            ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill();
+            let p = particles[i]; p.x += p.vx; p.y += p.vy; p.life -= 0.03;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
             if (p.life <= 0) particles.splice(i, 1);
         }
         ctx.globalAlpha = 1;
+        frames++;
+    }
+
+    function hexToRgb(hex) {
+        let r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return r ? `${parseInt(r[1], 16)}, ${parseInt(r[2], 16)}, ${parseInt(r[3], 16)}` : '0,255,0';
     }
 
     // ==========================================
-    // 4. УПРАВЛЕНИЕ И UI
+    // 4. МЕХАНИКА ВЗЛОМА (ТАП)
     // ==========================================
     window.addEventListener('touchstart', e => {
         if(e.target.closest('.smart-menu-btn') || e.target.closest('.modal')) return;
-        if(gameState === 'start') { initLevel(); gameState = 'playing'; spawnDagger(); return; }
-        if(gameState === 'playing') throwDagger();
+        if(gameState === 'start') { initGame(); return; }
+        if(gameState !== 'playing') return;
+
+        if (activeRingIndex < rings.length) {
+            let r = rings[activeRingIndex];
+            
+            // Идеальная математика кратчайшего угла
+            let normalizedAngle = ((r.angle % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
+            let normalizedTarget = ((r.targetAngle % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
+            
+            let diff = Math.abs(normalizedAngle - normalizedTarget);
+            if (diff > Math.PI) diff = Math.PI * 2 - diff; // Кратчайшее расстояние по кругу
+            
+            let skin = SKINS.find(s => s.id === activeSkin);
+
+            // ПРОВЕРКА ПОПАДАНИЯ
+            if (diff <= r.targetWidth / 2) {
+                // УСПЕХ
+                r.isLocked = true;
+                // Фиксируем сканер ровно по центру зоны для красоты
+                r.angle = r.targetAngle; 
+                
+                let px = cx + Math.cos(r.targetAngle) * r.radius;
+                let py = cy + Math.sin(r.targetAngle) * r.radius;
+                createParticles(px, py, skin.c1, 15);
+                
+                if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+                
+                // Эффект вспышки
+                let flash = document.getElementById('flashScreen');
+                flash.style.background = skin.c1;
+                flash.classList.add('active'); setTimeout(() => flash.classList.remove('active'), 50);
+
+                activeRingIndex++;
+
+                // СЕРВЕР ВЗЛОМАН ПОЛНОСТЬЮ!
+                if (activeRingIndex >= rings.length) {
+                    score++; currentLevel++;
+                    let earnedCoins = 10 * currentLevel;
+                    sessionCoins += earnedCoins; localCoins += earnedCoins;
+                    
+                    document.getElementById('score').innerText = score;
+                    document.getElementById('coins').innerText = sessionCoins;
+                    document.getElementById('levelTxt').innerText = `УРОВЕНЬ БЕЗОПАСНОСТИ: ${currentLevel}`;
+                    
+                    createParticles(cx, cy, skin.c1, 50);
+                    createFloatText(cx, cy - 50, `ACCESS GRANTED +${earnedCoins}💰`, skin.c1);
+                    if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                    
+                    // Переход к следующему уровню через 1 сек
+                    setTimeout(generateServer, 1000);
+                }
+            } else {
+                // ОШИБКА (ПРОВАЛ)
+                gameOver();
+            }
+        }
     });
 
+    // ==========================================
+    // 5. ОКОНЧАНИЕ И МЕНЮ
+    // ==========================================
     function gameOver() {
         gameState = 'gameover';
-        localStorage.setItem('dagger_coins', localCoins);
-        setTimeout(() => document.getElementById('gameOverScreen').classList.remove('hidden'), 500);
+        if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        
+        document.body.classList.add('glitch');
+        setTimeout(() => document.body.classList.remove('glitch'), 300);
+        
+        let flash = document.getElementById('flashScreen');
+        flash.className = 'flash error active';
+        setTimeout(() => flash.className = 'flash', 150);
+        
+        localStorage.setItem('dagger_coins', localCoins); 
+        setTimeout(() => document.getElementById('gameOverScreen').classList.add('active'), 500);
     }
 
     function resetGame() {
-        document.getElementById('gameOverScreen').classList.add('hidden');
-        score = 0; level = 1;
-        document.getElementById('score').innerText = score;
-        initLevel(); gameState = 'playing'; spawnDagger();
+        document.getElementById('gameOverScreen').classList.remove('active');
+        initGame();
     }
 
-    // МЕНЮ И МАГАЗИН
+    // МЕНЮ
     document.getElementById('mainMenuBtn').onclick = () => {
         if(gameState === 'playing') gameState = 'paused';
-        document.getElementById('smartModal').classList.remove('hidden');
+        document.getElementById('smartModal').classList.add('active');
     }
     function closeMenu() {
-        document.getElementById('smartModal').classList.add('hidden');
+        document.getElementById('smartModal').classList.remove('active');
         if(gameState === 'paused') gameState = 'playing';
     }
-    
-    function openShop() {
-        document.getElementById('smartModal').classList.add('hidden');
-        document.getElementById('shopModal').classList.remove('hidden');
-        document.getElementById('shopCoins').innerText = localCoins;
-        let list = document.getElementById('shopList'); list.innerHTML = '';
+
+    function openShop(type) {
+        document.getElementById('smartModal').classList.remove('active');
+        document.getElementById('shopModal').classList.add('active');
+        document.getElementById('shopCoins').innerText = localCoins.toLocaleString();
         
-        SKINS.forEach(s => {
-            let isUnl = unlocked.includes(s.id); let isAct = activeSkin === s.id;
-            let btn = isAct ? `<button class="buy-btn btn-selected">ВЫБРАН</button>` :
-                      isUnl ? `<button class="buy-btn btn-select" onclick="equipSkin('${s.id}')">НАДЕТЬ</button>` :
-                      `<button class="buy-btn btn-buy" onclick="buySkin('${s.id}', ${s.price})">КУПИТЬ (${s.price})</button>`;
-            list.innerHTML += `
-                <div class="skin-card ${isAct ? 'active' : ''}">
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <div style="width:30px; height:30px; background:linear-gradient(${s.c1}, ${s.c2}); border-radius:5px; box-shadow:0 0 10px ${s.c2};"></div>
-                        <div style="font-weight:bold;">${s.name}</div>
-                    </div>
-                    ${btn}
-                </div>`;
-        });
+        const list = document.getElementById('shopList'); list.innerHTML = '';
+        
+        if (type === 'skins') {
+            document.getElementById('shopTitle').innerText = 'ИНТЕРФЕЙСЫ';
+            SKINS.forEach(s => {
+                let isUnl = unlockedSkins.includes(s.id); let isAct = activeSkin === s.id;
+                let btn = isAct ? `<button class="buy-btn btn-max">АКТИВЕН</button>` :
+                          isUnl ? `<button class="buy-btn btn-select" onclick="equipSkin('${s.id}')">ВЫБРАТЬ</button>` :
+                          `<button class="buy-btn btn-buy" onclick="buySkin('${s.id}', ${s.price})">${s.price.toLocaleString()}💰</button>`;
+
+                list.innerHTML += `
+                    <div class="card ${isAct ? 'active' : ''}">
+                        <div class="card-icon" style="color:${s.matrix}; border-color:${s.matrix};">${s.icon}</div>
+                        <div style="flex-grow:1; margin-left:15px; font-weight:900; font-size:16px; color:${s.matrix};">${s.name}</div>
+                        ${btn}
+                    </div>`;
+            });
+        } else if (type === 'boosts') {
+            document.getElementById('shopTitle').innerText = 'СОФТ ДЛЯ ВЗЛОМА';
+            Object.keys(UPGRADES).forEach(key => {
+                let u = UPGRADES[key]; let lvl = levels[key];
+                let isMax = lvl >= u.maxLvl;
+                let cost = Math.floor(u.baseCost * Math.pow(u.costMult, lvl));
+                
+                let btn = isMax ? `<button class="buy-btn btn-max">MAX LVL</button>` :
+                                  `<button class="buy-btn btn-buy" onclick="buyUpgrade('${key}', ${cost})">${cost.toLocaleString()}💰</button>`;
+
+                list.innerHTML += `
+                    <div class="card">
+                        <div class="card-icon">${u.icon}</div>
+                        <div style="flex-grow:1; margin-left:15px;">
+                            <div style="font-weight:900; font-size:16px; color:#0f0;">${u.name} <span style="color:#fff; font-size:12px;">Lvl ${lvl}</span></div>
+                            <div style="font-size:12px; color:#aaa;">${u.desc}</div>
+                        </div>
+                        ${btn}
+                    </div>`;
+            });
+        }
     }
-    function closeShop() { document.getElementById('shopModal').classList.add('hidden'); document.getElementById('smartModal').classList.remove('hidden'); }
-    
+
+    function closeShop() { document.getElementById('shopModal').classList.remove('active'); document.getElementById('smartModal').classList.add('active'); }
+
     window.buySkin = function(id, price) {
-        if (localCoins >= price) { localCoins -= price; unlocked.push(id); equipSkin(id); saveData(); }
-        else tg.showAlert('Нужно больше монет! Убивай боссов.');
+        if (localCoins >= price) { localCoins -= price; unlockedSkins.push(id); equipSkin(id); saveData(); }
+        else tg.showAlert('Доступ запрещен: Недостаточно средств!');
     }
-    window.equipSkin = function(id) { activeSkin = id; openShop(); saveData(); updateDaggerUI(); }
-    
+    window.equipSkin = function(id) { activeSkin = id; openShop('skins'); saveData(); updateColors(); }
+
+    window.buyUpgrade = function(key, cost) {
+        if (localCoins >= cost) {
+            localCoins -= cost; levels[key]++; openShop('boosts'); saveData();
+            if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        } else {
+            tg.showAlert('Доступ запрещен: Недостаточно средств!');
+        }
+    }
+
     function saveData() {
-        localStorage.setItem('dagger_coins', localCoins);
-        localStorage.setItem('dagger_unlocked', JSON.stringify(unlocked));
-        localStorage.setItem('dagger_skin', activeSkin);
+        localStorage.setItem('dagger_coins', localCoins); // Старый ключ
+        localStorage.setItem('hacker_skins', JSON.stringify(unlockedSkins));
+        localStorage.setItem('hacker_active_skin', activeSkin);
+        localStorage.setItem('hacker_levels', JSON.stringify(levels));
     }
 
     window.saveAndExit = function() {
-        tg.sendData(JSON.stringify({
-            game: "dagger", coins: sessionCoins, score: score,
-            time_spent: Math.floor((Date.now() - startTime) / 1000), active_skin: activeSkin
-        }));
+        saveData();
+        tg.sendData(JSON.stringify({ game: "dagger", coins: sessionCoins, score: score, time_spent: Math.floor((Date.now() - startTime) / 1000), active_skin: activeSkin }));
     }
 
-    // Запуск
-    ctx.fillStyle = '#050510'; ctx.fillRect(0, 0, cw, ch);
-    ctx.fillStyle = '#0ff'; ctx.font = '24px Arial'; ctx.textAlign = 'center';
-    ctx.fillText("ТАПНИ ЧТОБЫ МЕТАТЬ", cw/2, ch/2);
+    // СТАРТ
+    updateColors();
     requestAnimationFrame(loop);
 
 </script>
