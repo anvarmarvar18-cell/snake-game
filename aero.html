@@ -3,72 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aero City - NEXT GEN</title>
+    <title>Aero City: Cyber Skyline AAA</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        /* БАЗА: Идеальный сброс и защита */
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background: #030108; overflow: hidden; touch-action: none; color: white; height: 100vh; width: 100vw; }
-        canvas { display: block; width: 100vw; height: 100vh; }
+        /* УЛЬТРА-СОВРЕМЕННЫЙ СБРОС И ЗАЩИТА */
+        :root { --glass-bg: rgba(10, 15, 30, 0.65); --glass-border: rgba(0, 255, 255, 0.2); --neon-cyan: #00f3ff; --neon-pink: #ff0055; }
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: #020108; overflow: hidden; touch-action: none; color: white; width: 100vw; height: 100vh; }
+        canvas { display: block; width: 100%; height: 100%; position: absolute; z-index: 10; }
         
-        /* ИНТЕРФЕЙС (Глассморфизм) */
-        #ui-layer { position: absolute; top: 20px; left: 20px; z-index: 100; pointer-events: none; }
-        .hud-panel { background: rgba(10, 15, 30, 0.5); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(0, 255, 255, 0.2); padding: 15px 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .score-label { color: #0ff; font-size: 14px; letter-spacing: 3px; text-transform: uppercase; font-weight: 800; opacity: 0.8; }
-        .score-val { color: #fff; font-size: 42px; font-weight: 900; text-shadow: 0 0 20px rgba(0, 255, 255, 0.8); line-height: 1.1; }
-        .coins-val { color: #ffd700; font-size: 20px; font-weight: 800; margin-top: 5px; text-shadow: 0 0 15px rgba(255, 215, 0, 0.6); display: flex; align-items: center; gap: 8px; }
-        
-        /* КНОПКА МЕНЮ */
-        .smart-menu-btn { position: absolute; top: 20px; right: 20px; z-index: 1000; background: rgba(10, 15, 30, 0.6); backdrop-filter: blur(10px); color: #0ff; border: 1px solid rgba(0,255,255,0.4); border-radius: 16px; padding: 14px 22px; font-weight: 900; letter-spacing: 1px; cursor: pointer; box-shadow: 0 0 20px rgba(0, 255, 255, 0.15); transition: transform 0.1s, background 0.3s; }
-        .smart-menu-btn:active { transform: scale(0.92); background: rgba(0, 255, 255, 0.2); }
+        /* APPLE-STYLE ГЛАССМОРФИЗМ HUD */
+        #ui-layer { position: absolute; top: 20px; left: 20px; z-index: 100; pointer-events: none; display: flex; gap: 15px; }
+        .hud-panel { background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border); padding: 15px 25px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.5), inset 0 0 15px rgba(0,255,255,0.05); }
+        .score-label { color: rgba(255,255,255,0.6); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; font-weight: 800; margin-bottom: 2px; }
+        .score-val { color: #fff; font-size: 38px; font-weight: 900; text-shadow: 0 0 20px var(--neon-cyan); line-height: 1; display: flex; align-items: center; gap: 10px; }
+        .shield-icon { font-size: 20px; text-shadow: 0 0 10px #0ff; display: none; }
+        .coins-val { color: #ffd700; font-size: 18px; font-weight: 800; margin-top: 5px; text-shadow: 0 0 15px rgba(255, 215, 0, 0.6); display: flex; align-items: center; gap: 6px; }
 
-        /* МОДАЛЬНЫЕ ОКНА (ААА Дизайн) */
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(2, 1, 8, 0.85); z-index: 2000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+        /* КНОПКА МЕНЮ УЛЬТРА КЛАССА */
+        .smart-menu-btn { position: absolute; top: 20px; right: 20px; z-index: 1000; background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: var(--neon-cyan); border: 1px solid var(--glass-border); border-radius: 16px; padding: 12px 20px; font-weight: 900; letter-spacing: 1px; cursor: pointer; box-shadow: 0 10px 25px rgba(0, 243, 255, 0.15); transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: auto; }
+        .smart-menu-btn:active { transform: scale(0.92); background: rgba(0, 243, 255, 0.15); }
+
+        /* ЭКЗЕКЬЮТИВНЫЕ МОДАЛЬНЫЕ ОКНА */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(2, 1, 8, 0.85); z-index: 2000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); opacity: 0; pointer-events: none; transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         .modal.active { opacity: 1; pointer-events: all; }
+        .modal-content { background: radial-gradient(130% 130% at top left, #0e152e, #03040a); border: 1px solid rgba(0, 243, 255, 0.3); border-radius: 32px; width: 90%; max-width: 400px; padding: 35px 25px; display: flex; flex-direction: column; gap: 15px; text-align: center; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.9), inset 0 0 40px rgba(0, 243, 255, 0.05); transform: translateY(40px) scale(0.95); transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .modal.active .modal-content { transform: translateY(0) scale(1); }
         
-        .modal-content { background: radial-gradient(circle at top right, #111a3a, #050814); border: 1px solid rgba(0, 255, 255, 0.3); border-radius: 28px; width: 88%; max-width: 420px; max-height: 85vh; padding: 35px 25px; display: flex; flex-direction: column; gap: 16px; text-align: center; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), inset 0 0 30px rgba(0, 255, 255, 0.05); transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .modal.active .modal-content { transform: scale(1); }
+        .modal-title { color: #fff; text-transform: uppercase; letter-spacing: 5px; font-size: 24px; font-weight: 900; background: linear-gradient(90deg, #fff, var(--neon-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 5px; }
         
-        .modal-title { color: #fff; text-transform: uppercase; letter-spacing: 5px; font-size: 24px; margin-bottom: 5px; font-weight: 900; background: linear-gradient(90deg, #fff, #0ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        
-        .btn { padding: 18px; font-size: 17px; font-weight: 900; border-radius: 18px; color: white; border: none; text-transform: uppercase; letter-spacing: 1.5px; cursor: pointer; transition: 0.2s; position: relative; overflow: hidden; box-shadow: 0 8px 25px rgba(0,0,0,0.5); }
-        .btn:active { transform: scale(0.95) translateY(2px); box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .btn { padding: 18px; font-size: 16px; font-weight: 900; border-radius: 18px; color: white; border: none; text-transform: uppercase; cursor: pointer; transition: 0.2s; box-shadow: 0 10px 30px rgba(0,0,0,0.5); letter-spacing: 1px; position: relative; overflow: hidden; }
+        .btn:active { transform: scale(0.96) translateY(2px); box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
         .btn-green { background: linear-gradient(135deg, #00b09b, #96c93d); }
-        .btn-blue { background: linear-gradient(135deg, #2193b0, #6dd5ed); }
-        .btn-red { background: linear-gradient(135deg, #ff416c, #ff4b2b); }
+        .btn-blue { background: linear-gradient(135deg, #0055ff, #00f3ff); }
+        .btn-gold { background: linear-gradient(135deg, #f12711, #f5af19); color: #000; }
+        .btn-red { background: linear-gradient(135deg, #ff0055, #880022); }
 
-        /* МАГАЗИН И СКРОЛЛ */
-        .shop-container { overflow-y: auto; max-height: 50vh; -webkit-overflow-scrolling: touch; touch-action: pan-y; display: flex; flex-direction: column; gap: 12px; padding: 5px; border-radius: 16px; }
-        .shop-container::-webkit-scrollbar { width: 5px; }
-        .shop-container::-webkit-scrollbar-thumb { background: rgba(0, 255, 255, 0.5); border-radius: 10px; }
+        /* МАГАЗИН И ПРОКАЧКА (КАК В APP STORE) */
+        .shop-container { overflow-y: auto; max-height: 50vh; display: flex; flex-direction: column; gap: 12px; padding: 5px; border-radius: 20px; }
+        .shop-container::-webkit-scrollbar { width: 4px; }
+        .shop-container::-webkit-scrollbar-thumb { background: var(--neon-cyan); border-radius: 10px; }
         
-        .skin-card { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 16px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.05); transition: 0.3s; }
-        .skin-card.active { background: rgba(0, 255, 255, 0.08); border-color: rgba(0, 255, 255, 0.8); box-shadow: 0 0 25px rgba(0,255,255,0.15); transform: scale(1.02); }
-        .skin-icon { width: 45px; height: 45px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.8); box-shadow: inset 0 0 15px rgba(0,0,0,0.5); }
-        .skin-name { font-weight: 800; font-size: 16px; color: #fff; letter-spacing: 0.5px; }
+        .card { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 16px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); transition: 0.2s; text-align: left; }
+        .card.active { background: rgba(0, 243, 255, 0.08); border-color: rgba(0, 243, 255, 0.6); box-shadow: 0 0 25px rgba(0,243,255,0.15); transform: scale(1.02); }
+        .card-icon { font-size: 26px; width: 48px; height: 48px; display: flex; justify-content: center; align-items: center; border-radius: 14px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); }
         
-        .buy-btn { padding: 12px 18px; border-radius: 12px; border: none; font-weight: 900; font-size: 14px; text-transform: uppercase; cursor: pointer; transition: 0.2s; }
-        .btn-buy { background: #ffd700; color: #000; box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3); }
-        .btn-select { background: #0ff; color: #000; box-shadow: 0 5px 15px rgba(0, 255, 255, 0.3); }
-        .btn-selected { background: rgba(255,255,255,0.1); color: #888; box-shadow: none; pointer-events: none; }
+        .buy-btn { padding: 10px 16px; border-radius: 14px; border: none; font-weight: 900; font-size: 14px; cursor: pointer; transition: 0.2s; }
+        .btn-buy { background: #ffd700; color: #000; box-shadow: 0 5px 15px rgba(255,215,0,0.3); }
+        .btn-select { background: var(--neon-cyan); color: #000; box-shadow: 0 5px 15px rgba(0,243,255,0.3); }
+        .btn-max { background: rgba(255,255,255,0.1); color: #888; pointer-events: none; }
+
+        /* СПЕЦЭФФЕКТЫ */
+        .glitch { animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both; }
+        @keyframes glitch { 0% { transform: translate(0) } 20% { transform: translate(-5px, 5px) } 40% { transform: translate(-5px, -5px) } 60% { transform: translate(5px, 5px) } 80% { transform: translate(5px, -5px) } 100% { transform: translate(0) } }
         
-        /* АНИМАЦИИ */
-        .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
-        @keyframes shake { 10%, 90% { transform: translate3d(-4px, 0, 0); } 20%, 80% { transform: translate3d(6px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-10px, 0, 0); } 40%, 60% { transform: translate3d(10px, 0, 0); } }
+        .flash { position: fixed; top:0; left:0; width:100%; height:100%; background: #fff; z-index: 1500; pointer-events: none; opacity: 0; transition: opacity 0.1s; }
+        .flash.active { opacity: 0.9; transition: none; }
         
-        .flash { animation: flash 0.3s ease-out; }
-        @keyframes flash { 0% { background: rgba(255,255,255,0.8); } 100% { background: transparent; } }
-        #flash-overlay { position: fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1500; }
+        .float-text { position: absolute; font-size: 28px; font-weight: 900; pointer-events: none; animation: floatUp 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards; z-index: 500; text-shadow: 0 0 15px rgba(0,0,0,0.9); }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-80px) scale(1.5); } }
     </style>
 </head>
 <body>
 
-    <div id="flash-overlay"></div>
+    <div class="flash" id="flashScreen"></div>
 
     <div id="ui-layer">
         <div class="hud-panel">
             <div class="score-label">Сектор</div>
-            <div class="score-val" id="score">0</div>
+            <div class="score-val"><span id="score">0</span> <span id="shieldIcon" class="shield-icon">🛡</span></div>
             <div class="coins-val">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffd700"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.64-2.25 1.64-1.74 0-2.24-1.06-2.28-1.92H7.9c.04 1.46 1.06 2.67 2.97 3.03V19h1.76v-1.67c1.76-.3 2.94-1.42 2.94-2.93 0-2.36-1.98-3.07-3.26-3.36z"/></svg>
                 <span id="coins">0</span>
@@ -76,35 +79,37 @@
         </div>
     </div>
     
-    <button id="mainMenuBtn" class="smart-menu-btn">⚙️ MENU</button>
+    <button id="mainMenuBtn" class="smart-menu-btn">СИСТЕМА</button>
     <canvas id="gameCanvas"></canvas>
 
     <!-- МЕНЮ ПАУЗЫ -->
     <div id="smartModal" class="modal">
         <div class="modal-content">
-            <div class="modal-title">ТЕРМИНАЛ</div>
-            <button class="btn btn-blue" onclick="openShop()">🚀 АНГАР (12 КОРАБЛЕЙ)</button>
-            <button class="btn btn-red" onclick="saveAndExit()">💾 ВЫХОД В БАЗУ</button>
-            <button class="btn btn-green" onclick="closeMenu()">▶ ПРОДОЛЖИТЬ ВЫЛЕТ</button>
+            <div class="modal-title">ОРБИТАЛЬНАЯ БАЗА</div>
+            <button class="btn btn-gold" onclick="openShop('boosts')">⚙️ ИНЖЕНЕРИЯ (АПГРЕЙДЫ)</button>
+            <button class="btn btn-blue" onclick="openShop('skins')">🚀 АНГАР КОРАБЛЕЙ</button>
+            <button class="btn btn-red" onclick="saveAndExit()">💾 ВЕРНУТЬСЯ В БОТ</button>
+            <button class="btn btn-green" onclick="closeMenu()">▶ ПРОДОЛЖИТЬ ПОЛЕТ</button>
         </div>
     </div>
 
-    <!-- АНГАР -->
+    <!-- МАГАЗИН -->
     <div id="shopModal" class="modal">
         <div class="modal-content">
-            <div class="modal-title">АНГАР</div>
+            <div class="modal-title" id="shopTitle">МАГАЗИН</div>
             <div style="color: #ffd700; font-weight: 900; font-size: 20px; margin-bottom: 5px;">Баланс: <span id="shopCoins">0</span> 💰</div>
             <div class="shop-container" id="shopList"></div>
             <button class="btn btn-green" onclick="closeShop()">НАЗАД</button>
         </div>
     </div>
 
-    <!-- ЭКРАН СМЕРТИ -->
+    <!-- СМЕРТЬ -->
     <div id="gameOverScreen" class="modal">
-        <div class="modal-content" style="background: rgba(10,0,0,0.9); border-color: #ff0055;">
-            <h1 style="color: #ff0055; font-size: 46px; text-shadow: 0 0 30px #ff0055; margin-bottom: 25px; font-weight: 900; line-height: 1;">СИГНАЛ<br>ПОТЕРЯН</h1>
-            <button class="btn btn-blue" onclick="resetGame()" style="margin-bottom: 15px;">🔄 НОВЫЙ ВЫЛЕТ</button>
-            <button class="btn btn-red" onclick="saveAndExit()">💾 СОХРАНИТЬ И ВЫЙТИ</button>
+        <div class="modal-content" style="background: rgba(15,0,5,0.95); border-color: #ff0055;">
+            <h1 style="color: #ff0055; font-size: 46px; text-shadow: 0 0 30px #ff0055; font-weight: 900;">РАЗРУШЕН</h1>
+            <p style="color: #aaa; font-size: 16px; margin-bottom: 20px;">Критическое повреждение корпуса</p>
+            <button class="btn btn-blue" onclick="resetGame()" style="margin-bottom: 12px;">🔄 ПЕРЕЗАПУСК</button>
+            <button class="btn btn-red" onclick="saveAndExit()">💾 СОХРАНИТЬ РЕКОРД</button>
         </div>
     </div>
 
@@ -116,36 +121,35 @@
     tg.ready(); tg.expand();
     if (tg.isVersionAtLeast('7.7')) tg.disableVerticalSwipes();
     if (tg.isVersionAtLeast('6.1')) tg.enableClosingConfirmation();
-
-    document.body.addEventListener('touchmove', e => {
-        if (!e.target.closest('.shop-container')) e.preventDefault();
-    }, { passive: false });
+    document.body.addEventListener('touchmove', e => { if (!e.target.closest('.shop-container')) e.preventDefault(); }, { passive: false });
 
     // ==========================================
-    // 2. БАЗА ДАННЫХ: 12 ЭЛИТНЫХ СКИНОВ
+    // 2. БАЗЫ ДАННЫХ И ЭКОНОМИКА (AAA УРОВЕНЬ)
     // ==========================================
     const SKINS = [
-        { id: 'default', name: 'MK-1 Scout', price: 0, c1: '#e0e0e0', c2: '#00ffff', trail: '#00ffff' },
-        { id: 'crimson', name: 'Crimson Fury', price: 1000, c1: '#ffffff', c2: '#ff003c', trail: '#ff0000' },
-        { id: 'toxic', name: 'Toxic Viper', price: 1500, c1: '#111111', c2: '#39ff14', trail: '#00ff00' },
-        { id: 'gold', name: 'Solar Flare', price: 2000, c1: '#ffffff', c2: '#ffd700', trail: '#ffaa00' },
-        { id: 'phantom', name: 'Phantom X', price: 2500, c1: '#1a1a1a', c2: '#888888', trail: '#aaaaaa' },
-        { id: 'neon', name: 'Neon Rider', price: 3000, c1: '#ff00ff', c2: '#00ffff', trail: '#ff00ff' },
-        { id: 'plasma', name: 'Plasma Core', price: 3000, c1: '#ffffff', c2: '#ff00ff', trail: '#ff00aa' },
-        { id: 'glitch', name: 'Glitch Hack', price: 3000, c1: '#00ffff', c2: '#ff0000', trail: '#ffffff' },
-        { id: 'obsidian', name: 'Obsidian', price: 3000, c1: '#050505', c2: '#444444', trail: '#ff0000' },
-        { id: 'quantum', name: 'Quantum Leap', price: 3500, c1: '#0000ff', c2: '#00ff00', trail: '#ffffff' },
-        { id: 'celestial', name: 'Celestial', price: 3500, c1: '#ffffff', c2: '#ffffff', trail: '#ffff00' },
-        { id: 'black_hole', name: 'Dark Matter (+20%)', price: 4000, c1: '#000000', c2: '#9d00ff', trail: '#800080' }
+        { id: 'default', name: 'Raptor', price: 0, body: '#e0e0e0', glow: '#00f3ff', thrust: '#0055ff' },
+        { id: 'crimson', name: 'Red Comet', price: 1000, body: '#ffffff', glow: '#ff0055', thrust: '#ff0000' },
+        { id: 'viper', name: 'Toxic Viper', price: 1500, body: '#111111', glow: '#39ff14', thrust: '#00ff00' },
+        { id: 'gold', name: 'Solaris', price: 2000, body: '#ffffff', glow: '#ffd700', thrust: '#ffaa00' },
+        { id: 'phantom', name: 'Stealth X', price: 2500, body: '#1a1a1a', glow: '#888888', thrust: '#aaaaaa' },
+        { id: 'neon', name: 'Neon Punisher', price: 3000, body: '#ff00ff', glow: '#00ffff', thrust: '#ff00ff' },
+        { id: 'black_hole', name: 'Dark Matter (+20%)', price: 5000, body: '#000000', glow: '#9d00ff', thrust: '#800080' }
     ];
 
+    const UPGRADES = {
+        shield: { name: 'Энерго-Щит', desc: 'Защищает от 1 удара лазера', icon: '🛡', baseCost: 1500, costMult: 1, maxLvl: 1, val: 1 },
+        coinMagnet: { name: 'Генератор Монет', desc: 'Увеличивает награду за пролет', icon: '💰', baseCost: 1000, costMult: 1.5, maxLvl: 5, val: 2 }
+    };
+
     let localCoins = parseInt(localStorage.getItem('aero_coins')) || 0;
-    let unlocked = JSON.parse(localStorage.getItem('aero_unlocked')) || ['default'];
+    let unlockedSkins = JSON.parse(localStorage.getItem('aero_unlocked')) || ['default'];
     let activeSkin = localStorage.getItem('aero_active_skin') || 'default';
+    let levels = JSON.parse(localStorage.getItem('aero_levels')) || { shield: 0, coinMagnet: 1 };
+    
     let sessionCoins = 0; let startTime = Date.now();
 
     // ==========================================
-    // 3. AAA ДВИЖОК (ФИЗИКА, МАТЕМАТИКА, РЕНДЕР)
+    // 3. АРХИТЕКТУРА ИГРЫ (AAA RENDER ENGINE)
     // ==========================================
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
@@ -153,258 +157,265 @@
     let ch = canvas.height = window.innerHeight;
 
     let gameState = 'start'; 
-    let score = 0;
-    let frames = 0;
-    let baseSpeed = (cw > 600) ? 7 : 4.5; // Адаптация под экраны
-    
-    // Параллакс Звезд (4 слоя для 3D эффекта)
-    const stars = Array(80).fill().map(() => ({
-        x: Math.random() * cw, y: Math.random() * ch,
-        r: Math.random() * 1.5 + 0.2, 
-        speed: Math.random() * 0.8 + 0.1,
-        color: Math.random() > 0.8 ? '#0ff' : '#fff'
-    }));
+    let score = 0; let frames = 0;
+    let baseSpeed = (cw > 600) ? 6 : 4; 
+    let hasShield = false;
 
-    // --- ИДЕАЛЬНАЯ МАТЕМАТИКА ИГРОКА ---
+    // --- ПАРАЛЛАКС ГОРОД (3 СЛОЯ НЕБОСКРЕБОВ) ---
+    const buildingsLayer1 = []; const buildingsLayer2 = []; const buildingsLayer3 = [];
+    function generateBuildings(layer, count, minH, maxH, width, color) {
+        let x = 0;
+        for(let i=0; i<count; i++) {
+            layer.push({ x: x, w: width + Math.random()*20, h: minH + Math.random()*(maxH-minH), c: color });
+            x += width + Math.random()*10;
+        }
+    }
+    // Генерация города (Дальний, Средний, Ближний)
+    generateBuildings(buildingsLayer3, 30, ch*0.2, ch*0.4, 40, '#050a1a');
+    generateBuildings(buildingsLayer2, 20, ch*0.1, ch*0.3, 60, '#0a1128');
+    generateBuildings(buildingsLayer1, 15, ch*0.05, ch*0.15, 80, '#0e1a3a');
+
+    function drawCity(layer, speed) {
+        ctx.fillStyle = layer[0].c;
+        for(let i=0; i<layer.length; i++) {
+            let b = layer[i];
+            b.x -= speed;
+            if(b.x + b.w < 0) { b.x = cw + Math.random()*50; b.h = b.h + (Math.random()-0.5)*20; }
+            ctx.fillRect(b.x, ch - b.h, b.w, b.h);
+            
+            // Окна
+            if (speed > 0.5 && b.w > 30) {
+                ctx.fillStyle = (Math.random()>0.9) ? '#00f3ff' : '#000';
+                ctx.fillRect(b.x + 10, ch - b.h + 20, 4, 4);
+                ctx.fillStyle = layer[0].c;
+            }
+        }
+    }
+
+    // --- ФИЗИКА КОРАБЛЯ ---
     const player = {
-        x: cw * 0.3, y: ch / 2, 
-        r: 14, // РАДИУС ИДЕАЛЬНОГО КРУГЛОГО ХИТБОКСА (AAA collision)
-        vy: 0, gravity: 0.45, jumpForce: -8,
+        x: cw * 0.25, y: ch / 2, r: 12, // Идеальный круглый хитбокс
+        vy: 0, gravity: 0.5, jumpForce: -8,
         
         draw(skin) {
-            ctx.save();
-            ctx.translate(this.x, this.y);
+            ctx.save(); ctx.translate(this.x, this.y);
             
-            // Динамический наклон (Плавный Lerp)
+            // Динамический наклон (Lerp)
             let targetRot = Math.min(Math.PI / 3, Math.max(-Math.PI / 3, (this.vy * 0.08)));
             ctx.rotate(targetRot);
             
-            ctx.shadowBlur = 20; ctx.shadowColor = skin.c2;
+            // Отрисовка Щита
+            if (hasShield) {
+                ctx.beginPath(); ctx.arc(0, 0, this.r + 12, 0, Math.PI*2);
+                ctx.strokeStyle = '#00f3ff'; ctx.lineWidth = 2;
+                ctx.shadowBlur = 15; ctx.shadowColor = '#00f3ff'; ctx.stroke();
+            }
+
+            ctx.shadowBlur = 20; ctx.shadowColor = skin.glow;
             
-            // Отрисовка Кибер-Истребителя
-            ctx.fillStyle = skin.c1;
+            // Тело корабля (Высокотехнологичный дизайн)
+            ctx.fillStyle = skin.body;
             ctx.beginPath();
-            ctx.moveTo(20, 0); // Нос
-            ctx.lineTo(-12, -14); // Верхнее крыло
-            ctx.lineTo(-18, -14);
-            ctx.lineTo(-14, 0); // Сопло двигателя
-            ctx.lineTo(-18, 14);
-            ctx.lineTo(-12, 14); // Нижнее крыло
-            ctx.closePath();
-            ctx.fill();
+            ctx.moveTo(22, 0); // Нос
+            ctx.lineTo(-10, -12); // Верхнее крыло
+            ctx.lineTo(-16, -12);
+            ctx.lineTo(-12, 0); // Сопло
+            ctx.lineTo(-16, 12);
+            ctx.lineTo(-10, 12); // Нижнее крыло
+            ctx.closePath(); ctx.fill();
 
             // Энергетическое ядро
-            ctx.fillStyle = skin.c2;
-            ctx.beginPath(); ctx.ellipse(4, 0, 10, 4, 0, 0, Math.PI*2); ctx.fill();
-            
-            // Для дебага (скрыто): показ идеального хитбокса
-            // ctx.strokeStyle = 'red'; ctx.beginPath(); ctx.arc(0, 0, this.r, 0, Math.PI*2); ctx.stroke();
-            
+            ctx.fillStyle = skin.glow;
+            ctx.beginPath(); ctx.ellipse(4, 0, 8, 3, 0, 0, Math.PI*2); ctx.fill();
             ctx.restore();
         },
         update() {
-            this.vy += this.gravity;
-            this.y += this.vy;
-
-            // Генерация частиц двигателя
+            this.vy += this.gravity; this.y += this.vy;
+            
+            // Аддитивный рендеринг для частиц двигателя (очень красиво)
             if (frames % 2 === 0 && this.vy < 5) {
                 let s = SKINS.find(sk => sk.id === activeSkin);
                 particles.push({
-                    x: this.x - 20, y: this.y + (Math.random()-0.5)*10,
+                    x: this.x - 18, y: this.y + (Math.random()-0.5)*8,
                     vx: -baseSpeed * 1.5 - Math.random()*2, vy: (Math.random()-0.5)*2,
-                    life: 1, color: s.trail, size: Math.random()*4 + 3
+                    life: 1, color: s.thrust, size: Math.random()*4 + 3, additive: true
                 });
             }
 
-            // Упал на землю или улетел в космос
             if (this.y - this.r < -50 || this.y + this.r > ch + 50) gameOver();
         },
         jump() {
             this.vy = this.jumpForce;
-            // Вспышка под кораблем
             createParticles(this.x - 10, this.y + 10, '#fff', 8, 3);
+            if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         }
     };
 
     let pipes = [];
-    let coins = []; // Парящие монеты
     let particles = [];
-    const pipeWidth = 70;
-    let gapSize = Math.max(150, ch * 0.25); // Окно адаптивно
+    const pipeWidth = 60;
+    let gapSize = Math.max(160, ch * 0.25); // Адаптивное окно
 
     function spawnPipe() {
         let minHeight = 80;
         let maxHeight = ch - gapSize - 80;
         let topHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1) + minHeight);
         
-        // Умная сложность: после 10 очков трубы начинают двигаться!
+        // Умная сложность: после 10 очков лазеры начинают плавать
         let isMoving = score > 10 && Math.random() > 0.5;
         
         pipes.push({
             x: cw, top: topHeight, bottom: topHeight + gapSize,
-            passed: false,
-            moving: isMoving, dir: Math.random() > 0.5 ? 1 : -1,
-            speedY: Math.random() * 1.5 + 0.5
+            passed: false, moving: isMoving, dir: Math.random() > 0.5 ? 1 : -1, speedY: Math.random() * 1.5 + 0.5
         });
-
-        // Спавн монеты в центре прохода с шансом 50%
-        if (Math.random() > 0.5) {
-            coins.push({
-                x: cw + pipeWidth / 2, y: topHeight + gapSize / 2,
-                r: 12, collected: false, angle: 0
-            });
-        }
     }
 
-    function createParticles(x, y, color, count, speedMax) {
+    function createParticles(x, y, color, count=15, speedMax=10) {
         for(let i=0; i<count; i++) {
             particles.push({
                 x: x, y: y, vx: (Math.random()-0.5)*speedMax, vy: (Math.random()-0.5)*speedMax,
-                life: 1, color: color, size: Math.random()*5 + 2
+                life: 1, color: color, size: Math.random()*4 + 2, additive: false
             });
         }
     }
 
-    // --- ИДЕАЛЬНАЯ МАТЕМАТИКА AABB-CIRCLE ---
+    function createFloatText(x, y, txt, color) {
+        const el = document.createElement('div');
+        el.className = 'float-text'; el.innerText = txt; el.style.color = color;
+        el.style.left = x + 'px'; el.style.top = y + 'px';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 800);
+    }
+
+    // Идеальная математика столкновений круга и прямоугольника
     function isCollision(circle, rx, ry, rw, rh) {
-        let testX = circle.x;
-        let testY = circle.y;
-
-        if (circle.x < rx) testX = rx; // левый край
-        else if (circle.x > rx + rw) testX = rx + rw; // правый край
-
-        if (circle.y < ry) testY = ry; // верхний край
-        else if (circle.y > ry + rh) testY = ry + rh; // нижний край
-
-        let distX = circle.x - testX;
-        let distY = circle.y - testY;
-        let distance = Math.sqrt((distX*distX) + (distY*distY));
-
-        return distance <= circle.r;
+        let testX = circle.x; let testY = circle.y;
+        if (circle.x < rx) testX = rx; else if (circle.x > rx + rw) testX = rx + rw;
+        if (circle.y < ry) testY = ry; else if (circle.y > ry + rh) testY = ry + rh;
+        let dist = Math.hypot(circle.x - testX, circle.y - testY);
+        return dist <= circle.r;
     }
 
     function drawAndLogic() {
-        // Отрисовка труб
         for (let i = pipes.length - 1; i >= 0; i--) {
             let p = pipes[i];
             p.x -= baseSpeed;
 
-            // Движение труб по вертикали (если активно)
             if (p.moving) {
-                p.top += p.speedY * p.dir;
-                p.bottom += p.speedY * p.dir;
+                p.top += p.speedY * p.dir; p.bottom += p.speedY * p.dir;
                 if (p.top < 40 || p.bottom > ch - 40) p.dir *= -1;
             }
 
-            // Дизайн Лазерных Ворот
-            ctx.shadowBlur = 15; ctx.shadowColor = '#00ffff';
-            let grad = ctx.createLinearGradient(p.x, 0, p.x + pipeWidth, 0);
-            grad.addColorStop(0, '#001a33'); grad.addColorStop(0.5, '#00ffff'); grad.addColorStop(1, '#001a33');
-            ctx.fillStyle = grad;
-
-            // Верх
-            ctx.fillRect(p.x, 0, pipeWidth, p.top);
-            ctx.fillStyle = '#fff'; ctx.fillRect(p.x - 4, p.top - 12, pipeWidth + 8, 12);
+            // Отрисовка Лазерных Генераторов
+            ctx.shadowBlur = 10; ctx.shadowColor = '#00f3ff';
             
-            // Низ
-            ctx.fillStyle = grad; ctx.fillRect(p.x, p.bottom, pipeWidth, ch - p.bottom);
-            ctx.fillStyle = '#fff'; ctx.fillRect(p.x - 4, p.bottom, pipeWidth + 8, 12);
-            ctx.shadowBlur = 0;
+            // Верхний генератор
+            ctx.fillStyle = '#0a1128'; ctx.fillRect(p.x, 0, pipeWidth, p.top);
+            ctx.fillStyle = '#00f3ff'; ctx.fillRect(p.x - 4, p.top - 15, pipeWidth + 8, 15);
+            // Нижний генератор
+            ctx.fillStyle = '#0a1128'; ctx.fillRect(p.x, p.bottom, pipeWidth, ch - p.bottom);
+            ctx.fillStyle = '#00f3ff'; ctx.fillRect(p.x - 4, p.bottom, pipeWidth + 8, 15);
+            
+            // СМЕРТЕЛЬНЫЙ ЛАЗЕР МЕЖДУ НИМИ (Свечение)
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.shadowBlur = 20; ctx.shadowColor = '#ff0055';
+            ctx.fillStyle = `rgba(255, 0, 85, ${0.4 + Math.random()*0.4})`; // Мерцание
+            ctx.fillRect(p.x + pipeWidth/2 - 2, p.top, 4, p.bottom - p.top);
+            ctx.globalCompositeOperation = 'source-over'; ctx.shadowBlur = 0;
 
-            // Проверка столкновений (Честная Математика!)
-            if (isCollision(player, p.x, 0, pipeWidth, p.top) || 
-                isCollision(player, p.x, p.bottom, pipeWidth, ch - p.bottom)) {
-                gameOver();
+            // Столкновения
+            // Коллизия с генераторами (твердые)
+            let hitSolid = isCollision(player, p.x, 0, pipeWidth, p.top) || isCollision(player, p.x, p.bottom, pipeWidth, ch - p.bottom);
+            // Коллизия с лазером (по центру)
+            let hitLaser = isCollision(player, p.x + pipeWidth/2 - 2, p.top, 4, p.bottom - p.top);
+
+            if (hitSolid || hitLaser) {
+                if (hasShield) {
+                    hasShield = false;
+                    document.getElementById('shieldIcon').style.display = 'none';
+                    createParticles(player.x, player.y, '#00f3ff', 40, 15);
+                    pipes.splice(i, 1);
+                    if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
+                    
+                    let flash = document.getElementById('flashScreen');
+                    flash.style.background = '#00f3ff'; flash.classList.add('active');
+                    setTimeout(() => flash.classList.remove('active'), 50);
+                    continue;
+                } else {
+                    gameOver(); return;
+                }
             }
 
             // Очки
             if (!p.passed && player.x > p.x + pipeWidth) {
-                p.passed = true;
-                score++;
-                document.getElementById('score').innerText = score;
+                p.passed = true; score++;
                 
-                // Вспышка экрана при прохождении
-                let flash = document.getElementById('flash-overlay');
-                flash.classList.remove('flash');
-                void flash.offsetWidth; // Триггер рефлоу
-                flash.classList.add('flash');
+                let coinsEarned = 10 + (levels.coinMagnet - 1) * UPGRADES.coinMagnet.val;
+                sessionCoins += coinsEarned; localCoins += coinsEarned;
+                
+                document.getElementById('score').innerText = score;
+                document.getElementById('coins').innerText = sessionCoins;
+                createFloatText(p.x, p.y + gapSize/2, `+${coinsEarned}💰`, '#ffd700');
+                
+                let flash = document.getElementById('flashScreen');
+                flash.style.background = '#fff'; flash.classList.add('active');
+                setTimeout(() => flash.classList.remove('active'), 50);
 
-                // Сложность
-                if (score % 5 === 0) {
-                    baseSpeed += 0.25;
-                    gapSize = Math.max(120, gapSize - 8);
-                }
+                if (score % 5 === 0) { baseSpeed += 0.3; gapSize = Math.max(120, gapSize - 5); }
             }
             if (p.x + pipeWidth < 0) pipes.splice(i, 1);
         }
+    }
 
-        // Отрисовка и сбор монет
-        for (let i = coins.length - 1; i >= 0; i--) {
-            let c = coins[i];
-            c.x -= baseSpeed;
-            c.angle += 0.1;
+    function initGame() {
+        score = 0; sessionCoins = 0; frames = 0;
+        document.getElementById('score').innerText = score;
+        document.getElementById('coins').innerText = sessionCoins;
+        
+        hasShield = levels.shield > 0;
+        document.getElementById('shieldIcon').style.display = hasShield ? 'inline' : 'none';
 
-            if (!c.collected) {
-                ctx.save(); ctx.translate(c.x, c.y);
-                ctx.scale(Math.sin(c.angle), 1); // 3D вращение монеты
-                ctx.shadowBlur = 15; ctx.shadowColor = '#ffd700';
-                ctx.fillStyle = '#ffd700'; ctx.beginPath(); ctx.arc(0, 0, c.r, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = '#ccaa00'; ctx.beginPath(); ctx.arc(0, 0, c.r*0.6, 0, Math.PI*2); ctx.fill();
-                ctx.restore();
-
-                // Сбор (расстояние между кругами)
-                let dx = player.x - c.x; let dy = player.y - c.y;
-                if (Math.sqrt(dx*dx + dy*dy) < player.r + c.r) {
-                    c.collected = true;
-                    let earned = score > 30 ? 20 : 10;
-                    sessionCoins += earned; localCoins += earned;
-                    document.getElementById('coins').innerText = sessionCoins;
-                    createParticles(c.x, c.y, '#ffd700', 15, 6);
-                }
-            }
-            if (c.x < -20) coins.splice(i, 1);
-        }
+        player.y = ch / 2; player.vy = 0;
+        pipes = []; particles = [];
+        baseSpeed = (cw > 600) ? 6 : 4; 
+        gapSize = Math.max(160, ch * 0.25);
+        gameState = 'start';
     }
 
     function loop() {
         requestAnimationFrame(loop);
         if (gameState === 'paused' || gameState === 'gameover') return;
 
-        // Космический фон (Глубокий синий)
-        ctx.fillStyle = '#030108'; ctx.fillRect(0, 0, cw, ch);
+        // Фон неба
+        ctx.fillStyle = '#020108'; ctx.fillRect(0, 0, cw, ch);
 
-        // Звезды
-        stars.forEach(s => {
-            s.x -= s.speed + (gameState === 'playing' ? baseSpeed * 0.2 : 0);
-            if (s.x < 0) { s.x = cw; s.y = Math.random() * ch; }
-            ctx.fillStyle = s.color;
-            ctx.globalAlpha = s.r > 1 ? 1 : 0.5;
-            ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
-        });
-        ctx.globalAlpha = 1;
+        // Городской Параллакс
+        let pSpeed = gameState === 'playing' ? baseSpeed : 0;
+        drawCity(buildingsLayer3, pSpeed * 0.1);
+        drawCity(buildingsLayer2, pSpeed * 0.3);
+        drawCity(buildingsLayer1, pSpeed * 0.6);
 
         let skin = SKINS.find(s => s.id === activeSkin);
 
         if (gameState === 'playing') {
             player.update();
-            if (frames % Math.floor(110 / (baseSpeed/4.5)) === 0) spawnPipe();
+            if (frames % Math.floor(100 / (baseSpeed/4)) === 0) spawnPipe();
             drawAndLogic();
         } else if (gameState === 'start') {
             player.y = ch/2 + Math.sin(frames * 0.05) * 15;
-            ctx.fillStyle = '#0ff'; ctx.font = '900 24px Arial'; ctx.textAlign = 'center'; ctx.shadowBlur = 20; ctx.shadowColor = '#0ff';
-            ctx.fillText("ТАПНИ ЧТОБЫ ВЗЛЕТЕТЬ", cw/2, ch/2 + 60);
-            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#00f3ff'; ctx.font = '900 24px Arial'; ctx.textAlign = 'center'; ctx.shadowBlur = 20; ctx.shadowColor = '#00f3ff';
+            ctx.fillText("ТАПНИ ЧТОБЫ ВЗЛЕТЕТЬ", cw/2, ch/2 + 60); ctx.shadowBlur = 0;
         }
 
         player.draw(skin);
 
-        // Частицы
+        // Улучшенные Частицы
         for (let i = particles.length - 1; i >= 0; i--) {
-            let p = particles[i];
-            p.x += p.vx; p.y += p.vy; p.life -= 0.02;
+            let p = particles[i]; p.x += p.vx; p.y += p.vy; p.life -= 0.03;
+            if (p.additive) ctx.globalCompositeOperation = 'lighter';
             ctx.globalAlpha = Math.max(0, p.life);
-            ctx.fillStyle = p.color;
-            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+            ctx.globalCompositeOperation = 'source-over';
             if (p.life <= 0) particles.splice(i, 1);
         }
         ctx.globalAlpha = 1;
@@ -412,9 +423,9 @@
     }
 
     // ==========================================
-    // 4. УПРАВЛЕНИЕ И МЕНЮ (ААА UX)
+    // 4. УПРАВЛЕНИЕ И МЕНЮ
     // ==========================================
-    window.addEventListener('touchstart', (e) => {
+    window.addEventListener('touchstart', e => {
         if(e.target.closest('.smart-menu-btn') || e.target.closest('.modal')) return;
         if(gameState === 'start') { gameState = 'playing'; player.jump(); return; }
         if(gameState === 'playing') player.jump();
@@ -422,94 +433,81 @@
 
     function gameOver() {
         gameState = 'gameover';
-        createParticles(player.x, player.y, '#ff0055', 50, 15); // Мега взрыв
-        document.body.classList.add('shake');
-        setTimeout(() => document.body.classList.remove('shake'), 400);
+        createParticles(player.x, player.y, '#ff0055', 60, 15);
+        document.body.classList.add('glitch');
+        setTimeout(() => document.body.classList.remove('glitch'), 300);
         
+        let flash = document.getElementById('flashScreen');
+        flash.style.background = '#ff0055'; flash.classList.add('active');
+        setTimeout(() => flash.classList.remove('active'), 100);
+        
+        if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
         localStorage.setItem('aero_coins', localCoins);
-        setTimeout(() => {
-            document.getElementById('gameOverScreen').classList.add('active');
-            canvas.style.filter = 'blur(8px) brightness(0.5)';
-        }, 600);
+        setTimeout(() => document.getElementById('gameOverScreen').classList.add('active'), 600);
     }
 
-    function resetGame() {
-        document.getElementById('gameOverScreen').classList.remove('active');
-        canvas.style.filter = 'none';
-        
-        player.y = ch / 2; player.vy = 0;
-        pipes = []; coins = []; particles = [];
-        score = 0; frames = 0;
-        baseSpeed = (cw > 600) ? 7 : 4.5; 
-        gapSize = Math.max(150, ch * 0.25);
-        
-        document.getElementById('score').innerText = score;
-        gameState = 'start';
-    }
+    function resetGame() { document.getElementById('gameOverScreen').classList.remove('active'); initGame(); }
 
-    // МЕНЮ
     document.getElementById('mainMenuBtn').onclick = () => {
-        if (gameState === 'playing') gameState = 'paused';
+        if(gameState === 'playing') gameState = 'paused';
         document.getElementById('smartModal').classList.add('active');
     };
-    function closeMenu() {
-        document.getElementById('smartModal').classList.remove('active');
-        if (gameState === 'paused') gameState = 'playing';
-    }
+    function closeMenu() { document.getElementById('smartModal').classList.remove('active'); if(gameState === 'paused') gameState = 'playing'; }
 
-    function openShop() {
+    function openShop(type) {
         document.getElementById('smartModal').classList.remove('active');
         document.getElementById('shopModal').classList.add('active');
-        document.getElementById('shopCoins').innerText = localCoins;
+        document.getElementById('shopCoins').innerText = localCoins.toLocaleString();
         
-        const list = document.getElementById('shopList');
-        list.innerHTML = '';
+        const list = document.getElementById('shopList'); list.innerHTML = '';
         
-        SKINS.forEach(skin => {
-            let isUnl = unlocked.includes(skin.id);
-            let isAct = activeSkin === skin.id;
-            
-            let btnHtml = isAct ? `<button class="buy-btn btn-selected">АКТИВЕН</button>` :
-                          isUnl ? `<button class="buy-btn btn-select" onclick="equipSkin('${skin.id}')">ВЫБРАТЬ</button>` :
-                          `<button class="buy-btn btn-buy" onclick="buySkin('${skin.id}', ${skin.price})">КУПИТЬ ${skin.price}💰</button>`;
+        if (type === 'skins') {
+            document.getElementById('shopTitle').innerText = 'АНГАР';
+            SKINS.forEach(s => {
+                let isUnl = unlockedSkins.includes(s.id); let isAct = activeSkin === s.id;
+                let btn = isAct ? `<button class="buy-btn btn-max">АКТИВЕН</button>` :
+                          isUnl ? `<button class="buy-btn btn-select" onclick="equipSkin('${s.id}')">ВЫБРАТЬ</button>` :
+                          `<button class="buy-btn btn-buy" onclick="buySkin('${s.id}', ${s.price})">${s.price.toLocaleString()}💰</button>`;
 
-            list.innerHTML += `
-                <div class="skin-card ${isAct ? 'active' : ''}">
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        <div class="skin-icon" style="background: radial-gradient(${skin.c2}, ${skin.c1});"></div>
-                        <div class="skin-name">${skin.name}</div>
-                    </div>
-                    ${btnHtml}
-                </div>
-            `;
-        });
+                list.innerHTML += `<div class="card ${isAct ? 'active' : ''}"><div class="card-icon" style="background: linear-gradient(${s.glow}, ${s.body}); border:none;"></div><div style="flex-grow:1; margin-left:15px; font-weight:900; font-size:16px;">${s.name}</div>${btn}</div>`;
+            });
+        } else if (type === 'boosts') {
+            document.getElementById('shopTitle').innerText = 'ИНЖЕНЕРИЯ';
+            Object.keys(UPGRADES).forEach(key => {
+                let u = UPGRADES[key]; let lvl = levels[key];
+                let isMax = lvl >= u.maxLvl;
+                let cost = Math.floor(u.baseCost * Math.pow(u.costMult, lvl));
+                let btn = isMax ? `<button class="buy-btn btn-max">MAX LVL</button>` : `<button class="buy-btn btn-buy" onclick="buyUpgrade('${key}', ${cost})">${cost.toLocaleString()}💰</button>`;
+
+                list.innerHTML += `<div class="card"><div style="font-size: 24px; margin-right: 10px;">${u.icon}</div><div style="flex-grow:1;"><div style="font-weight:900; font-size:16px; color:#00f3ff;">${u.name} <span style="color:#fff; font-size:12px;">Lvl ${lvl}</span></div><div style="font-size:12px; color:#aaa;">${u.desc}</div></div>${btn}</div>`;
+            });
+        }
     }
-
     function closeShop() { document.getElementById('shopModal').classList.remove('active'); document.getElementById('smartModal').classList.add('active'); }
 
     window.buySkin = function(id, price) {
-        if (localCoins >= price) {
-            localCoins -= price; unlocked.push(id);
-            localStorage.setItem('aero_coins', localCoins);
-            localStorage.setItem('aero_unlocked', JSON.stringify(unlocked));
-            equipSkin(id);
-        } else {
-            tg.showAlert('⚠ Ошибка Транзакции: Недостаточно кредитов.');
-        }
+        if (localCoins >= price) { localCoins -= price; unlockedSkins.push(id); equipSkin(id); saveData(); } else tg.showAlert('Не хватает кредитов!');
+    }
+    window.equipSkin = function(id) { activeSkin = id; openShop('skins'); saveData(); }
+
+    window.buyUpgrade = function(key, cost) {
+        if (localCoins >= cost) { localCoins -= cost; levels[key]++; openShop('boosts'); saveData(); if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); } else tg.showAlert('Не хватает кредитов!');
     }
 
-    window.equipSkin = function(id) { activeSkin = id; localStorage.setItem('aero_active_skin', activeSkin); openShop(); }
+    function saveData() {
+        localStorage.setItem('aero_coins', localCoins);
+        localStorage.setItem('aero_unlocked', JSON.stringify(unlockedSkins));
+        localStorage.setItem('aero_active_skin', activeSkin);
+        localStorage.setItem('aero_levels', JSON.stringify(levels));
+    }
 
     window.saveAndExit = function() {
-        let data = {
-            game: "aero", coins: sessionCoins, score: score,
-            time_spent: Math.floor((Date.now() - startTime) / 1000), active_skin: activeSkin
-        };
-        tg.sendData(JSON.stringify(data));
+        saveData();
+        tg.sendData(JSON.stringify({ game: "aero", coins: sessionCoins, score: score, time_spent: Math.floor((Date.now() - startTime) / 1000), active_skin: activeSkin }));
     }
 
+    initGame();
     requestAnimationFrame(loop);
-
 </script>
 </body>
 </html>
