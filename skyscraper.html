@@ -3,141 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Skyscraper 6.0</title>
+    <title>Cyber Slasher AAA</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        /* БАЗА И ЗАЩИТА ТЕЛЕГРАМА */
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        body { background: #0b0c10; overflow: hidden; touch-action: none; color: white; height: 100vh; transition: background 1s; }
-        canvas { display: block; width: 100vw; height: 100vh; }
+        /* БАЗА И ИДЕАЛЬНАЯ ЗАЩИТА */
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; font-family: 'SF Pro Display', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: #03050a; overflow: hidden; touch-action: none; color: white; width: 100vw; height: 100vh; }
+        canvas { display: block; width: 100%; height: 100%; position: absolute; z-index: 10; }
         
-        /* ИНТЕРФЕЙС ИГРЫ */
-        #ui-layer { position: absolute; top: 15px; left: 15px; z-index: 100; text-shadow: 0 0 10px #000; font-weight: bold; pointer-events: none; }
-        .score-text { color: #fff; font-size: 26px; font-weight: 900; margin-bottom: 5px; }
-        .coins-text { color: #ffd700; font-size: 22px; text-shadow: 0 0 10px rgba(255, 215, 0, 0.8); }
-        .level-text { color: #0ff; font-size: 16px; margin-top: 5px; text-transform: uppercase; letter-spacing: 2px; }
-        .combo-text { color: #ff00ff; font-size: 18px; font-weight: bold; margin-top: 5px; opacity: 0; transition: 0.2s; text-shadow: 0 0 15px #ff00ff; }
+        /* ГЛАССМОРФИЗМ UI */
+        #ui-layer { position: absolute; top: 20px; left: 20px; z-index: 100; pointer-events: none; }
+        .hud-panel { background: rgba(5, 10, 20, 0.6); backdrop-filter: blur(15px); border: 1px solid rgba(0, 255, 255, 0.2); padding: 15px 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+        .score-val { color: #fff; font-size: 40px; font-weight: 900; text-shadow: 0 0 15px #0ff; line-height: 1; }
+        .coins-val { color: #ffd700; font-size: 18px; font-weight: 800; margin-top: 5px; text-shadow: 0 0 10px rgba(255, 215, 0, 0.6); display: flex; align-items: center; gap: 8px; }
+        .combo-text { position: absolute; top: 100px; left: 20px; font-size: 24px; font-weight: 900; color: #f0f; text-shadow: 0 0 15px #f0f; opacity: 0; transition: 0.2s; }
         
-        .smart-menu-btn { position: absolute; top: 15px; right: 15px; z-index: 1000; background: rgba(0, 0, 0, 0.7); color: #0ff; border: 2px solid #0ff; border-radius: 8px; padding: 10px 15px; font-weight: bold; cursor: pointer; box-shadow: 0 0 10px #0ff; }
+        /* КНОПКА МЕНЮ */
+        .smart-menu-btn { position: absolute; top: 20px; right: 20px; z-index: 1000; background: rgba(5, 10, 20, 0.8); backdrop-filter: blur(10px); color: #0ff; border: 1px solid rgba(0,255,255,0.4); border-radius: 16px; padding: 12px 20px; font-weight: 900; letter-spacing: 1px; cursor: pointer; box-shadow: 0 0 20px rgba(0, 255, 255, 0.15); transition: 0.2s; pointer-events: auto; }
+        .smart-menu-btn:active { transform: scale(0.92); }
 
-        /* МОДАЛЬНЫЕ ОКНА И МЕНЮ */
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 2000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
-        .hidden { display: none !important; }
-        .modal-content { background: linear-gradient(135deg, #111, #1a1a2e); border: 2px solid #0ff; border-radius: 15px; width: 85%; max-height: 85vh; padding: 20px; display: flex; flex-direction: column; gap: 12px; text-align: center; box-shadow: 0 0 30px rgba(0, 255, 255, 0.2); }
+        /* ЭЛИТНЫЕ МОДАЛЬНЫЕ ОКНА */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(2, 1, 8, 0.85); z-index: 2000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(10px); opacity: 0; pointer-events: none; transition: 0.3s ease; }
+        .modal.active { opacity: 1; pointer-events: all; }
+        .modal-content { background: radial-gradient(circle at top right, #0a1128, #010514); border: 1px solid rgba(0, 255, 255, 0.3); border-radius: 28px; width: 88%; max-width: 420px; padding: 30px; display: flex; flex-direction: column; gap: 15px; text-align: center; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9); transform: scale(0.95); transition: 0.3s; }
+        .modal.active .modal-content { transform: scale(1); }
         
-        .btn { padding: 15px; font-size: 16px; font-weight: bold; border-radius: 10px; color: white; border: none; text-transform: uppercase; cursor: pointer; transition: 0.1s; }
-        .btn:active { transform: scale(0.95); }
-        .btn-green { background: linear-gradient(45deg, #00b09b, #96c93d); }
-        .btn-blue { background: linear-gradient(45deg, #2193b0, #6dd5ed); }
-        .btn-red { background: linear-gradient(45deg, #ff416c, #ff4b2b); }
+        .modal-title { color: #fff; text-transform: uppercase; letter-spacing: 4px; font-size: 24px; font-weight: 900; background: linear-gradient(90deg, #fff, #0ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .btn { padding: 16px; font-size: 16px; font-weight: 900; border-radius: 16px; color: white; border: none; text-transform: uppercase; cursor: pointer; transition: 0.2s; box-shadow: 0 8px 25px rgba(0,0,0,0.4); }
+        .btn:active { transform: scale(0.95) translateY(2px); }
+        .btn-green { background: linear-gradient(135deg, #00b09b, #96c93d); }
+        .btn-blue { background: linear-gradient(135deg, #2193b0, #6dd5ed); }
+        .btn-red { background: linear-gradient(135deg, #ff416c, #ff4b2b); }
+        .btn-gold { background: linear-gradient(135deg, #f12711, #f5af19); color: #000; }
 
-        /* МАГАЗИН (С ИДЕАЛЬНЫМ СКРОЛЛОМ) */
-        .shop-container { overflow-y: auto; max-height: 50vh; -webkit-overflow-scrolling: touch; touch-action: pan-y; display: flex; flex-direction: column; gap: 10px; padding: 5px; }
-        .skin-card { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 15px; border-radius: 10px; border: 1px solid #444; }
-        .skin-card.active { border-color: #0ff; box-shadow: 0 0 15px rgba(0,255,255,0.4); }
-        .buy-btn { padding: 8px 15px; border-radius: 5px; border: none; font-weight: bold; }
+        /* МАГАЗИН И ПРОКАЧКА */
+        .shop-container { overflow-y: auto; max-height: 50vh; display: flex; flex-direction: column; gap: 12px; padding: 5px; border-radius: 16px; }
+        .shop-container::-webkit-scrollbar { width: 4px; }
+        .shop-container::-webkit-scrollbar-thumb { background: rgba(0, 255, 255, 0.5); border-radius: 10px; }
+        
+        .card { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 15px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.05); transition: 0.2s; text-align: left; }
+        .card.active { background: rgba(0, 255, 255, 0.08); border-color: rgba(0, 255, 255, 0.8); box-shadow: 0 0 20px rgba(0,255,255,0.15); }
+        
+        .buy-btn { padding: 10px 16px; border-radius: 12px; border: none; font-weight: 900; font-size: 14px; cursor: pointer; transition: 0.2s; }
         .btn-buy { background: #ffd700; color: #000; }
         .btn-select { background: #0ff; color: #000; }
-        .btn-selected { background: #444; color: #888; }
-        
-        /* ЭФФЕКТЫ */
-        .floating-text { position: absolute; font-size: 28px; font-weight: 900; color: #fff; text-shadow: 0 0 15px #ff0; pointer-events: none; animation: floatUp 1.2s ease-out forwards; z-index: 500; }
+        .btn-max { background: rgba(255,255,255,0.1); color: #888; pointer-events: none; }
+
+        .float-text { position: absolute; font-size: 28px; font-weight: 900; pointer-events: none; animation: floatUp 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards; z-index: 500; text-shadow: 0 0 10px rgba(0,0,0,0.8); }
         @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-80px) scale(1.5); } }
+
+        /* Эффект смерти */
+        .white-flash { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #fff; z-index: 1900; opacity: 0; pointer-events: none; transition: 0.1s; }
+        .white-flash.active { opacity: 1; }
     </style>
 </head>
 <body>
 
+    <div class="white-flash" id="flash"></div>
+
     <div id="ui-layer">
-        <div class="score-text">Этаж: <span id="score">0</span></div>
-        <div class="coins-text"><span id="coins">0</span> 💰</div>
-        <div class="level-text" id="levelText">УРОВЕНЬ 1: КИБЕР-СИТИ</div>
-        <div class="combo-text" id="comboText">🔥 КОМБО x1</div>
+        <div class="hud-panel">
+            <div class="score-val" id="score">0</div>
+            <div class="coins-val">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffd700"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.64-2.25 1.64-1.74 0-2.24-1.06-2.28-1.92H7.9c.04 1.46 1.06 2.67 2.97 3.03V19h1.76v-1.67c1.76-.3 2.94-1.42 2.94-2.93 0-2.36-1.98-3.07-3.26-3.36z"/></svg>
+                <span id="coins">0</span>
+            </div>
+        </div>
+        <div class="combo-text" id="comboTxt">COMBO x2!</div>
     </div>
     
-    <button id="mainMenuBtn" class="smart-menu-btn">⚙️ МЕНЮ</button>
+    <button id="mainMenuBtn" class="smart-menu-btn">⚙️ MENU</button>
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Главное Меню -->
-    <div id="smartModal" class="modal hidden">
+    <!-- МЕНЮ -->
+    <div id="smartModal" class="modal">
         <div class="modal-content">
-            <h2 style="color: white;">ПАУЗА</h2>
-            <button class="btn btn-blue" onclick="openShop()">🏢 СКИНЫ (БЛОКИ)</button>
-            <button class="btn btn-red" onclick="saveAndExit()">💾 ВЫХОД В БОТА</button>
+            <div class="modal-title">ДОДЗЁ</div>
+            <button class="btn btn-gold" onclick="openShop('boosts')">⚡ ТРЕНИРОВКА (ПРОКАЧКА)</button>
+            <button class="btn btn-blue" onclick="openShop('skins')">🗡 АРСЕНАЛ (МЕЧИ)</button>
+            <button class="btn btn-red" onclick="saveAndExit()">💾 ВЫХОД В БОТ</button>
             <button class="btn btn-green" onclick="closeMenu()">▶ ПРОДОЛЖИТЬ</button>
         </div>
     </div>
 
-    <!-- Ангар -->
-    <div id="shopModal" class="modal hidden">
+    <!-- МАГАЗИН -->
+    <div id="shopModal" class="modal">
         <div class="modal-content">
-            <h2 style="color: #0ff;">МАГАЗИН МАТЕРИАЛОВ</h2>
-            <div style="color: #ffd700;">Баланс: <span id="shopCoins">0</span> 💰</div>
+            <div class="modal-title" id="shopTitle">МАГАЗИН</div>
+            <div style="color: #ffd700; font-weight: 900; font-size: 18px; margin-bottom: 5px;">Баланс: <span id="shopCoins">0</span> 💰</div>
             <div class="shop-container" id="shopList"></div>
             <button class="btn btn-green" onclick="closeShop()">НАЗАД</button>
         </div>
     </div>
 
-    <!-- Смерть -->
-    <div id="gameOverScreen" class="modal hidden">
-        <div class="modal-content" style="background: transparent; border: none; box-shadow: none;">
-            <h1 style="color: #ff416c; font-size: 45px; text-shadow: 0 0 20px red; margin-bottom: 20px;">БАШНЯ УПАЛА!</h1>
-            <button class="btn btn-blue" onclick="resetGame()" style="margin-bottom: 15px;">🔄 СТРОИТЬ ЗАНОВО</button>
-            <button class="btn btn-red" onclick="saveAndExit()">💾 ЗАБРАТЬ МОНЕТЫ</button>
+    <!-- СМЕРТЬ -->
+    <div id="gameOverScreen" class="modal">
+        <div class="modal-content" style="background: rgba(10,0,0,0.95); border-color: #ff0055;">
+            <h1 style="color: #ff0055; font-size: 46px; text-shadow: 0 0 30px #ff0055; font-weight: 900;">ВЗРЫВ</h1>
+            <p style="color: #aaa; font-size: 16px; margin-bottom: 20px;">Критическая ошибка</p>
+            <button class="btn btn-blue" onclick="resetGame()" style="margin-bottom: 12px;">🔄 РЕСТАРТ</button>
+            <button class="btn btn-red" onclick="saveAndExit()">💾 СОХРАНИТЬ РЕКОРД</button>
         </div>
     </div>
 
 <script>
     // ==========================================
-    // 1. ИНИЦИАЛИЗАЦИЯ И БЛОКИРОВКА СВАЙПОВ
+    // 1. ИНИЦИАЛИЗАЦИЯ И ЗАЩИТА ТЕЛЕГРАМА
     // ==========================================
     const tg = window.Telegram.WebApp;
     tg.ready(); tg.expand();
     if (tg.isVersionAtLeast('7.7')) tg.disableVerticalSwipes();
     if (tg.isVersionAtLeast('6.1')) tg.enableClosingConfirmation();
 
-    document.body.addEventListener('touchmove', e => {
-        if (!e.target.closest('.shop-container')) e.preventDefault();
-    }, { passive: false });
+    document.body.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 
     // ==========================================
-    // 2. БАЗА СКИНОВ (10 шт, определяют цвет блоков)
+    // 2. БАЗЫ ДАННЫХ
     // ==========================================
     const SKINS = [
-        { id: 'default', name: 'Cyber Neon', price: 0, hex: '#00ffff' },
-        { id: 'gold', name: 'Gold Tower', price: 1000, hex: '#ffd700' },
-        { id: 'lava', name: 'Lava Block', price: 1500, hex: '#ff416c' },
-        { id: 'ice', name: 'Ice Cube', price: 2000, hex: '#89f7fe' },
-        { id: 'toxic', name: 'Toxic Acid', price: 2500, hex: '#39ff14' },
-        { id: 'amethyst', name: 'Amethyst', price: 3000, hex: '#9d50bb' },
-        { id: 'blood', name: 'Blood Diamond', price: 3000, hex: '#8a0303' },
-        { id: 'matrix', name: 'Matrix Green', price: 3000, hex: '#00ff00' },
-        { id: 'hologram', name: 'Hologram', price: 3000, hex: '#e0c3fc' },
-        { id: 'black_hole', name: 'Black Hole (+20%)', price: 3000, hex: '#440044', dark: true }
+        { id: 'default', name: 'Neon Blade', price: 0, color: '#00ffff' },
+        { id: 'crimson', name: 'Cyber Katana', price: 1500, color: '#ff003c' },
+        { id: 'jedi', name: 'Plasma Sword', price: 2000, color: '#00ff00' },
+        { id: 'gold', name: 'Golden Edge', price: 2500, color: '#ffd700' },
+        { id: 'amethyst', name: 'Amethyst Saber', price: 3000, color: '#d400ff' },
+        { id: 'obsidian', name: 'Shadow Blade', price: 3500, color: '#444444' },
+        { id: 'black_hole', name: 'Dark Matter (+20%)', price: 5000, color: '#800080' }
     ];
 
-    // 10 Уровней (Фоны)
-    const STAGES = [
-        { bg: '#0b0c10', name: 'УРОВЕНЬ 1: КИБЕР-СИТИ' },
-        { bg: '#001a00', name: 'УРОВЕНЬ 2: ТОКСИЧНЫЕ ТРУЩОБЫ' },
-        { bg: '#1a001a', name: 'УРОВЕНЬ 3: СИНТВЕЙВ' },
-        { bg: '#330000', name: 'УРОВЕНЬ 4: МАРСИАНСКАЯ БАЗА' },
-        { bg: '#332200', name: 'УРОВЕНЬ 5: СОЛНЕЧНАЯ ВСПЫШКА' },
-        { bg: '#002233', name: 'УРОВЕНЬ 6: ЛЕДЯНАЯ ПЛАНЕТА' },
-        { bg: '#331100', name: 'УРОВЕНЬ 7: МАГМА' },
-        { bg: '#222222', name: 'УРОВЕНЬ 8: КВАНТОВЫЙ МИР' },
-        { bg: '#111111', name: 'УРОВЕНЬ 9: ПОЯС АСТЕРОИДОВ' },
-        { bg: '#050010', name: 'УРОВЕНЬ 10: ЧЕРНАЯ ДЫРА' }
-    ];
+    const UPGRADES = {
+        bladeWidth: { name: 'Ширина Лезвия', desc: 'Увеличивает хват меча', icon: '🗡', baseCost: 1000, costMult: 1.5, maxLvl: 5, val: 5 }, // База 15px
+        timeSlow: { name: 'Хакерское Время', desc: 'Сильнее замедляет время при бомбах', icon: '⏱', baseCost: 1500, costMult: 1.5, maxLvl: 5, val: 0.05 } // База 0.5x
+    };
 
+    // Сохраняем в старые ключи (sky_coins) чтобы бот понимал, что это 6 игра
     let localCoins = parseInt(localStorage.getItem('sky_coins')) || 0;
-    let unlocked = JSON.parse(localStorage.getItem('sky_unlocked')) || ['default'];
-    let activeSkin = localStorage.getItem('sky_skin') || 'default';
+    let unlockedSkins = JSON.parse(localStorage.getItem('slash_skins')) || ['default'];
+    let activeSkin = localStorage.getItem('slash_active_skin') || 'default';
+    let levels = JSON.parse(localStorage.getItem('slash_levels')) || { bladeWidth: 1, timeSlow: 1 };
     
-    let sessionCoins = 0;
-    let startTime = Date.now();
+    let sessionCoins = 0; let startTime = Date.now();
 
     // ==========================================
-    // 3. 3D-ДВИЖОК И МАТЕМАТИКА БАШНИ
+    // 3. АРХИТЕКТУРА ИГРЫ (AAA SLICE ENGINE)
     // ==========================================
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
@@ -146,313 +154,397 @@
 
     let gameState = 'start'; 
     let score = 0;
-    let combo = 0; // СЧЕТЧИК ИДЕАЛЬНЫХ ПОПАДАНИЙ
+    let combo = 0;
+    let comboTimer = 0;
 
-    const blockHeight = 35;
-    const depth3D = 15; // Глубина 3D (изометрия)
-    let blocks = [];
-    let debris = []; // Падающие обрезки
+    // Глобальное время (Сло-мо)
+    let timeScale = 1.0; 
+    let frames = 0;
+
+    // --- КЛИНОК (ОТРИСОВКА И ЛОГИКА) ---
+    const blade = {
+        points: [], // История позиций мыши
+        isActive: false,
+        width: 15,
+        color: '#00ffff',
+        
+        updateStats() {
+            this.width = 15 + (levels.bladeWidth - 1) * UPGRADES.bladeWidth.val;
+            let s = SKINS.find(sk => sk.id === activeSkin);
+            this.color = s.color;
+        },
+        
+        addPoint(x, y) {
+            this.points.push({x: x, y: y, life: 10}); // Жизнь точки (длина хвоста)
+        },
+        
+        updateAndDraw() {
+            if (this.points.length < 2) return;
+            
+            ctx.shadowBlur = 20; ctx.shadowColor = this.color;
+            ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+
+            // Рисуем квадратичную кривую Безье для максимальной плавности
+            ctx.beginPath();
+            ctx.moveTo(this.points[0].x, this.points[0].y);
+            
+            for (let i = 1; i < this.points.length - 1; i++) {
+                let xc = (this.points[i].x + this.points[i + 1].x) / 2;
+                let yc = (this.points[i].y + this.points[i + 1].y) / 2;
+                ctx.quadraticCurveTo(this.points[i].x, this.points[i].y, xc, yc);
+            }
+            
+            ctx.lineTo(this.points[this.points.length - 1].x, this.points[this.points.length - 1].y);
+            
+            // Толщина и цвет (Лезвие белое внутри, цветное снаружи)
+            ctx.lineWidth = this.width; ctx.strokeStyle = this.color; ctx.stroke();
+            ctx.lineWidth = this.width * 0.4; ctx.strokeStyle = '#fff'; ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // Затухание точек
+            for (let i = this.points.length - 1; i >= 0; i--) {
+                this.points[i].life--;
+                if (this.points[i].life <= 0 || !this.isActive) this.points.splice(i, 1);
+            }
+        }
+    };
+
+    let targets = [];
+    let halves = []; // Разрезанные половинки
     let particles = [];
-    
-    let activeBlock = null;
-    let cameraY = 0;
-    let currentSpeed = 4;
 
-    // Вспомогательные функции для 3D цветов
-    function adjustColor(color, amount) {
-        return '#' + color.replace(/^#/, '').replace(/../g, color => ('0'+Math.min(255, Math.max(0, parseInt(color, 16) + amount)).toString(16)).substr(-2));
+    function spawnTarget() {
+        let isBomb = Math.random() < 0.15; // 15% шанс бомбы
+        let isCoin = !isBomb && Math.random() < 0.2; // 20% шанс монеты
+        
+        let type = isBomb ? 'bomb' : (isCoin ? 'coin' : 'crystal');
+        
+        targets.push({
+            x: Math.random() * (cw - 100) + 50,
+            y: ch + 50,
+            r: isBomb ? 35 : (isCoin ? 25 : 30),
+            vx: (Math.random() - 0.5) * 6,
+            vy: -(Math.random() * 8 + 12), // Сила броска вверх
+            type: type,
+            color: type === 'crystal' ? ['#0ff', '#f0f', '#0f0'][Math.floor(Math.random()*3)] : (type === 'bomb' ? '#f00' : '#ffd700'),
+            angle: 0, rotSpeed: (Math.random()-0.5)*0.2
+        });
+
+        // Эффект МАТРИЦЫ: если вылетела бомба, замедляем время
+        if (isBomb) {
+            let slowVal = 0.6 - (levels.timeSlow - 1) * UPGRADES.timeSlow.val; // Максимум до 0.4
+            timeScale = Math.max(0.2, slowVal); 
+        }
     }
 
-    // РИСУЕМ 3D БЛОК ИЗ 2D КООРДИНАТ (ИДЕАЛЬНАЯ ИЗОМЕТРИЯ)
-    function draw3DBlock(x, y, w, h, baseColor, isDark) {
-        let topColor = isDark ? '#222' : adjustColor(baseColor, 50); // Светлая крыша
-        let sideColor = isDark ? '#000' : adjustColor(baseColor, -50); // Темный бок
+    // --- МАТЕМАТИКА: ПЕРЕСЕЧЕНИЕ ОТРЕЗКА И КРУГА ---
+    function lineIntersectsCircle(A, B, C, r) {
+        let dx = B.x - A.x; let dy = B.y - A.y;
+        let t = ((C.x - A.x) * dx + (C.y - A.y) * dy) / (dx * dx + dy * dy);
+        t = Math.max(0, Math.min(1, t)); // Ограничиваем концами отрезка
+        let closestX = A.x + t * dx;
+        let closestY = A.y + t * dy;
+        let dist = Math.hypot(C.x - closestX, C.y - closestY);
+        return dist < r + blade.width/2;
+    }
 
-        // Передняя грань
-        ctx.fillStyle = baseColor;
-        ctx.fillRect(x, y, w, h);
+    function createHalves(target, angle) {
+        // Добавляем две половинки, которые отлетают перпендикулярно разрезу
+        let speed = 4;
+        let perpX = Math.cos(angle + Math.PI/2) * speed;
+        let perpY = Math.sin(angle + Math.PI/2) * speed;
 
-        // Верхняя грань
-        ctx.fillStyle = topColor;
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + depth3D, y - depth3D);
-        ctx.lineTo(x + w + depth3D, y - depth3D);
-        ctx.lineTo(x + w, y);
-        ctx.fill();
+        halves.push({ x: target.x, y: target.y, r: target.r, vx: target.vx + perpX, vy: target.vy + perpY, color: target.color, type: target.type, rot: 0, rotSpeed: 0.1, side: 1 });
+        halves.push({ x: target.x, y: target.y, r: target.r, vx: target.vx - perpX, vy: target.vy - perpY, color: target.color, type: target.type, rot: 0, rotSpeed: -0.1, side: -1 });
+    }
 
-        // Правая грань
-        ctx.fillStyle = sideColor;
-        ctx.beginPath();
-        ctx.moveTo(x + w, y);
-        ctx.lineTo(x + w + depth3D, y - depth3D);
-        ctx.lineTo(x + w + depth3D, y + h - depth3D);
-        ctx.lineTo(x + w, y + h);
-        ctx.fill();
-        
-        // Свечение кромок
-        ctx.strokeStyle = isDark ? baseColor : '#fff';
-        ctx.lineWidth = 1;
-        ctx.globalAlpha = 0.5;
-        ctx.strokeRect(x, y, w, h);
-        ctx.globalAlpha = 1;
+    function createParticles(x, y, color, count=15) {
+        for(let i=0; i<count; i++) {
+            particles.push({ x: x, y: y, vx: (Math.random()-0.5)*15, vy: (Math.random()-0.5)*15, life: 1, color: color, size: Math.random()*5 + 2 });
+        }
+    }
+
+    function createFloatText(x, y, txt, color) {
+        const el = document.createElement('div');
+        el.className = 'float-text'; el.innerText = txt; el.style.color = color;
+        el.style.left = x + 'px'; el.style.top = y + 'px';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 800);
     }
 
     function initGame() {
-        score = 0; combo = 0; sessionCoins = 0; currentSpeed = 4;
-        cameraY = 0;
+        blade.updateStats();
+        score = 0; sessionCoins = 0; combo = 0; comboTimer = 0; timeScale = 1.0;
         document.getElementById('score').innerText = score;
         document.getElementById('coins').innerText = sessionCoins;
-        document.getElementById('comboText').style.opacity = 0;
         
-        // Стартовый фундамент
-        blocks = [{ x: cw * 0.15, y: ch - 100, w: cw * 0.7, dir: 0 }];
-        debris = []; particles = [];
-        spawnBlock();
-        updateLevel();
+        targets = []; halves = []; particles = []; blade.points = [];
         gameState = 'playing';
-    }
-
-    function spawnBlock() {
-        let prev = blocks[blocks.length - 1];
-        let newY = prev.y - blockHeight;
-        let dir = Math.random() > 0.5 ? 1 : -1;
-        // Появляется за краем экрана
-        let startX = dir === 1 ? -prev.w - depth3D : cw + depth3D;
-        
-        activeBlock = {
-            x: startX, y: newY, w: prev.w,
-            dir: dir, speed: currentSpeed + (score * 0.1) // Скорость растет!
-        };
-    }
-
-    function createFloatingText(x, y, txt, color) {
-        let el = document.createElement('div');
-        el.className = 'floating-text'; el.innerText = txt;
-        el.style.left = x + 'px'; el.style.top = y + 'px';
-        if(color) el.style.color = color;
-        document.body.appendChild(el);
-        setTimeout(() => el.remove(), 1200);
-    }
-
-    function createExplosion(x, y, color) {
-        for(let i=0; i<15; i++) particles.push({x: x, y: y, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10, life: 1, c: color});
-    }
-
-    function updateLevel() {
-        let stageIndex = Math.min(Math.floor(score / 10), 9);
-        let stage = STAGES[stageIndex];
-        document.body.style.background = stage.bg;
-        document.getElementById('levelText').innerText = stage.name;
-    }
-
-    // ==========================================
-    // 4. ГЛАВНАЯ ЛОГИКА: ОБРЕЗКА (СЛАЙСИНГ) И КОМБО
-    // ==========================================
-    function dropBlock() {
-        if (gameState !== 'playing') return;
-        
-        let prev = blocks[blocks.length - 1];
-        let diff = activeBlock.x - prev.x; // Разница по оси X
-        let absDiff = Math.abs(diff);
-
-        // 1. ИДЕАЛЬНОЕ ПОПАДАНИЕ (Погрешность до 5 пикселей)
-        if (absDiff < 5) {
-            activeBlock.x = prev.x; // Примагничиваем ровно
-            combo++;
-            
-            // Расчет КОМБО Награды!
-            let reward = 0;
-            if (combo === 1) reward = 50;
-            else if (combo === 2) reward = 100;
-            else if (combo === 3) reward = 200;
-            else if (combo >= 4) reward = 1000; // МЕГА БОНУС!
-
-            sessionCoins += reward; localCoins += reward;
-            document.getElementById('coins').innerText = sessionCoins;
-            
-            // Визуал Комбо
-            let comboEl = document.getElementById('comboText');
-            comboEl.innerText = `🔥 КОМБО x${combo} (+${reward}💰)`;
-            comboEl.style.opacity = 1;
-            
-            createFloatingText(activeBlock.x + activeBlock.w/2 - 20, activeBlock.y, `ИДЕАЛЬНО! +${reward}`, '#0f0');
-            createExplosion(activeBlock.x, activeBlock.y, '#fff'); // Вспышка
-        } 
-        // 2. ПРОМАХНУЛСЯ ПОЛНОСТЬЮ
-        else if (absDiff > prev.w) {
-            gameOver();
-            return;
-        } 
-        // 3. ЧАСТИЧНОЕ ПОПАДАНИЕ (ОБРЕЗАЕМ БЛОК)
-        else {
-            combo = 0; // Сбрасываем комбо
-            document.getElementById('comboText').style.opacity = 0;
-            
-            let cutoff = absDiff; // Сколько отрезали
-            let newWidth = prev.w - cutoff; // Сколько осталось
-            
-            let fallingX, fallingW;
-
-            if (diff > 0) {
-                // Блок уехал вправо
-                activeBlock.w = newWidth; // Оставшийся кусок (он сам на своей X позиции)
-                fallingX = activeBlock.x + newWidth; // Обрезок падает правее
-                fallingW = cutoff;
-            } else {
-                // Блок уехал влево
-                activeBlock.w = newWidth;
-                activeBlock.x = prev.x; // Сдвигаем оставшийся кусок ровно к левому краю предыдущего
-                fallingX = activeBlock.x - cutoff; // Обрезок падает слева
-                fallingW = cutoff;
-            }
-
-            // Создаем физический обрезок (он падает вниз)
-            debris.push({
-                x: fallingX, y: activeBlock.y, w: fallingW,
-                vy: 0, vx: diff > 0 ? 2 : -2, rot: 0
-            });
-            
-            // Награда за обычный (не идеальный) блок
-            sessionCoins += 10; localCoins += 10;
-            document.getElementById('coins').innerText = sessionCoins;
-        }
-
-        // Сохраняем блок в башню
-        activeBlock.dir = 0; // Останавливаем
-        blocks.push(activeBlock);
-        score++;
-        document.getElementById('score').innerText = score;
-        
-        // Камера следует за башней (плавно)
-        cameraY += blockHeight;
-        
-        updateLevel();
-        spawnBlock();
     }
 
     function loop() {
         requestAnimationFrame(loop);
         if (gameState !== 'playing') return;
 
-        ctx.clearRect(0, 0, cw, ch);
-        
-        let skin = SKINS.find(s => s.id === activeSkin);
+        // Плавное возвращение времени в норму (Выход из Матрицы)
+        timeScale += (1.0 - timeScale) * 0.05; 
 
-        ctx.save();
-        // Смещаем мир вниз, чтобы камера "ехала вверх"
-        ctx.translate(0, cameraY);
-
-        // Движение активного блока
-        activeBlock.x += activeBlock.speed * activeBlock.dir;
-        // Отскок от краев (чтобы не улетал далеко)
-        if (activeBlock.x > cw - 20 || activeBlock.x < -activeBlock.w + 20) activeBlock.dir *= -1;
-
-        // Рисуем зафиксированные блоки (снизу вверх, чтобы изометрия правильно перекрывалась)
-        for (let b of blocks) {
-            draw3DBlock(b.x, b.y, b.w, blockHeight, skin.hex, skin.dark);
+        // Комбо таймер
+        if (comboTimer > 0) {
+            comboTimer -= timeScale;
+            if (comboTimer <= 0) {
+                combo = 0;
+                document.getElementById('comboTxt').style.opacity = 0;
+            }
         }
 
-        // Рисуем активный блок
-        draw3DBlock(activeBlock.x, activeBlock.y, activeBlock.w, blockHeight, skin.hex, skin.dark);
+        ctx.fillStyle = '#03050a'; ctx.fillRect(0, 0, cw, ch);
 
-        // Физика и отрисовка обрезков (Debris)
-        for (let i = debris.length - 1; i >= 0; i--) {
-            let d = debris[i];
-            d.vy += 0.5; // Гравитация
-            d.x += d.vx; d.y += d.vy;
-            draw3DBlock(d.x, d.y, d.w, blockHeight, skin.hex, skin.dark);
-            if (d.y > ch - cameraY + 200) debris.splice(i, 1); // Удаляем, если улетел за экран
+        let dt = timeScale; // Дельта времени для физики
+
+        // 1. ЛОГИКА МИШЕНЕЙ
+        for (let i = targets.length - 1; i >= 0; i--) {
+            let t = targets[i];
+            t.vy += 0.2 * dt; // Гравитация
+            t.x += t.vx * dt;
+            t.y += t.vy * dt;
+            t.angle += t.rotSpeed * dt;
+
+            // Отрисовка цели
+            ctx.save(); ctx.translate(t.x, t.y); ctx.rotate(t.angle);
+            ctx.shadowBlur = 15; ctx.shadowColor = t.color; ctx.fillStyle = t.color;
+            
+            if (t.type === 'bomb') {
+                ctx.beginPath(); ctx.arc(0, 0, t.r, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0, 0, t.r*0.6, 0, Math.PI*2); ctx.fill();
+                // Фитиль
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, -t.r); ctx.quadraticCurveTo(20, -t.r-20, 10, -t.r-30); ctx.stroke();
+            } else if (t.type === 'coin') {
+                ctx.beginPath(); ctx.arc(0, 0, t.r, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#aa8800'; ctx.beginPath(); ctx.arc(0, 0, t.r*0.7, 0, Math.PI*2); ctx.fill();
+            } else {
+                // Кристалл
+                ctx.beginPath(); ctx.moveTo(0, -t.r); ctx.lineTo(t.r, 0); ctx.lineTo(0, t.r); ctx.lineTo(-t.r, 0); ctx.closePath(); ctx.fill();
+            }
+            ctx.restore();
+
+            // ПРОВЕРКА РАЗРЕЗАНИЯ (Слайсинг)
+            let isSliced = false;
+            if (blade.points.length > 1) {
+                let A = blade.points[blade.points.length - 2];
+                let B = blade.points[blade.points.length - 1];
+                if (lineIntersectsCircle(A, B, t, t.r)) {
+                    isSliced = true;
+                    let cutAngle = Math.atan2(B.y - A.y, B.x - A.x);
+                    createHalves(t, cutAngle);
+                    createParticles(t.x, t.y, t.color, 15);
+                }
+            }
+
+            if (isSliced) {
+                if (t.type === 'bomb') {
+                    gameOver(); return;
+                } else {
+                    // Успешный разрез
+                    let pts = 1; let cns = 0;
+                    if (t.type === 'coin') cns = 5;
+                    else cns = 1;
+
+                    combo++; comboTimer = 60; // 60 кадров комбо
+                    if (combo >= 3) {
+                        pts *= 2; cns *= 2;
+                        let el = document.getElementById('comboTxt');
+                        el.innerText = `COMBO x${combo}!`; el.style.opacity = 1;
+                    }
+
+                    score += pts; sessionCoins += cns; localCoins += cns;
+                    document.getElementById('score').innerText = score;
+                    document.getElementById('coins').innerText = sessionCoins;
+                    createFloatText(t.x, t.y, `+${pts}`, t.color);
+                    
+                    if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+                }
+                targets.splice(i, 1);
+            } else if (t.y > ch + 100) {
+                // Упал за экран
+                targets.splice(i, 1);
+                // Если упустили кристалл или монету - жизнь не отнимаем, но комбо сбрасываем
+                if (t.type !== 'bomb') {
+                    combo = 0; document.getElementById('comboTxt').style.opacity = 0;
+                }
+            }
         }
 
-        // Частицы
+        // 2. Отрисовка Половинок
+        for (let i = halves.length - 1; i >= 0; i--) {
+            let h = halves[i];
+            h.vy += 0.3 * dt; h.x += h.vx * dt; h.y += h.vy * dt; h.rot += h.rotSpeed * dt;
+            
+            ctx.save(); ctx.translate(h.x, h.y); ctx.rotate(h.rot);
+            ctx.fillStyle = h.color; ctx.globalAlpha = 0.7;
+            
+            ctx.beginPath();
+            // Рисуем полукруг или полу-ромб
+            if (h.type === 'crystal') {
+                if (h.side === 1) { ctx.moveTo(0, -h.r); ctx.lineTo(h.r, 0); ctx.lineTo(0, h.r); } 
+                else { ctx.moveTo(0, -h.r); ctx.lineTo(-h.r, 0); ctx.lineTo(0, h.r); }
+            } else {
+                ctx.arc(0, 0, h.r, h.side === 1 ? -Math.PI/2 : Math.PI/2, h.side === 1 ? Math.PI/2 : -Math.PI/2);
+            }
+            ctx.fill(); ctx.restore();
+
+            if (h.y > ch + 100) halves.splice(i, 1);
+        }
+        ctx.globalAlpha = 1;
+
+        // 3. Частицы
         for (let i = particles.length - 1; i >= 0; i--) {
-            let p = particles[i]; p.x += p.vx; p.y += p.vy; p.life -= 0.05;
-            ctx.globalAlpha = p.life > 0 ? p.life : 0;
-            ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2); ctx.fill();
+            let p = particles[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= 0.05 * dt;
+            ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.color;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
             if (p.life <= 0) particles.splice(i, 1);
         }
+        ctx.globalAlpha = 1;
 
-        ctx.restore();
+        // 4. Отрисовка Лезвия
+        blade.updateAndDraw();
+
+        // 5. Спавнер (Зависит от времени)
+        let spawnRate = Math.max(20, 80 - Math.floor(score / 3));
+        if (frames % Math.floor(spawnRate / timeScale) === 0) spawnTarget();
+
+        frames++;
     }
 
     // ==========================================
-    // 5. УПРАВЛЕНИЕ И UI
+    // 4. УПРАВЛЕНИЕ МЕЧОМ (Сенсор/Мышь)
     // ==========================================
-    window.addEventListener('touchstart', e => {
+    window.addEventListener('pointerdown', e => {
         if(e.target.closest('.smart-menu-btn') || e.target.closest('.modal')) return;
         if(gameState === 'start') { initGame(); return; }
-        if(gameState === 'playing') dropBlock();
+        if(gameState === 'playing') {
+            blade.isActive = true;
+            blade.points = [];
+            blade.addPoint(e.clientX, e.clientY);
+        }
     });
 
+    window.addEventListener('pointermove', e => {
+        if(gameState === 'playing' && blade.isActive) {
+            blade.addPoint(e.clientX, e.clientY);
+        }
+    });
+
+    window.addEventListener('pointerup', () => { blade.isActive = false; });
+    window.addEventListener('pointercancel', () => { blade.isActive = false; });
+
+    // ==========================================
+    // 5. ОКОНЧАНИЕ И МЕНЮ
+    // ==========================================
     function gameOver() {
         gameState = 'gameover';
-        localStorage.setItem('sky_coins', localCoins);
-        setTimeout(() => document.getElementById('gameOverScreen').classList.remove('hidden'), 500);
+        if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        
+        let flash = document.getElementById('flash');
+        flash.classList.add('active');
+        setTimeout(() => flash.classList.remove('active'), 150);
+        
+        localStorage.setItem('sky_coins', localCoins); // Сохраняем в ключ sky_coins
+        setTimeout(() => document.getElementById('gameOverScreen').classList.add('active'), 600);
     }
 
     function resetGame() {
-        document.getElementById('gameOverScreen').classList.add('hidden');
+        document.getElementById('gameOverScreen').classList.remove('active');
         initGame();
     }
 
-    // МЕНЮ И МАГАЗИН
+    // МЕНЮ
     document.getElementById('mainMenuBtn').onclick = () => {
         if(gameState === 'playing') gameState = 'paused';
-        document.getElementById('smartModal').classList.remove('hidden');
+        document.getElementById('smartModal').classList.add('active');
     }
     function closeMenu() {
-        document.getElementById('smartModal').classList.add('hidden');
+        document.getElementById('smartModal').classList.remove('active');
         if(gameState === 'paused') gameState = 'playing';
     }
-    
-    function openShop() {
-        document.getElementById('smartModal').classList.add('hidden');
-        document.getElementById('shopModal').classList.remove('hidden');
-        document.getElementById('shopCoins').innerText = localCoins;
-        let list = document.getElementById('shopList'); list.innerHTML = '';
+
+    function openShop(type) {
+        document.getElementById('smartModal').classList.remove('active');
+        document.getElementById('shopModal').classList.add('active');
+        document.getElementById('shopCoins').innerText = localCoins.toLocaleString();
         
-        SKINS.forEach(s => {
-            let isUnl = unlocked.includes(s.id); let isAct = activeSkin === s.id;
-            let btn = isAct ? `<button class="buy-btn btn-selected">ВЫБРАН</button>` :
-                      isUnl ? `<button class="buy-btn btn-select" onclick="equipSkin('${s.id}')">НАДЕТЬ</button>` :
-                      `<button class="buy-btn btn-buy" onclick="buySkin('${s.id}', ${s.price})">КУПИТЬ (${s.price})</button>`;
-            list.innerHTML += `
-                <div class="skin-card ${isAct ? 'active' : ''}">
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <!-- Мини-блок для превью -->
-                        <div style="width:30px; height:20px; background:${s.hex}; border-bottom: 5px solid #000; border-right: 5px solid #fff; box-shadow:0 0 10px ${s.hex};"></div>
-                        <div style="font-weight:bold;">${s.name}</div>
-                    </div>
-                    ${btn}
-                </div>`;
-        });
+        const list = document.getElementById('shopList'); list.innerHTML = '';
+        
+        if (type === 'skins') {
+            document.getElementById('shopTitle').innerText = 'АРСЕНАЛ';
+            SKINS.forEach(s => {
+                let isUnl = unlockedSkins.includes(s.id); let isAct = activeSkin === s.id;
+                let btn = isAct ? `<button class="buy-btn btn-max">АКТИВЕН</button>` :
+                          isUnl ? `<button class="buy-btn btn-select" onclick="equipSkin('${s.id}')">ВЗЯТЬ</button>` :
+                          `<button class="buy-btn btn-buy" onclick="buySkin('${s.id}', ${s.price})">${s.price.toLocaleString()}💰</button>`;
+
+                list.innerHTML += `
+                    <div class="card ${isAct ? 'active' : ''}">
+                        <div style="flex-grow:1; font-weight:900; font-size:16px; color:${s.color}; text-shadow:0 0 10px ${s.color};">${s.name}</div>
+                        ${btn}
+                    </div>`;
+            });
+        } else if (type === 'boosts') {
+            document.getElementById('shopTitle').innerText = 'ПРОКАЧКА';
+            Object.keys(UPGRADES).forEach(key => {
+                let u = UPGRADES[key]; let lvl = levels[key];
+                let isMax = lvl >= u.maxLvl;
+                let cost = Math.floor(u.baseCost * Math.pow(u.costMult, lvl));
+                
+                let btn = isMax ? `<button class="buy-btn btn-max">MAX LVL</button>` :
+                                  `<button class="buy-btn btn-buy" onclick="buyUpgrade('${key}', ${cost})">${cost.toLocaleString()}💰</button>`;
+
+                list.innerHTML += `
+                    <div class="card">
+                        <div style="font-size: 24px; margin-right: 10px;">${u.icon}</div>
+                        <div style="flex-grow:1;">
+                            <div style="font-weight:900; font-size:16px;">${u.name} <span style="color:#0ff; font-size:12px;">Lvl ${lvl}</span></div>
+                            <div style="font-size:12px; color:#aaa;">${u.desc}</div>
+                        </div>
+                        ${btn}
+                    </div>`;
+            });
+        }
     }
-    function closeShop() { document.getElementById('shopModal').classList.add('hidden'); document.getElementById('smartModal').classList.remove('hidden'); }
-    
+
+    function closeShop() { document.getElementById('shopModal').classList.remove('active'); document.getElementById('smartModal').classList.add('active'); }
+
     window.buySkin = function(id, price) {
-        if (localCoins >= price) { localCoins -= price; unlocked.push(id); equipSkin(id); saveData(); }
-        else tg.showAlert('Мало монет, бро! Строй дальше.');
+        if (localCoins >= price) { localCoins -= price; unlockedSkins.push(id); equipSkin(id); saveData(); }
+        else tg.showAlert('Не хватает кредитов!');
     }
-    window.equipSkin = function(id) { activeSkin = id; openShop(); saveData(); }
-    
+    window.equipSkin = function(id) { activeSkin = id; openShop('skins'); saveData(); blade.updateStats(); }
+
+    window.buyUpgrade = function(key, cost) {
+        if (localCoins >= cost) {
+            localCoins -= cost; levels[key]++; openShop('boosts'); saveData(); blade.updateStats();
+            if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        } else {
+            tg.showAlert('Нужно больше добычи!');
+        }
+    }
+
     function saveData() {
-        localStorage.setItem('sky_coins', localCoins);
-        localStorage.setItem('sky_unlocked', JSON.stringify(unlocked));
-        localStorage.setItem('sky_skin', activeSkin);
+        localStorage.setItem('sky_coins', localCoins); 
+        localStorage.setItem('slash_skins', JSON.stringify(unlockedSkins));
+        localStorage.setItem('slash_active_skin', activeSkin);
+        localStorage.setItem('slash_levels', JSON.stringify(levels));
     }
 
     window.saveAndExit = function() {
-        tg.sendData(JSON.stringify({
-            game: "skyscraper", coins: sessionCoins, score: score,
-            time_spent: Math.floor((Date.now() - startTime) / 1000), active_skin: activeSkin
-        }));
+        saveData();
+        tg.sendData(JSON.stringify({ game: "skyscraper", coins: sessionCoins, score: score, time_spent: Math.floor((Date.now() - startTime) / 1000), active_skin: activeSkin }));
     }
 
-    // Запуск стартового экрана
-    ctx.fillStyle = '#0b0c10'; ctx.fillRect(0, 0, cw, ch);
-    ctx.fillStyle = '#fff'; ctx.font = '24px Arial'; ctx.textAlign = 'center';
-    ctx.fillText("ТАПНИ, ЧТОБЫ СТРОИТЬ", cw/2, ch/2);
+    // СТАРТ
+    ctx.fillStyle = '#03050a'; ctx.fillRect(0, 0, cw, ch);
+    ctx.fillStyle = '#0ff'; ctx.font = '900 24px Arial'; ctx.textAlign = 'center'; ctx.shadowBlur = 15; ctx.shadowColor = '#0ff';
+    ctx.fillText("СВАЙПНИ ДЛЯ УДАРА", cw/2, ch/2);
     requestAnimationFrame(loop);
 
 </script>
